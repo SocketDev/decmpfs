@@ -26,7 +26,7 @@ for (const target of TARGETS) {
     version: '0.0.0',
     description: `Placeholder for the decmpfs ${target.triple} prebuilt addon — the real binary is published by CI.`,
     license: 'MIT',
-    repository: 'https://github.com/jdalton/decmpfs',
+    repository: 'https://github.com/decmpfs/decmpfs',
     os: [target.os],
     cpu: [target.cpu],
     ...(target.libc ? { libc: [target.libc] } : {}),
@@ -36,6 +36,6 @@ for (const target of TARGETS) {
   writeFileSync(
     join(dir, 'README.md'),
     `# ${name}\n\nPlaceholder. The real \`${target.triple}\` prebuilt addon for ` +
-      `[decmpfs](https://github.com/jdalton/decmpfs) is published by CI.\n`,
+      `[decmpfs](https://github.com/decmpfs/decmpfs) is published by CI.\n`,
   )
 }

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Write files straight to OS transparent filesystem compression (APFS decmpfs / btrfs / NTFS) in one pass.",
   "license": "MIT",
-  "repository": "https://github.com/jdalton/decmpfs",
+  "repository": "https://github.com/decmpfs/decmpfs",
   "keywords": ["apfs", "btrfs", "compression", "decmpfs", "ntfs"],
   "main": "index.cjs",
   "files": ["index.cjs"],
