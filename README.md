@@ -1,5 +1,7 @@
 # decmpfs
 
+![coverage](assets/coverage.svg) [![Socket score](assets/socket.svg)](https://socket.dev/cargo/package/decmpfs)
+
 Apply the operating system's **transparent per-file filesystem compression** to a
 file — smaller on disk, byte-identical on read, decompressed by the kernel at
 near-native speed. macOS APFS (decmpfs/LZVN), Linux btrfs (zstd→lzo→zlib), Windows
