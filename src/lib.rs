@@ -284,6 +284,19 @@ mod tests {
   }
 
   #[test]
+  fn plain_write_errors_when_the_path_has_no_parent() {
+    // "/" has no parent directory → the no-parent guard fires before any write.
+    let out = plain_write(std::path::Path::new("/"), b"x");
+    assert!(matches!(
+      out,
+      Err(Error::Io {
+        context: "no parent dir",
+        ..
+      })
+    ));
+  }
+
+  #[test]
   fn error_display_and_source() {
     let nf = Error::NotFound(std::path::PathBuf::from("/x"));
     assert!(nf.to_string().contains("not found"));

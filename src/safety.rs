@@ -43,10 +43,22 @@ pub(crate) fn apply_guarded(path: &Path) -> Result<Outcome, Error> {
     return Err(err);
   }
 
-  let loadable = verify::magic_prefix(path)? == magic_before;
-  if !loadable {
-    // The backend left something that won't load — restore the original.
-    restore(path, &snapshot);
+  verify_loadable_or_restore(path, before, magic_before, &snapshot)
+}
+
+/// Post-apply gate for the in-place path: if the file no longer carries its
+/// native-binary magic the backend broke it, so restore the snapshot and report
+/// `Skipped(NotLoadable)`; otherwise classify the win. Split out so the
+/// not-loadable rollback is unit-testable without a backend that corrupts a file
+/// (pass a `magic_before` the file no longer matches).
+fn verify_loadable_or_restore(
+  path: &Path,
+  before: u64,
+  magic_before: [u8; 4],
+  snapshot: &[u8],
+) -> Result<Outcome, Error> {
+  if verify::magic_prefix(path)? != magic_before {
+    restore(path, snapshot);
     return Ok(classify_outcome(false, before, before, None));
   }
 
@@ -114,9 +126,17 @@ pub(crate) fn compress_bytes_guarded(path: &Path, content: &[u8]) -> Result<Outc
     return Err(err);
   }
 
-  // Oracle: a normal read must hand back the exact bytes we asked to store. If the
-  // backend produced something that doesn't decode identically, restore a plain
-  // write so the install is never left with a corrupt file.
+  // Oracle: a normal read must hand back the exact bytes we asked to store.
+  verify_readback_or_restore(path, content)
+}
+
+/// Post-apply oracle for the one-pass path: a normal read must hand back exactly
+/// `content`. If the backend produced something that doesn't decode identically,
+/// restore a plain write of `content` and report `Skipped(IntegrityRevert)` so an
+/// install is never left with a corrupt file; otherwise classify the win. Split
+/// out so the mismatch-rollback is unit-testable without a backend that corrupts
+/// the read-back (point it at a file whose bytes differ from `content`).
+fn verify_readback_or_restore(path: &Path, content: &[u8]) -> Result<Outcome, Error> {
   let after = verify::on_disk_bytes(path)?;
   let read_back = std::fs::read(path).map_err(|source| Error::Io {
     context: "read-back",
@@ -253,6 +273,53 @@ mod tests {
   fn restore_is_a_noop_when_the_path_has_no_parent() {
     // "/" has no parent → restore returns early without touching anything.
     restore(std::path::Path::new("/"), b"x");
+  }
+
+  #[test]
+  fn not_loadable_result_is_restored_and_skipped() {
+    // Drive the in-place rollback without a corrupting backend: hand a
+    // `magic_before` the on-disk file no longer matches, so the post-apply gate
+    // sees "not loadable", restores the snapshot, and reports NotLoadable.
+    let dir = std::env::temp_dir().join(format!("decmpfs-notload-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("f");
+    std::fs::write(&path, b"\x7fELF garbage the backend supposedly produced").unwrap();
+    let out =
+      verify_loadable_or_restore(&path, 100, [0xde, 0xad, 0xbe, 0xef], b"the original bytes")
+        .unwrap();
+    assert!(matches!(
+      out,
+      Outcome::Skipped {
+        reason: SkipReason::NotLoadable
+      }
+    ));
+    assert_eq!(
+      std::fs::read(&path).unwrap(),
+      b"the original bytes",
+      "snapshot restored"
+    );
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn read_back_mismatch_is_restored_and_skipped() {
+    // Drive the one-pass oracle rollback: the file on disk differs from the bytes
+    // we claim to have stored, so the read-back mismatches, the content is
+    // restored, and IntegrityRevert is reported.
+    let dir = std::env::temp_dir().join(format!("decmpfs-mismatch-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("f");
+    std::fs::write(&path, b"what the broken backend actually wrote").unwrap();
+    let intended = b"the bytes the caller asked to store";
+    let out = verify_readback_or_restore(&path, intended).unwrap();
+    assert!(matches!(
+      out,
+      Outcome::Skipped {
+        reason: SkipReason::IntegrityRevert
+      }
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), intended, "content restored");
+    std::fs::remove_dir_all(&dir).ok();
   }
 
   #[test]
