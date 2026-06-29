@@ -14,7 +14,7 @@ import { join } from 'node:path'
 import { after, before, test } from 'node:test'
 
 const require = createRequire(import.meta.url)
-const decmpfs = require('../index.js')
+const decmpfs = require('../index.cjs')
 
 let dir
 before(async () => {

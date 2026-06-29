@@ -6,7 +6,7 @@
   "repository": "https://github.com/jdalton/decmpfs",
   "keywords": ["apfs", "btrfs", "compression", "decmpfs", "ntfs"],
   "main": "index.cjs",
-  "files": ["index.cjs", "*.node"],
+  "files": ["index.cjs"],
   "engines": {
     "node": ">=18"
   },
@@ -14,6 +14,13 @@
     "access": "public",
     "provenance": true,
     "registry": "https://registry.npmjs.org/"
+  },
+  "optionalDependencies": {
+    "@jdalton/decmpfs-darwin-arm64": "0.1.0",
+    "@jdalton/decmpfs-darwin-x64": "0.1.0",
+    "@jdalton/decmpfs-linux-arm64-gnu": "0.1.0",
+    "@jdalton/decmpfs-linux-x64-gnu": "0.1.0",
+    "@jdalton/decmpfs-win32-x64-msvc": "0.1.0"
   },
   "scripts": {
     "build": "node scripts/build.mts",
