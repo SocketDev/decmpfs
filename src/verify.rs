@@ -95,4 +95,15 @@ mod tests {
     assert!(on_disk_bytes(p).is_err());
     assert!(magic_prefix(p).is_err());
   }
+
+  // Opening a directory succeeds on unix, but read() on its fd fails (EISDIR) —
+  // exercising the read-error arm distinct from the open-error arm above.
+  #[cfg(unix)]
+  #[test]
+  fn magic_prefix_errors_when_the_read_fails_after_a_successful_open() {
+    let dir = std::env::temp_dir().join(format!("decmpfs-readfail-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    assert!(magic_prefix(&dir).is_err(), "read of a directory fd errors");
+    std::fs::remove_dir_all(&dir).ok();
+  }
 }

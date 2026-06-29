@@ -444,4 +444,60 @@ mod tests {
     );
     std::fs::remove_dir_all(&dir).ok();
   }
+
+  // An existing target exercises the `path.exists()` probe-target branch and the
+  // fresh-inode rename that replaces the old contents.
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn compress_bytes_overwrites_an_existing_file() {
+    let dir = scratch("overwrite");
+    let path = dir.join("addon.node");
+    std::fs::write(&path, b"stale contents").unwrap();
+    let content = fake_addon();
+    let out = compress_bytes(&path, &content, &Gate::any());
+    assert!(out.is_ok(), "overwrite never errors, got {out:?}");
+    assert_eq!(
+      std::fs::read(&path).unwrap(),
+      content,
+      "new bytes replace the old"
+    );
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  // `path` is an existing directory: the backend builds its temp then can't rename
+  // a file over a directory, and the plain-write fallback can't either → a hard
+  // `Err` (genuine I/O failure), never a corrupt success. Exercises the backend
+  // rename-error cleanup and the `Err(_)` fallback arm of compress_bytes.
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn compress_bytes_onto_a_directory_path_is_a_hard_error() {
+    let dir = scratch("dir-target");
+    let target = dir.join("a-dir");
+    std::fs::create_dir_all(&target).unwrap();
+    let out = compress_bytes(&target, &fake_addon(), &Gate::any());
+    assert!(out.is_err(), "cannot write a file over a directory, got {out:?}");
+    assert!(target.is_dir(), "the directory is left intact");
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  // A read-only parent dir: the guarded backend write hits EACCES (classify_skip →
+  // Skipped), then the plain-write fallback also can't write → `Err`. Root bypasses
+  // mode bits, so skip there.
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn compress_bytes_into_a_read_only_dir_is_fail_soft() {
+    if unsafe { libc::geteuid() } == 0 {
+      return;
+    }
+    use std::os::unix::fs::PermissionsExt;
+    let dir = scratch("ro-dir");
+    let locked = dir.join("locked");
+    std::fs::create_dir_all(&locked).unwrap();
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o555)).unwrap();
+    let out = compress_bytes(&locked.join("x.node"), &fake_addon(), &Gate::any());
+    // Restore write perms so the tree can be cleaned up.
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).ok();
+    assert!(out.is_err(), "a read-only dir admits no write, got {out:?}");
+    std::fs::remove_dir_all(&dir).ok();
+  }
 }

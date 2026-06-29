@@ -389,6 +389,24 @@ mod tests {
   }
 
   #[test]
+  fn gate_new_with_a_glob_and_no_size_applies_no_floor() {
+    // The `None` size arm of Gate::new — a glob with no size predicate.
+    let g = Gate::new(Some("**/*.node"), None).unwrap();
+    assert_eq!(g.size(), None);
+    assert!(g.matches("a/b.node", 1));
+    assert!(!g.matches("a/b.so", 1));
+  }
+
+  #[test]
+  fn single_star_never_spans_a_separator() {
+    // A single `*` matches a run within one segment and must stop at a `/`.
+    let g = Gate::new(Some("a*c"), None).unwrap();
+    assert!(g.matches("ac", 0), "the star matches a zero-width run");
+    assert!(g.matches("abc", 0), "matches within one segment");
+    assert!(!g.matches("ab/c", 0), "a single * never crosses a /");
+  }
+
+  #[test]
   fn parse_error_display_is_distinct() {
     let msgs: Vec<String> = [
       GateParseError::Operator,
