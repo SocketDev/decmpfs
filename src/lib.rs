@@ -217,6 +217,33 @@ mod tests {
     );
   }
 
+  // APFS is always a compressing FS, so macOS exercises the full success path:
+  // compress_file → apply_guarded → backend::apply_inplace → verify → classify.
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn compress_file_compresses_then_is_idempotent_and_transparent() {
+    let dir = scratch("ok");
+    let path = dir.join("addon.node");
+    std::fs::write(&path, fake_addon()).unwrap();
+
+    let out = compress_file(&path);
+    assert!(
+      matches!(
+        out,
+        Ok(Outcome::Compressed { .. } | Outcome::NoGain { .. } | Outcome::AlreadyCompressed { .. })
+      ),
+      "writable addon on APFS → applied, got {out:?}"
+    );
+    // Transparent: the kernel hands back the exact original bytes.
+    assert_eq!(std::fs::read(&path).unwrap(), fake_addon());
+    // Idempotent: a second pass detects it's already compressed.
+    assert!(matches!(
+      compress_file(&path),
+      Ok(Outcome::AlreadyCompressed { .. })
+    ));
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
   #[cfg(unix)]
   #[test]
   fn compress_file_skips_a_read_only_file() {

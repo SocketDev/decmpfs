@@ -205,4 +205,24 @@ mod tests {
     assert_eq!(classify_skip(&err(std::io::ErrorKind::NotFound)), None);
     assert_eq!(classify_skip(&std::io::Error::from_raw_os_error(2)), None); // ENOENT
   }
+
+  #[test]
+  fn restore_is_a_noop_when_the_path_has_no_parent() {
+    // "/" has no parent → restore returns early without touching anything.
+    restore(std::path::Path::new("/"), b"x");
+  }
+
+  #[test]
+  fn restore_cleans_up_its_temp_when_the_rename_fails() {
+    // Renaming a temp file over an existing DIRECTORY fails → the temp is removed.
+    let dir = std::env::temp_dir().join(format!("decmpfs-rr-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let target = dir.join("a-dir");
+    std::fs::create_dir_all(&target).unwrap();
+    restore(&target, b"bytes");
+    let tmp = dir.join(format!(".decmpfs-restore-{}.tmp", std::process::id()));
+    assert!(!tmp.exists(), "temp left behind");
+    assert!(target.is_dir(), "directory target untouched");
+    std::fs::remove_dir_all(&dir).ok();
+  }
 }
