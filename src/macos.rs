@@ -323,6 +323,39 @@ mod tests {
   }
 
   #[test]
+  fn apply_inplace_errors_when_the_file_cannot_be_read() {
+    // A 0-perm file: apply_inplace's initial read fails before any apply. Root
+    // bypasses mode bits, so skip there.
+    if unsafe { libc::geteuid() } == 0 {
+      return;
+    }
+    use std::os::unix::fs::PermissionsExt;
+    let dir = std::env::temp_dir().join(format!("decmpfs-noread-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("f.bin");
+    std::fs::write(&path, b"\x7fELF unreadable").unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let out = apply_inplace(&path);
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).ok();
+    assert!(matches!(out, Err(Error::Io { context: "read", .. })));
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn setxattr_errors_on_a_missing_path() {
+    let out = setxattr(c"/no/such/decmpfs/path", c"com.apple.decmpfs", b"x");
+    assert!(matches!(out, Err(Error::Io { context: "setxattr", .. })));
+  }
+
+  #[test]
+  fn compress_block_returns_none_for_empty_input() {
+    // libcompression encodes zero bytes to nothing → the n == 0 guard returns None.
+    let scratch_len = unsafe { compression_encode_scratch_buffer_size(COMPRESSION_LZVN) };
+    let mut scratch = vec![0u8; scratch_len];
+    assert!(compress_block(b"", &mut scratch).is_none());
+  }
+
+  #[test]
   fn cstring_rejects_an_interior_nul() {
     use std::os::unix::ffi::OsStrExt;
     let p = std::path::Path::new(std::ffi::OsStr::from_bytes(b"a\0b"));

@@ -263,6 +263,17 @@ mod tests {
     std::fs::remove_dir_all(&dir).ok();
   }
 
+  // A target whose parent directory does not exist: the backend's temp create
+  // fails with ENOENT — not a permission/busy/too-large skip — so the guarded
+  // one-pass write propagates it as a hard Err rather than swallowing it.
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn compress_bytes_guarded_propagates_an_unclassifiable_error() {
+    let out =
+      compress_bytes_guarded(std::path::Path::new("/no/such/decmpfs/dir/x.node"), b"data");
+    assert!(matches!(out, Err(Error::Io { .. })));
+  }
+
   #[test]
   fn unrelated_errors_propagate() {
     assert_eq!(classify_skip(&err(std::io::ErrorKind::NotFound)), None);
