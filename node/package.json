@@ -5,8 +5,8 @@
   "license": "MIT",
   "repository": "https://github.com/jdalton/decmpfs",
   "keywords": ["apfs", "btrfs", "compression", "decmpfs", "ntfs"],
-  "main": "index.js",
-  "files": ["index.js", "*.node"],
+  "main": "index.cjs",
+  "files": ["index.cjs", "*.node"],
   "engines": {
     "node": ">=18"
   },
@@ -16,7 +16,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "cargo build --release && cp target/release/libdecmpfs_node.dylib decmpfs.node",
+    "build": "node scripts/build.mts",
     "test": "node --test"
   }
 }
