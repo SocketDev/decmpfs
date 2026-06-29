@@ -8,6 +8,17 @@ repository = "https://github.com/jdalton/decmpfs"
 keywords = ["apfs", "btrfs", "compression", "decmpfs", "ntfs"]
 categories = ["filesystem"]
 
+[features]
+# Off by default — the FS-compression core has no codec dep. The `addon` feature
+# pulls zstd + sha2 to unwrap a napi `--compress` hybrid back to the raw .node.
+default = []
+addon = ["dep:zstd", "dep:sha2"]
+
+[dependencies]
+# Only the `addon` feature codec/integrity deps; the core stays dep-free.
+zstd = { version = "0.13", optional = true }
+sha2 = { version = "0.10", optional = true }
+
 # Backend syscalls, cfg-gated so non-target builds stay dep-free. Linux (btrfs
 # ioctls) and macOS (statfs/xattr/chflags + libcompression) both use libc.
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]

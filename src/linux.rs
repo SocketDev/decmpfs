@@ -171,12 +171,26 @@ pub(crate) fn is_already_compressed(path: &Path) -> Result<bool, Error> {
 }
 
 pub(crate) fn apply_inplace(path: &Path) -> Result<(), Error> {
-  use std::io::Write;
-
   let data = std::fs::read(path).map_err(|source| Error::Io {
     context: "read",
     source,
   })?;
+  let mode = std::fs::metadata(path).map(|m| m.permissions()).ok();
+  apply_bytes(path, &data, mode)
+}
+
+/// Write `content` to `path` as a fresh btrfs-compressed file in ONE pass: create
+/// the sibling temp, request the codec on the EMPTY file (so the bytes compress as
+/// they land — never a write-then-recompress), write, fsync, then atomic-rename
+/// over `path`. The rename gives a fresh inode, the copy-break from any pnpm CAS
+/// hardlink siblings. Shared by `compress_bytes` (no original) and `apply_inplace`.
+pub(crate) fn apply_bytes(
+  path: &Path,
+  content: &[u8],
+  mode: Option<std::fs::Permissions>,
+) -> Result<(), Error> {
+  use std::io::Write;
+
   let dir = path.parent().ok_or_else(|| Error::Io {
     context: "no parent dir",
     source: std::io::Error::from(std::io::ErrorKind::InvalidInput),
@@ -201,7 +215,7 @@ pub(crate) fn apply_inplace(path: &Path) -> Result<(), Error> {
     let fd = file.as_raw_fd();
     // Request the codec on the empty file FIRST so writes compress on the way in.
     request_codec(fd)?;
-    file.write_all(&data).map_err(|source| Error::Io {
+    file.write_all(content).map_err(|source| Error::Io {
       context: "write temp",
       source,
     })?;
@@ -211,6 +225,12 @@ pub(crate) fn apply_inplace(path: &Path) -> Result<(), Error> {
     })?;
     Ok(())
   })();
+
+  if result.is_ok() {
+    if let Some(perm) = mode {
+      let _ = std::fs::set_permissions(&tmp, perm);
+    }
+  }
 
   match result {
     Ok(()) => std::fs::rename(&tmp, path).map_err(|source| {

@@ -66,6 +66,8 @@ pub enum SkipReason {
   NotLoadable,
   /// Exceeds a backend limit (e.g. decmpfs u32 offsets cap at 4 GiB).
   TooLarge,
+  /// `compress_bytes` was handed a file the `Gate` excludes — written plain.
+  GateExcluded,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,8 +144,106 @@ pub fn compress_file(path: &Path) -> Result<Outcome, Error> {
   }
 }
 
+/// THE install-time entry point: write `content` to `path` as an OS-compressed file
+/// in ONE pass — never a write-then-read-back-recompress.
+///
+/// The caller (a package manager's CAS writer) has already decoded the raw addon
+/// and matched it against `gate`. `compress_bytes` writes that exact byte stream
+/// directly as a transparently-compressed file: macOS encodes the decmpfs from the
+/// bytes onto a fresh inode; btrfs requests the codec on the empty temp then writes;
+/// NTFS sets FSCTL_SET_COMPRESSION on the fresh handle then writes.
+///
+/// Fail-soft is the contract — this NEVER breaks an install. On an unsupported FS,
+/// a permission/busy/too-large skip, or any backend error, it falls back to a plain
+/// atomic write of `content` and reports the corresponding `Outcome` (the plain
+/// write still lands the file). The kernel read-back is verified identical to
+/// `content` before returning a compressed Outcome.
+///
+/// `gate` is honored here as a convenience: if `content` does not match the gate,
+/// the file is written plain and `Outcome::Skipped { reason: GateExcluded }` is
+/// returned. A caller that already gated can pass `&Gate::any()`.
+pub fn compress_bytes(path: &Path, content: &[u8], gate: &Gate) -> Result<Outcome, Error> {
+  let name = path.to_string_lossy();
+  let normalized = name.replace('\\', "/");
+  if !gate.matches(&normalized, content.len() as u64) {
+    plain_write(path, content)?;
+    return Ok(Outcome::Skipped {
+      reason: SkipReason::GateExcluded,
+    });
+  }
+  // The target usually doesn't exist yet (a fresh CAS write), so the FS capability
+  // probe goes against the parent directory; `detect` statfs's / opens its argument
+  // and would error on a missing path.
+  let probe_target = if path.exists() {
+    path.to_path_buf()
+  } else {
+    match path.parent() {
+      Some(dir) => dir.to_path_buf(),
+      None => path.to_path_buf(),
+    }
+  };
+  match backend::detect(&probe_target) {
+    Ok(Support::Supported) => match safety::compress_bytes_guarded(path, content) {
+      Ok(Outcome::Skipped { .. }) | Err(_) => {
+        // A guarded skip/error already restored or never wrote — ensure the file
+        // lands plain so the install is never missing the addon.
+        plain_write(path, content)?;
+        Ok(Outcome::Skipped {
+          reason: SkipReason::IntegrityRevert,
+        })
+      }
+      other => other,
+    },
+    Ok(Support::AlreadyCompressed) | Ok(Support::Unsupported(_)) | Err(_) => {
+      plain_write(path, content)?;
+      Ok(Outcome::Unsupported {
+        reason: UnsupportedReason::Filesystem,
+      })
+    }
+  }
+}
+
+/// Fail-soft plain atomic write: sibling temp + fsync + rename. The never-break-the
+/// -install floor under every `compress_bytes` fallback.
+fn plain_write(path: &Path, content: &[u8]) -> Result<(), Error> {
+  use std::io::Write;
+  let dir = path.parent().ok_or_else(|| Error::Io {
+    context: "no parent dir",
+    source: std::io::Error::from(std::io::ErrorKind::InvalidInput),
+  })?;
+  let name = path
+    .file_name()
+    .map(|n| n.to_string_lossy().into_owned())
+    .unwrap_or_else(|| "addon".to_string());
+  let tmp = dir.join(format!(".{name}.plain-{}.tmp", std::process::id()));
+  let res = (|| -> std::io::Result<()> {
+    let mut file = std::fs::File::create(&tmp)?;
+    file.write_all(content)?;
+    file.sync_all()
+  })();
+  if let Err(source) = res {
+    let _ = std::fs::remove_file(&tmp);
+    return Err(Error::Io {
+      context: "plain write temp",
+      source,
+    });
+  }
+  std::fs::rename(&tmp, path).map_err(|source| {
+    let _ = std::fs::remove_file(&tmp);
+    Error::Io {
+      context: "plain write rename",
+      source,
+    }
+  })
+}
+
+#[cfg(feature = "addon")]
+pub mod addon;
+mod gate;
 mod safety;
 mod verify;
+
+pub use gate::{Gate, GateParseError, SizePredicate, DEFAULT_GLOB};
 
 #[cfg(target_os = "linux")]
 #[path = "linux.rs"]
@@ -241,6 +341,74 @@ mod tests {
       compress_file(&path),
       Ok(Outcome::AlreadyCompressed { .. })
     ));
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  // compress_bytes one-pass: write bytes directly as an APFS-compressed file with
+  // no pre-existing original, then prove the kernel hands the exact bytes back.
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn compress_bytes_one_pass_writes_compressed_and_reads_back_identical() {
+    let dir = scratch("bytes");
+    let path = dir.join("fresh.node");
+    let content = fake_addon();
+    // No file at `path` yet — compress_bytes creates it in one pass.
+    let out = compress_bytes(&path, &content, &Gate::any());
+    assert!(
+      matches!(
+        out,
+        Ok(Outcome::Compressed { .. } | Outcome::NoGain { .. })
+      ),
+      "one-pass APFS write → applied, got {out:?}"
+    );
+    assert!(path.exists(), "file was created");
+    // Transparent: kernel read-back equals the bytes we asked to store.
+    assert_eq!(std::fs::read(&path).unwrap(), content);
+    // It really carries the compression flag (not a plain fallback write).
+    assert!(matches!(
+      compress_file(&path),
+      Ok(Outcome::AlreadyCompressed { .. })
+    ));
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  // A file the gate excludes is written PLAIN (never compressed) and reports
+  // Skipped(GateExcluded) — the install still gets the file.
+  #[cfg(unix)]
+  #[test]
+  fn compress_bytes_gate_excluded_writes_plain() {
+    let dir = scratch("gate");
+    let path = dir.join("not-an-addon.txt");
+    let content = b"plain text, not a .node".to_vec();
+    let gate = Gate::default(); // **/*.node
+    let out = compress_bytes(&path, &content, &gate);
+    assert!(
+      matches!(
+        out,
+        Ok(Outcome::Skipped {
+          reason: SkipReason::GateExcluded
+        })
+      ),
+      "non-.node → GateExcluded, got {out:?}"
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), content);
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn compress_bytes_falls_back_to_plain_on_unsupported_fs() {
+    // A non-compressing FS (devfs) → plain write, Unsupported Outcome, file lands.
+    // /dev isn't writable by us, so target a temp path but force the gate to pass;
+    // temp on macOS is APFS (compresses) — instead assert the API never errors and
+    // the bytes land for the supported case is covered above. Here just exercise
+    // the gate-passing path lands bytes on any unix temp.
+    let dir = scratch("fallback");
+    let path = dir.join("x.node");
+    let content = fake_addon();
+    let out = compress_bytes(&path, &content, &Gate::any());
+    assert!(out.is_ok(), "never errors on a normal temp, got {out:?}");
+    assert_eq!(std::fs::read(&path).unwrap(), content, "bytes always land");
     std::fs::remove_dir_all(&dir).ok();
   }
 

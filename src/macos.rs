@@ -195,7 +195,6 @@ pub(crate) fn apply_inplace(path: &Path) -> Result<(), Error> {
     context: "read",
     source,
   })?;
-  within_decmpfs_limit(raw.len() as u64)?;
 
   // Fail-soft: skip if we can't write the original (by mode or ownership) — the
   // temp+rename below would otherwise replace even a file we can't open for write.
@@ -204,29 +203,39 @@ pub(crate) fn apply_inplace(path: &Path) -> Result<(), Error> {
     return Err(io("access"));
   }
 
+  let mode = std::fs::metadata(path).map(|m| m.permissions()).ok();
+  apply_bytes(path, &raw, mode)
+}
+
+/// Write `content` to `path` as a fresh decmpfs-compressed file in ONE pass — no
+/// write-then-read-back. The decmpfs is built directly from `content`, dropped on a
+/// sibling temp (empty data fork + the two xattrs + UF_COMPRESSED), then atomically
+/// renamed over `path`. A crash can only leave the original or the finished file;
+/// the rename also gives a fresh inode, the copy-break from any pnpm CAS hardlink
+/// siblings. This is the one-pass core both `compress_bytes` (no original) and
+/// `apply_inplace` (read first) share.
+pub(crate) fn apply_bytes(
+  path: &Path,
+  content: &[u8],
+  mode: Option<std::fs::Permissions>,
+) -> Result<(), Error> {
+  within_decmpfs_limit(content.len() as u64)?;
+
   let mut header = Vec::with_capacity(16);
   header.extend_from_slice(&DECMPFS_MAGIC.to_le_bytes());
   header.extend_from_slice(&CMP_LZVN_RESOURCE_FORK.to_le_bytes());
-  header.extend_from_slice(&(raw.len() as u64).to_le_bytes());
-  let resource_fork = build_resource_fork(&raw).ok_or_else(|| Error::Io {
+  header.extend_from_slice(&(content.len() as u64).to_le_bytes());
+  let resource_fork = build_resource_fork(content).ok_or_else(|| Error::Io {
     context: "lzvn encode",
     source: std::io::Error::from(std::io::ErrorKind::InvalidData),
   })?;
 
-  // Build the compressed file in a sibling temp, then atomically rename it over
-  // `path`. The original is never mutated, so a crash can't leave a truncated 0-byte
-  // addon — only the original or the finished file survive a rename (the btrfs/NTFS
-  // backends are atomic too). A freshly created temp already has an empty data fork,
-  // so the xattrs go on, then UF_COMPRESSED — no ftruncate (which would EIO once the
-  // flag is set). The rename also gives a fresh inode, the copy-break from any pnpm
-  // CAS hardlink siblings.
   let dir = path.parent().ok_or_else(|| io("parent"))?;
   let name = path
     .file_name()
     .ok_or_else(|| io("file_name"))?
     .to_string_lossy();
   let tmp = dir.join(format!(".{name}.decmpfs-{}.tmp", std::process::id()));
-  let mode = std::fs::metadata(path).map(|m| m.permissions()).ok();
 
   let build = (|| -> Result<(), Error> {
     let file = std::fs::OpenOptions::new()

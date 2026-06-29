@@ -95,6 +95,49 @@ fn classify_skip(err: &std::io::Error) -> Option<SkipReason> {
   }
 }
 
+/// One-pass guarded write of `content` to `path` as an OS-compressed file. Reached
+/// only when the backend reported `Supported`. The backend writes the bytes AS the
+/// file is created (decmpfs built from `content`, btrfs codec-then-write, NTFS
+/// FSCTL-then-write) — no write-then-read-back. Fail-soft mirrors `apply_guarded`:
+/// a permission/busy/too-large failure becomes a `Skipped` Outcome and the caller
+/// is expected to fall back to a plain write; an unclassifiable I/O error
+/// propagates. After a successful apply the kernel read-back is verified
+/// byte-identical to `content` (the transparent-compression oracle), and the file
+/// is restored to a plain write of `content` if it somehow doesn't match.
+pub(crate) fn compress_bytes_guarded(path: &Path, content: &[u8]) -> Result<Outcome, Error> {
+  if let Err(err) = backend::apply_bytes(path, content, None) {
+    if let Error::Io { source, .. } = &err {
+      if let Some(reason) = classify_skip(source) {
+        return Ok(Outcome::Skipped { reason });
+      }
+    }
+    return Err(err);
+  }
+
+  // Oracle: a normal read must hand back the exact bytes we asked to store. If the
+  // backend produced something that doesn't decode identically, restore a plain
+  // write so the install is never left with a corrupt file.
+  let after = verify::on_disk_bytes(path)?;
+  let read_back = std::fs::read(path).map_err(|source| Error::Io {
+    context: "read-back",
+    source,
+  })?;
+  if read_back != content {
+    restore(path, content);
+    return Ok(Outcome::Skipped {
+      reason: SkipReason::IntegrityRevert,
+    });
+  }
+
+  let before = content.len() as u64;
+  Ok(classify_outcome(
+    true,
+    before,
+    after,
+    backend::compressed_on_disk(path)?,
+  ))
+}
+
 /// Best-effort atomic restore of the pre-apply bytes (sibling temp + rename).
 fn restore(path: &Path, bytes: &[u8]) {
   use std::io::Write;
