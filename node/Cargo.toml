@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 napi = "3"
 napi-derive = "3"
 # The FS-compression core (compress_bytes single-pass write + Gate + Outcome).
-decmpfs = { path = ".." }
+decmpfs = { path = "../rust" }
 
 [build-dependencies]
 napi-build = "2"
