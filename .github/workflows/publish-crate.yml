@@ -8,7 +8,7 @@ name: 📦 Publish crate to crates.io
 # stored anywhere. The crates.io Trusted Publisher must be configured to match
 # decmpfs/decmpfs/.github/workflows/publish-crate.yml.
 #
-# The npm addon publishes separately (provenance.yml). Both run
+# The npm addon publishes separately (publish-npm.yml). Both run
 # scripts/check-versions.mjs first so the crate and the npm packages never ship
 # a mismatched version.
 

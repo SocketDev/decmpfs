@@ -5,7 +5,7 @@ name: 📦 Publish to npm
 # The publish step is INLINED (not delegated to a reusable workflow) because npm
 # OIDC trusted publishing keys on the workflow file that contains the publish step:
 # `job_workflow_ref` must be a stable
-# decmpfs/decmpfs/.github/workflows/provenance.yml@<ref> for the trusted-publisher
+# decmpfs/decmpfs/.github/workflows/publish-npm.yml@<ref> for the trusted-publisher
 # config to match. (socket-addon delegates to socket-registry's reusable, but that
 # is Socket infra; decmpfs is independent, so it follows socket-lib's inlined
 # pattern.)
