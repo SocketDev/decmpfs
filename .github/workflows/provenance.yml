@@ -87,6 +87,8 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org/
+      - name: Check crate + npm versions agree
+        run: node scripts/check-versions.mjs
       - name: Use a trusted-publishing-capable npm
         run: npm install --global npm@latest
       - name: Download platform packages
