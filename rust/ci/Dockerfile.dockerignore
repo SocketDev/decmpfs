@@ -1,8 +1,0 @@
-# Context is the crate dir; only Cargo.toml, src/, tests/, ci/*.sh are COPYd.
-target/
-**/*.node
-**/.DS_Store
-ci/Dockerfile
-ci/Dockerfile.dockerignore
-ci/README.md
-ci/.gitattributes

@@ -1,6 +1,0 @@
-# Local btrfs-repro harness — infra, not product code. Keep it out of GitHub's
-# language bar, and force LF so the shell scripts and Dockerfile stay runnable on
-# any checkout.
-* linguist-detectable=false
-*.sh text eol=lf
-Dockerfile text eol=lf
