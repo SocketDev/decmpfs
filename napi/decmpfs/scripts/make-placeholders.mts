@@ -55,6 +55,7 @@ for (const placeholder of placeholders) {
     ...(placeholder.os ? { os: [placeholder.os] } : {}),
     ...(placeholder.cpu ? { cpu: [placeholder.cpu] } : {}),
     ...(placeholder.libc ? { libc: [placeholder.libc] } : {}),
+    files: ['README.md'],
     publishConfig: { access: 'public' },
   }
   writeFileSync(
