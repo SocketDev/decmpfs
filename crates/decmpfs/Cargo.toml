@@ -1,6 +1,6 @@
 [package]
 name = "decmpfs"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Apply OS-level transparent filesystem compression (APFS decmpfs / btrfs / NTFS) to a file in place."
 license = "MIT"
