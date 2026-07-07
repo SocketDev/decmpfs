@@ -8,6 +8,12 @@ repository = "https://github.com/decmpfs/decmpfs"
 keywords = ["apfs", "btrfs", "compression", "decmpfs", "ntfs"]
 categories = ["filesystem"]
 
+# The self-replacing runtime stub. Built only with the `exe` feature; a packer
+# injects a payload into a copy of it (see src/bin/decmpfs-stub.rs).
+[[bin]]
+name = "decmpfs-stub"
+required-features = ["exe"]
+
 [features]
 # Off by default — the FS-compression core has no codec dep. The `addon` feature
 # pulls zstd + sha2 to unwrap a napi `--compress` hybrid back to the raw .node.
