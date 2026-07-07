@@ -1,0 +1,12 @@
+# zizmor audit config.
+#
+# cache-poisoning on publish-npm.yml: the setup-node steps run on a `release`
+# trigger but set no `cache:` input, so no dependency cache is restored, and the
+# publish is OIDC trusted-publishing gated behind check-versions — the poisoning
+# path zizmor flags (a restored, attacker-influenced cache reaching a privileged
+# publish) does not exist here. Suppressed by file rather than an inline comment
+# so the SHA-pinned `uses:` line keeps its canonical `# <tag> (YYYY-MM-DD)` stamp.
+rules:
+  cache-poisoning:
+    ignore:
+      - publish-npm.yml

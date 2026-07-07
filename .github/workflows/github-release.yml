@@ -1,0 +1,61 @@
+name: 🏷️ GitHub Release
+
+# Dependencies: the release GitHub App (vars.RELEASE_APP_CLIENT_ID +
+# secrets.RELEASE_APP_PRIVATE_KEY). Fires when a vX.Y.Z tag is pushed: mints a
+# short-lived {"contents":"write"} app-installation token and cuts the GitHub
+# Release with notes from that version's CHANGELOG section. Publishing the
+# Release triggers publish-crate.yml + publish-npm.yml (on: release: published)
+# — the app token is what lets this workflow's release event trigger those
+# downstream workflows (the default GITHUB_TOKEN cannot).
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+  COREPACK_ENABLE_PROJECT_SPEC: '0'
+  DISABLE_TELEMETRY: '1'
+  DO_NOT_TRACK: '1'
+  NO_UPDATE_NOTIFIER: '1'
+
+jobs:
+  release:
+    name: Cut the GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0 (2026-06-29)
+        with:
+          persist-credentials: false
+      - name: Mint the release app token
+        id: token
+        uses: ./.github/actions/release-app-token
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      - name: Cut the release
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          node scripts/changelog-section.mjs "$VERSION" > /tmp/notes.md
+          # Draft-then-publish (immutable-release pattern): create the release
+          # as a draft, then flip it to published in a separate call. There are
+          # no assets to upload — the crate + npm packages publish via
+          # publish-crate.yml / publish-npm.yml, which fire on the publish below.
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --title "$TAG" \
+            --notes-file /tmp/notes.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
