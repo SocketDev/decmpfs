@@ -6,7 +6,8 @@
   "repository": "https://github.com/decmpfs/decmpfs",
   "keywords": ["apfs", "btrfs", "compression", "decmpfs", "ntfs"],
   "main": "index.cjs",
-  "files": ["index.cjs"],
+  "types": "index.d.ts",
+  "files": ["index.cjs", "index.d.ts"],
   "engines": {
     "node": ">=18"
   },
