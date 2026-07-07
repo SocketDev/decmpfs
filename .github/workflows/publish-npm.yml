@@ -69,18 +69,15 @@ jobs:
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0 (2026-06-29)
         with:
           node-version: 24
-      - name: Install addon devDependencies
-        working-directory: napi/decmpfs
-        run: npm install
+      # Build + test the addon directly — no node dependencies needed (node
+      # strips the .mts scripts/tests). The .d.cts type-check runs in CI's
+      # typecheck job, not per-publish-platform.
       - name: Build addon
         working-directory: napi/decmpfs
-        run: npm run build
-      - name: Typecheck the addon type declarations
-        working-directory: napi/decmpfs
-        run: npm run typecheck
+        run: node scripts/build.mts
       - name: Test addon
         working-directory: napi/decmpfs
-        run: npm test
+        run: node --test
       - name: Assemble platform package
         working-directory: napi/decmpfs
         run: node scripts/make-npm-dirs.mts

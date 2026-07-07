@@ -1,1 +1,9 @@
 /target
+
+# node
+**/node_modules
+
+# pnpm-only shop: never commit another package manager's lockfile
+npm-shrinkwrap.json
+package-lock.json
+yarn.lock

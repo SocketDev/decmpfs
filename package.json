@@ -1,6 +1,5 @@
 {
   "private": true,
-  "workspaces": ["napi/*", "napi/decmpfs/npm/*"],
   "scripts": {
     "check": "node scripts/check.mts",
     "fix": "node scripts/lint.mts --fix",
