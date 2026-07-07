@@ -22,15 +22,30 @@ function run(label, cmd, args) {
 }
 
 run('cargo fmt --check', 'cargo', ['fmt', '--all', '--check'])
-run('cargo clippy', 'cargo', [
-  'clippy',
-  '--workspace',
-  '--all-targets',
-  '--locked',
-  '--',
-  '-D',
-  'warnings',
-])
+
+// Clippy across the feature matrix. Default features never compile the `addon`
+// / `exe` modules, so their panic-free deny
+// (`#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]`)
+// is only enforced when those features are actually linted — run each.
+const FEATURE_SETS = [
+  { label: 'default', args: [] },
+  { label: 'addon', args: ['--features', 'addon'] },
+  { label: 'exe', args: ['--features', 'exe'] },
+]
+for (const { label, args } of FEATURE_SETS) {
+  run(`cargo clippy (${label})`, 'cargo', [
+    'clippy',
+    '--workspace',
+    '--all-targets',
+    '--locked',
+    ...args,
+    '--',
+    '-D',
+    'warnings',
+  ])
+}
+// Test the feature-gated code too — a green clippy doesn't run the tests.
+run('cargo test (exe)', 'cargo', ['test', '--features', 'exe'])
 run('version parity', process.execPath, [
   path.join(root, 'scripts', 'check-versions.mjs'),
 ])
