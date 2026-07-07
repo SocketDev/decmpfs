@@ -1,10 +1,10 @@
 // Minimal staged/modified-scoped lint runner (rustfmt), mirroring the
 // socket-* CLI contract so git hooks and CI call the same entrypoints:
 //
-//   node scripts/lint.mjs            # modified .rs files (working tree vs HEAD)
-//   node scripts/lint.mjs --staged   # staged .rs files (pre-commit)
-//   node scripts/lint.mjs --all      # whole workspace (cargo fmt)
-//   node scripts/lint.mjs --fix      # rewrite instead of --check
+//   node scripts/lint.mts            # modified .rs files (working tree vs HEAD)
+//   node scripts/lint.mts --staged   # staged .rs files (pre-commit)
+//   node scripts/lint.mts --all      # whole workspace (cargo fmt)
+//   node scripts/lint.mts --fix      # rewrite instead of --check
 //
 // Scope escalates to --all automatically when a config that affects every
 // file is in scope (rustfmt.toml, Cargo.toml). No files in scope → no-op.
@@ -20,9 +20,9 @@ const staged = args.includes('--staged')
 const all = args.includes('--all')
 const fix = args.includes('--fix')
 
-function gitLines(gitArgs) {
+function gitLines(gitArgs: string[]): string[] {
   try {
-    return execFileSync('git', gitArgs, { cwd: root, encoding: 'utf8' })
+    return String(execFileSync('git', gitArgs, { cwd: root, encoding: 'utf8' }))
       .split('\n')
       .map(l => l.trim())
       .filter(Boolean)
@@ -31,7 +31,7 @@ function gitLines(gitArgs) {
   }
 }
 
-function run(cmd, cmdArgs) {
+function run(cmd: string, cmdArgs: string[]): void {
   execFileSync(cmd, cmdArgs, { cwd: root, stdio: 'inherit' })
 }
 
@@ -66,7 +66,7 @@ try {
   console.error(
     fix
       ? 'lint: rustfmt failed.'
-      : 'lint: formatting issues found. Fix: node scripts/lint.mjs --fix' +
+      : 'lint: formatting issues found. Fix: node scripts/lint.mts --fix' +
           (staged ? ' --staged' : ''),
   )
   process.exit(1)

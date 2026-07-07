@@ -1,7 +1,7 @@
 /*
  * @file Mint a short-lived GitHub App installation token for the decmpfs
- * release app. Dep-0 (node: builtins only) so it runs in CI before any install,
- * and plain .mjs so it never depends on the runner's Node version. RS256 JWT
+ * release app. Dep-0 (node: builtins only) so it runs in CI before any install;
+ * github-release.yml sets up Node 24, which strips its .mts types natively. RS256 JWT
  * (iss = the app Client ID) -> the repo installation -> an installation token
  * scoped by PERMISSIONS. The token is masked, then handed back via
  * $GITHUB_OUTPUT.
@@ -25,12 +25,12 @@ import { request } from 'node:https'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
-function die(message) {
+function die(message: string): never {
   process.stderr.write(`[mint-app-token] ${message}\n`)
   process.exit(1)
 }
 
-function env(name) {
+function env(name: string): string {
   const value = process.env[name]
   if (!value) {
     die(
@@ -42,8 +42,18 @@ function env(name) {
   return value
 }
 
-function gh(method, path, jwt, body) {
-  const headers = {
+interface GhResponse {
+  body: string
+  status: number
+}
+
+function gh(
+  method: string,
+  path: string,
+  jwt: string,
+  body?: string,
+): Promise<GhResponse> {
+  const headers: Record<string, string> = {
     accept: 'application/vnd.github+json',
     authorization: `Bearer ${jwt}`,
     'user-agent': 'decmpfs-release-app-token',
@@ -53,7 +63,7 @@ function gh(method, path, jwt, body) {
     headers['content-length'] = String(Buffer.byteLength(body))
     headers['content-type'] = 'application/json'
   }
-  return new Promise((resolve, reject) => {
+  return new Promise<GhResponse>((resolve, reject) => {
     const req = request(
       { headers, host: 'api.github.com', method, path, port: 443 },
       res => {
@@ -82,7 +92,9 @@ function gh(method, path, jwt, body) {
 // undefined when blank. Throws on malformed or empty-object input — an empty
 // object would mint a blanket-permission token, the opposite of least-privilege.
 // Pure + exported so it is unit-testable.
-export function parsePermissions(rawInput) {
+export function parsePermissions(
+  rawInput: string | undefined,
+): Record<string, string> | undefined {
   const raw = rawInput?.trim()
   if (!raw) {
     return undefined
@@ -111,7 +123,7 @@ export function parsePermissions(rawInput) {
   return parsed
 }
 
-async function main() {
+async function main(): Promise<void> {
   const clientId = env('CLIENT_ID')
   const privateKey = env('APP_PRIVATE_KEY')
   const repository = env('REPOSITORY')

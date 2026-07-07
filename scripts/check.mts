@@ -2,7 +2,7 @@
 // workspace. Pre-push and CI both run this so a push never lands what CI
 // would reject.
 //
-//   node scripts/check.mjs
+//   node scripts/check.mts
 
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-function run(label, cmd, args) {
+function run(label: string, cmd: string, args: string[]): void {
   console.log(`check: ${label}`)
   try {
     execFileSync(cmd, args, { cwd: root, stdio: 'inherit' })
@@ -47,6 +47,6 @@ for (const { label, args } of FEATURE_SETS) {
 // Test the feature-gated code too — a green clippy doesn't run the tests.
 run('cargo test (exe)', 'cargo', ['test', '--features', 'exe'])
 run('version parity', process.execPath, [
-  path.join(root, 'scripts', 'check-versions.mjs'),
+  path.join(root, 'scripts', 'check-versions.mts'),
 ])
 console.log('check: all green.')

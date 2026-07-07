@@ -9,5 +9,5 @@ if [ "${HUSKY-}" = "0" ]; then
 fi
 
 DIR="$(dirname "$0")"
-node "$DIR/../scripts/check.mjs" || exit $?
+node "$DIR/../scripts/check.mts" || exit $?
 cargo test --workspace --locked || exit $?

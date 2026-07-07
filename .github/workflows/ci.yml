@@ -75,7 +75,7 @@ jobs:
           node-version: 24
       - uses: ./.github/actions/setup-sfw
       - name: Check (fmt + clippy + version parity)
-        run: node scripts/check.mjs
+        run: node scripts/check.mts
       - name: Test crate
         shell: bash
         run: '"$SFW_BIN" cargo test --workspace --locked'

@@ -1,7 +1,7 @@
 // Print the CHANGELOG.md section body for a version — the release notes for
 // `gh release create`. Dep-0 so CI runs it with no install.
 //
-//   node scripts/changelog-section.mjs 0.2.0
+//   node scripts/changelog-section.mts 0.2.0
 
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -12,7 +12,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const version = (process.argv[2] ?? '').replace(/^v/, '')
 if (!version) {
   process.stderr.write(
-    'usage: node scripts/changelog-section.mjs <version>\n' +
+    'usage: node scripts/changelog-section.mts <version>\n' +
       '  where: argv[2]. saw: nothing. fix: pass the version, e.g. 0.2.0.\n',
   )
   process.exit(1)

@@ -14,4 +14,4 @@ if [ -d "${GIT_DIR}/rebase-merge" ] || [ -d "${GIT_DIR}/rebase-apply" ]; then
   exit 0
 fi
 
-node "$(dirname "$0")/../scripts/lint.mjs" --staged
+node "$(dirname "$0")/../scripts/lint.mts" --staged

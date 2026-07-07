@@ -4,8 +4,8 @@
 // pass --publish for the real thing).
 //
 // Usage:
-//   node scripts/publish-crate.mjs            # gate + dry-run
-//   node scripts/publish-crate.mjs --publish  # gate + real publish
+//   node scripts/publish-crate.mts            # gate + dry-run
+//   node scripts/publish-crate.mts --publish  # gate + real publish
 //
 // Auth: cargo reads CARGO_REGISTRY_TOKEN (CI mints one via crates.io Trusted
 // Publishing). SFW_BIN, when set, wraps cargo so registry traffic goes through
@@ -21,12 +21,12 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const crateDir = path.join(root, 'crates', 'decmpfs')
 const publish = process.argv.includes('--publish')
 
-function run(cmd, args, options = {}) {
+function run(cmd: string, args: string[], options: { cwd?: string } = {}): void {
   execFileSync(cmd, args, { stdio: 'inherit', ...options })
 }
 
 // 1. The crate and npm packages never ship a mismatched version.
-run(process.execPath, [path.join(root, 'scripts', 'check-versions.mjs')])
+run(process.execPath, [path.join(root, 'scripts', 'check-versions.mts')])
 
 const version = /^version\s*=\s*"([^"]+)"/m.exec(
   readFileSync(path.join(crateDir, 'Cargo.toml'), 'utf8'),

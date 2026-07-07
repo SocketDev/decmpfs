@@ -2,10 +2,10 @@
   "private": true,
   "workspaces": ["napi/*", "napi/decmpfs/npm/*"],
   "scripts": {
-    "check": "node scripts/check.mjs",
-    "fix": "node scripts/lint.mjs --fix",
-    "lint": "node scripts/lint.mjs",
-    "prepare": "node scripts/install-git-hooks.mjs",
-    "release": "node scripts/release.mjs"
+    "check": "node scripts/check.mts",
+    "fix": "node scripts/lint.mts --fix",
+    "lint": "node scripts/lint.mts",
+    "prepare": "node scripts/install-git-hooks.mts",
+    "release": "node scripts/release.mts"
   }
 }

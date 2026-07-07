@@ -1,7 +1,7 @@
 // Point git at the tracked .git-hooks/ directory. Runs from npm `prepare`
 // (any `npm install` at the root) and is safe to run by hand:
 //
-//   node scripts/install-git-hooks.mjs
+//   node scripts/install-git-hooks.mts
 
 import { execFileSync } from 'node:child_process'
 import { chmodSync, readdirSync } from 'node:fs'

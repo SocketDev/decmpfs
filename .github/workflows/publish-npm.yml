@@ -105,7 +105,7 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org/
       - name: Check crate + npm versions agree
-        run: node scripts/check-versions.mjs
+        run: node scripts/check-versions.mts
       - uses: ./.github/actions/setup-sfw
       - name: Use a trusted-publishing-capable npm
         run: '"$SFW_BIN" npm install --global npm@latest'

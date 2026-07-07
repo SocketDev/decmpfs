@@ -28,4 +28,4 @@ runs:
         CLIENT_ID: ${{ inputs.client-id }}
         PERMISSIONS: '{"contents":"write"}'
         REPOSITORY: ${{ github.repository }}
-      run: node "${{ github.action_path }}/mint-app-installation-token.mjs"
+      run: node "${{ github.action_path }}/mint-app-installation-token.mts"

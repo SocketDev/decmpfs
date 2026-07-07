@@ -4,8 +4,8 @@
  * The core crate (crates/decmpfs/Cargo.toml) ships to crates.io and the addon
  * (napi/decmpfs/package.json) plus its @decmpfs/<triple> platform packages ship
  * to npm; they release in lockstep, so a version mismatch is a release-blocking
- * defect. Both publish workflows run this gate first. Written as plain .mjs so
- * any CI Node executes it without type-strip support.
+ * defect. Both publish workflows run this gate first. Node 24 (the repo
+ * baseline, .node-version) strips the .mts types natively.
  */
 
 import { readFileSync } from 'node:fs'
@@ -14,7 +14,13 @@ import { fileURLToPath } from 'node:url'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-function fail(what, where, saw, want, fix) {
+function fail(
+  what: string,
+  where: string,
+  saw: string,
+  want: string,
+  fix: string,
+): never {
   console.error('✗ decmpfs version gate failed')
   console.error(`  What:  ${what}`)
   console.error(`  Where: ${where}`)
