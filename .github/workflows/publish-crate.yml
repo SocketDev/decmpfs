@@ -13,6 +13,10 @@ name: 📦 Publish crate to crates.io
 # a mismatched version.
 
 on:
+  # Publishing a GitHub Release (github-release.yml, on a vX.Y.Z tag) triggers a
+  # real publish. workflow_dispatch stays for manual dry-run testing.
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       dry-run:
@@ -42,8 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # Real publishes run in the `release` environment (reviewer gate + a tighter
-    # OIDC trusted-publisher match); dry runs skip it for friction-free testing.
-    environment: ${{ inputs.dry-run == 'true' && '' || 'release' }}
+    # OIDC trusted-publisher match); only a manual dry-run dispatch skips it.
+    environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry-run == 'true') && '' || 'release' }}
     permissions:
       # Needed for crates.io Trusted Publishing via OIDC.
       id-token: write
@@ -61,7 +65,8 @@ jobs:
       - name: Publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-          DRY_RUN: ${{ inputs.dry-run }}
+          # Release-triggered = real publish; manual dispatch honors its input.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || 'false' }}
         run: |
           ARGS=""
           if [ "$DRY_RUN" != "true" ]; then

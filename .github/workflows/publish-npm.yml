@@ -15,6 +15,11 @@ name: 📦 Publish to npm
 # plus the main `decmpfs` package with provenance.
 
 on:
+  # Publishing a GitHub Release (github-release.yml, on a vX.Y.Z tag) triggers a
+  # real publish at the `latest` dist-tag. workflow_dispatch stays for manual
+  # dry-run testing and non-latest dist-tags.
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       dry-run:
@@ -85,8 +90,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Real publishes run in the `release` environment (reviewer gate + a tighter
-    # OIDC trusted-publisher match); dry runs skip it for friction-free testing.
-    environment: ${{ inputs.dry-run == 'true' && '' || 'release' }}
+    # OIDC trusted-publisher match); only a manual dry-run dispatch skips it.
+    environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry-run == 'true') && '' || 'release' }}
     permissions:
       # Needed for npm provenance via OIDC trusted publishing.
       id-token: write
@@ -111,8 +116,9 @@ jobs:
       - name: Publish
         working-directory: napi/decmpfs
         env:
-          DRY_RUN: ${{ inputs.dry-run }}
-          DIST_TAG: ${{ inputs.dist-tag }}
+          # Release-triggered = real publish at `latest`; manual dispatch honors its inputs.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || 'false' }}
+          DIST_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.dist-tag || 'latest' }}
         run: |
           ARGS="--access public --tag ${DIST_TAG:-latest}"
           if [ "$DRY_RUN" = "true" ]; then
