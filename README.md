@@ -1,6 +1,6 @@
 # decmpfs
 
-![coverage score](assets/coverage-score.svg) [![Socket score](assets/socket-score.svg)](https://socket.dev/cargo/package/decmpfs)
+![coverage score](assets/coverage-score.svg) [![Socket Badge](https://badge.socket.dev/cargo/package/decmpfs/0.2.0)](https://badge.socket.dev/cargo/package/decmpfs/0.2.0)
 
 Apply the operating system's **transparent per-file filesystem compression** to a
 file — smaller on disk, byte-identical on read, decompressed by the kernel at
