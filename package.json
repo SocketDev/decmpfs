@@ -5,6 +5,7 @@
     "check": "node scripts/check.mjs",
     "fix": "node scripts/lint.mjs --fix",
     "lint": "node scripts/lint.mjs",
-    "prepare": "node scripts/install-git-hooks.mjs"
+    "prepare": "node scripts/install-git-hooks.mjs",
+    "release": "node scripts/release.mjs"
   }
 }
