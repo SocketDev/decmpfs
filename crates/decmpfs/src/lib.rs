@@ -399,6 +399,8 @@ fn plain_write(path: &Path, content: &[u8]) -> Result<(), Error> {
 
 #[cfg(feature = "addon")]
 pub mod addon;
+#[cfg(feature = "exe")]
+pub mod exe;
 mod gate;
 mod safety;
 mod verify;
