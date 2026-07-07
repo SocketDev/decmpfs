@@ -12,8 +12,9 @@ crate-type = ["cdylib"]
 [dependencies]
 napi = "3"
 napi-derive = "3"
-# The FS-compression core (compress_bytes single-pass write + Gate + Outcome).
-decmpfs = { path = "../../crates/decmpfs" }
+# The FS-compression core (compress_bytes single-pass write + Gate + Outcome);
+# `exe` adds self-replacing-executable packing (pack_executable).
+decmpfs = { path = "../../crates/decmpfs", features = ["exe"] }
 
 [build-dependencies]
 napi-build = "2"

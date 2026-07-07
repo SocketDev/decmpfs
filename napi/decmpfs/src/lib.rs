@@ -449,3 +449,124 @@ impl Task for CopyFileTask {
 pub fn copy_file(src: String, dest: String, mode: Option<u32>) -> AsyncTask<CopyFileTask> {
   AsyncTask::new(CopyFileTask { src, dest, mode })
 }
+
+/// Options for [`packExecutable`] / [`packExecutableSync`].
+#[napi(object)]
+pub struct PackExeOptions {
+  /// Path to the self-replacing stub binary the payload is injected into — a
+  /// decmpfs-stub build (`cargo build --features exe`, target `decmpfs-stub`)
+  /// or any executable whose `main` calls `decmpfs::exe::self_replace_and_exec`.
+  /// REQUIRED: the Node host is not a self-replacing runtime, so there is no
+  /// sensible default — a packed file built on a stub without that runtime just
+  /// runs the stub and never materializes the payload.
+  pub stub: String,
+  /// Gate glob (e.g. `**/*.node`). Default: match any path.
+  pub gate_glob: Option<String>,
+  /// Gate size predicate (e.g. `>= 1MB`). Default: no size floor.
+  pub gate_size: Option<String>,
+}
+
+/// The result of packing an executable — a SUCCESS shape; never thrown for a
+/// gate miss.
+#[napi(object)]
+pub struct PackExeResult {
+  /// Whether the executable was packed (`false` = the gate excluded it).
+  pub packed: bool,
+  /// Logical size of the source executable (`0` on a gate miss).
+  pub before: i64,
+  /// On-disk size of the packed stub (`0` on a gate miss).
+  pub after: i64,
+  /// Whether the gate rejected the input — nothing was read or written.
+  pub skipped_gate: bool,
+}
+
+fn pack_gate(options: &PackExeOptions) -> Result<decmpfs::Gate> {
+  decmpfs::Gate::new(options.gate_glob.as_deref(), options.gate_size.as_deref())
+    .map_err(|e| Error::new(Status::InvalidArg, format!("invalid gate: {e}")))
+}
+
+fn pack_outcome_to_result(outcome: decmpfs::exe::PackOutcome) -> PackExeResult {
+  use decmpfs::exe::PackOutcome;
+  match outcome {
+    PackOutcome::Packed { before, after } => PackExeResult {
+      packed: true,
+      before: before as i64,
+      after: after as i64,
+      skipped_gate: false,
+    },
+    PackOutcome::SkippedGate => PackExeResult {
+      packed: false,
+      before: 0,
+      after: 0,
+      skipped_gate: true,
+    },
+  }
+}
+
+// The shared logic for both the sync and async pack entry points. Injects the
+// payload into the caller-supplied `options.stub` — the Node host is not a
+// self-replacing runtime, so there is no `current_exe()` default.
+fn run_pack(src: &str, dest: &str, options: PackExeOptions) -> Result<PackExeResult> {
+  let gate = pack_gate(&options)?;
+  let outcome = decmpfs::exe::pack_executable_with_stub(
+    Path::new(&options.stub),
+    Path::new(src),
+    Path::new(dest),
+    &gate,
+  )
+  .map_err(|e| Error::new(Status::GenericFailure, format!("pack: {e}")))?;
+  Ok(pack_outcome_to_result(outcome))
+}
+
+/// Synchronously pack `src` into a self-replacing executable at `dest`, using
+/// `options.stub` as the runtime stub. On first run the packed `dest`
+/// decompresses `src` back to disk FS-compressed, swaps itself out for it, and
+/// execs it; every later run is the plain materialized executable.
+#[napi]
+pub fn pack_executable_sync(
+  src: String,
+  dest: String,
+  options: PackExeOptions,
+) -> Result<PackExeResult> {
+  run_pack(&src, &dest, options)
+}
+
+/// The async task backing [`packExecutable`] — runs the pack on the libuv pool.
+pub struct PackExeTask {
+  src: String,
+  dest: String,
+  options: PackExeOptions,
+}
+
+#[napi]
+impl Task for PackExeTask {
+  type Output = PackExeResult;
+  type JsValue = PackExeResult;
+
+  fn compute(&mut self) -> Result<Self::Output> {
+    run_pack(
+      &self.src,
+      &self.dest,
+      PackExeOptions {
+        stub: self.options.stub.clone(),
+        gate_glob: self.options.gate_glob.clone(),
+        gate_size: self.options.gate_size.clone(),
+      },
+    )
+  }
+
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
+    Ok(output)
+  }
+}
+
+/// Asynchronously pack `src` into a self-replacing executable at `dest` using
+/// `options.stub`. See [`packExecutableSync`].
+#[napi]
+pub fn pack_executable(
+  src: String,
+  dest: String,
+  options: PackExeOptions,
+) -> AsyncTask<PackExeTask> {
+  AsyncTask::new(PackExeTask { src, dest, options })
+}
