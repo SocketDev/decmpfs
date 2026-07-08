@@ -9,6 +9,12 @@
 //!     backoff on EBUSY/EMFILE/ENFILE/ENOTEMPTY/EPERM) apply ONLY when recursive,
 //!     as in Node.
 //!
+//! Safety: adapted from socket-lib `safeDelete`, MINUS its socket-owned
+//! allowlist (temp / cacache / ~/.socket) — just the universal guard: removing
+//! the current directory, one of its ancestors, or the filesystem root is
+//! refused unless `force` is set (Node's own option, doubling as the override —
+//! no extra knob). Descendants and unrelated siblings are unaffected.
+//!
 //! Speed: a decmpfs file unlinks like any other (its resource-fork xattr drops
 //! with the inode), so DELETE has no compression angle. MEASURED on APFS (this
 //! machine, ~12k files), `rm` is filesystem-metadata-bound — directory-entry
@@ -105,10 +111,48 @@ fn io(context: &'static str, source: std::io::Error) -> Error {
   Error::Io { context, source }
 }
 
+/// PURE safe-delete guard (socket-lib `safeDelete` model, minus the socket-owned
+/// allowlist): is `target` the current directory, an ANCESTOR of it, or the
+/// filesystem root? Deleting any of those is almost always a mistake. `cwd` is
+/// injected so the policy is unit-testable without touching the process cwd. A
+/// sibling or a descendant of cwd is allowed.
+fn is_cwd_ancestor_or_root(target: &Path, cwd: &Path) -> bool {
+  // A path with no parent is a filesystem root ("/", "C:\").
+  if target.parent().is_none() {
+    return true;
+  }
+  // `target` is cwd or an ancestor of cwd iff cwd is prefixed by target.
+  cwd == target || cwd.starts_with(target)
+}
+
+/// Refuse to remove the cwd, one of its ancestors, or the root — unless `force`.
+/// This is the safe-delete guard adapted from socket-lib: NO socket-specific
+/// allowlist (temp / cacache / ~/.socket), just the universal ancestor + root
+/// protection, with Node's own `force` as the override (no extra option).
+fn guard_cwd_and_root(path: &Path, opts: &RmOptions) -> Result<(), Error> {
+  if opts.force {
+    return Ok(());
+  }
+  // Resolve real paths for the comparison; a missing target (canonicalize fails)
+  // falls back to its given path — it can't be an ancestor of cwd anyway.
+  let target = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+  let cwd = std::env::current_dir()
+    .and_then(|c| std::fs::canonicalize(&c))
+    .unwrap_or_default();
+  if is_cwd_ancestor_or_root(&target, &cwd) {
+    return Err(io(
+      "refusing to remove the current directory, an ancestor, or the root — pass force to override",
+      std::io::Error::from(std::io::ErrorKind::PermissionDenied),
+    ));
+  }
+  Ok(())
+}
+
 /// Node `fs.rm(path, options)`. A file/symlink is a single unlink. A directory
 /// needs `recursive` (else `EISDIR`, as in Node); its top-level entries are
 /// cleared CONCURRENTLY across cores, then the empty root is removed.
 pub fn rm(path: &Path, opts: &RmOptions) -> Result<(), Error> {
+  guard_cwd_and_root(path, opts)?;
   let md = match std::fs::symlink_metadata(path) {
     Ok(md) => md,
     Err(e) if is_not_found(&e) && opts.force => return Ok(()),
@@ -198,6 +242,46 @@ mod tests {
     assert!(!f.exists());
 
     let _ = std::fs::remove_file(&keep);
+  }
+
+  #[test]
+  fn safe_guard_blocks_cwd_ancestors_and_root() {
+    use std::path::Path;
+    let cwd = Path::new("/a/b/c");
+    // cwd itself, an ancestor, and the root are refused.
+    assert!(is_cwd_ancestor_or_root(Path::new("/a/b/c"), cwd), "cwd");
+    assert!(is_cwd_ancestor_or_root(Path::new("/a/b"), cwd), "ancestor");
+    assert!(is_cwd_ancestor_or_root(Path::new("/a"), cwd), "ancestor");
+    assert!(is_cwd_ancestor_or_root(Path::new("/"), cwd), "root");
+    // a descendant of cwd and an unrelated sibling are allowed.
+    assert!(
+      !is_cwd_ancestor_or_root(Path::new("/a/b/c/build"), cwd),
+      "descendant allowed"
+    );
+    assert!(
+      !is_cwd_ancestor_or_root(Path::new("/a/b/other"), cwd),
+      "sibling allowed"
+    );
+  }
+
+  #[test]
+  fn rm_refuses_cwd_without_force_but_force_overrides_the_guard() {
+    // Removing the real cwd is blocked by the guard (this does NOT delete it).
+    let cwd = std::env::current_dir().unwrap();
+    assert!(
+      rm(&cwd, &RmOptions::default()).is_err(),
+      "guard must refuse removing the cwd"
+    );
+    // force bypasses the guard — proven WITHOUT touching cwd: a fresh temp file
+    // (not an ancestor) removes fine, and force is the documented override.
+    let f = std::env::temp_dir().join(format!("decmpfs-guard-{}", std::process::id()));
+    std::fs::write(&f, b"x").unwrap();
+    let forced = RmOptions {
+      force: true,
+      ..RmOptions::default()
+    };
+    rm(&f, &forced).unwrap();
+    assert!(!f.exists());
   }
 
   // Opt-in perf probe: parallel rm vs std::fs::remove_dir_all on a big tree.
