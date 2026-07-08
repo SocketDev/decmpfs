@@ -151,12 +151,58 @@ fn compress_block(src: &[u8], scratch: &mut [u8]) -> Option<Vec<u8>> {
 fn build_resource_fork(raw: &[u8]) -> Option<Vec<u8>> {
   let num_blocks = raw.len().div_ceil(BLOCK).max(1);
   let scratch_len = unsafe { compression_encode_scratch_buffer_size(COMPRESSION_LZVN) };
-  let mut scratch = vec![0u8; scratch_len];
 
-  let blocks = raw
-    .chunks(BLOCK)
-    .map(|chunk| compress_block(chunk, &mut scratch))
-    .collect::<Option<Vec<Vec<u8>>>>()?;
+  // The 64 KiB LZVN blocks are independent and the encode IS the write cost, so
+  // fan them across cores — each worker keeps its OWN scratch (the libcompression
+  // scratch can't be shared concurrently). Contiguous byte regions (each a whole
+  // number of blocks) mean per-worker outputs are already in block order, so
+  // concatenation needs no re-sort. Stay serial for a handful of blocks, where
+  // thread setup would cost more than it saves. No thread-pool dep — std scoped
+  // threads keep the macOS stub dependency-free.
+  let blocks: Vec<Vec<u8>> = {
+    // DECMPFS_SERIAL forces the single-thread path — a deterministic escape hatch
+    // (and the A/B baseline for the parallel win).
+    let workers = if std::env::var_os("DECMPFS_SERIAL").is_some() {
+      1
+    } else {
+      std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
+        .min(num_blocks)
+    };
+    if workers <= 1 || num_blocks < 8 {
+      let mut scratch = vec![0u8; scratch_len];
+      raw
+        .chunks(BLOCK)
+        .map(|chunk| compress_block(chunk, &mut scratch))
+        .collect::<Option<Vec<Vec<u8>>>>()?
+    } else {
+      let bytes_per_worker = num_blocks.div_ceil(workers) * BLOCK;
+      let parts: Vec<Option<Vec<Vec<u8>>>> = std::thread::scope(|scope| {
+        let handles: Vec<_> = raw
+          .chunks(bytes_per_worker)
+          .map(|region| {
+            scope.spawn(move || {
+              let mut scratch = vec![0u8; scratch_len];
+              region
+                .chunks(BLOCK)
+                .map(|chunk| compress_block(chunk, &mut scratch))
+                .collect::<Option<Vec<Vec<u8>>>>()
+            })
+          })
+          .collect();
+        handles
+          .into_iter()
+          .map(|h| h.join().ok().flatten())
+          .collect()
+      });
+      let mut out = Vec::with_capacity(num_blocks);
+      for part in parts {
+        out.extend(part?);
+      }
+      out
+    }
+  };
 
   let table_len = (num_blocks + 1) * 4;
   let mut out = Vec::with_capacity(table_len + blocks.iter().map(Vec::len).sum::<usize>());
@@ -319,6 +365,46 @@ mod tests {
       std::fs::read(&path).unwrap(),
       raw,
       "kernel read-back must equal the original bytes"
+    );
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  // Opt-in perf probe (ignored in CI — timing is machine-specific). Reports the
+  // decmpfs write time for a ~40 MiB addon; run serial vs parallel with
+  //   cargo test -p decmpfs write_time -- --ignored --nocapture
+  //   DECMPFS_SERIAL=1 cargo test -p decmpfs write_time -- --ignored --nocapture
+  #[test]
+  #[ignore]
+  fn write_time_probe() {
+    let dir = std::env::temp_dir().join(format!("decmpfs-time-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("addon.node");
+    let mut raw: Vec<u8> = Vec::with_capacity(40 << 20);
+    let mut x: u64 = 0x9e37_79b9_7f4a_7c15;
+    while raw.len() < (40 << 20) {
+      x ^= x << 13;
+      x ^= x >> 7;
+      x ^= x << 17;
+      raw.extend_from_slice(&x.to_le_bytes());
+      raw.extend_from_slice(b"native addon .node text segment padding ");
+    }
+    if !matches!(detect(&dir), Ok(Support::Supported)) {
+      std::fs::remove_dir_all(&dir).ok();
+      return;
+    }
+    let cores = std::thread::available_parallelism()
+      .map(|n| n.get())
+      .unwrap_or(1);
+    let serial = std::env::var_os("DECMPFS_SERIAL").is_some();
+    let start = std::time::Instant::now();
+    apply_bytes(&path, &raw, None).unwrap();
+    let ms = start.elapsed().as_secs_f64() * 1e3;
+    eprintln!(
+      "decmpfs write {}MiB — {} ({} cores): {:.1} ms",
+      raw.len() >> 20,
+      if serial { "serial" } else { "parallel" },
+      cores,
+      ms,
     );
     std::fs::remove_dir_all(&dir).ok();
   }
