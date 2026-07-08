@@ -328,6 +328,19 @@ fn inject_macho(stub: &[u8], section_body: &[u8]) -> Result<Vec<u8>, String> {
   if linkedit_end < linkedit_start {
     return Err("code signature precedes __LINKEDIT (corrupt layout)".to_string());
   }
+  // Mach-O section fileoff + every LINKEDIT-relative offset are 32-bit. `linkedit_end
+  // + delta` bounds the widest post-splice offset (the new section's fileoff and each
+  // `current + delta` bump all fall at or below it), so guard that sum against u32::MAX
+  // before the `as u32` casts below — release builds have overflow-checks off, so a
+  // >4 GiB payload would otherwise truncate silently and corrupt the LINKEDIT tables.
+  if (linkedit_end as u64)
+    .checked_add(delta)
+    .map_or(true, |end| end > u64::from(u32::MAX))
+  {
+    return Err(format!(
+      "injected payload too large: file offset {linkedit_end} + {delta} exceeds the u32 Mach-O limit"
+    ));
+  }
   let end_after_new_lc = layout
     .end_of_lc
     .checked_add(NEW_LC_SIZE)

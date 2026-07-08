@@ -59,7 +59,7 @@ fn verify_loadable_or_restore<B: Backend>(
   snapshot: &[u8],
 ) -> Result<Outcome, Error> {
   if verify::magic_prefix(path)? != magic_before {
-    restore(path, snapshot);
+    restore(path, snapshot)?;
     return Ok(classify_outcome(false, before, before, None));
   }
 
@@ -100,10 +100,26 @@ fn classify_skip(err: &std::io::Error) -> Option<SkipReason> {
   if err.kind() == std::io::ErrorKind::PermissionDenied {
     return Some(SkipReason::PermissionDenied);
   }
-  match err.raw_os_error() {
-    Some(1) | Some(13) | Some(30) => Some(SkipReason::PermissionDenied), // EPERM/EACCES/EROFS
-    Some(16) | Some(26) => Some(SkipReason::Busy),                       // EBUSY/ETXTBSY
-    Some(27) => Some(SkipReason::TooLarge),                              // EFBIG
+  classify_errno(err.raw_os_error()?)
+}
+
+// Per-platform errno classification. Windows `raw_os_error()` is the Win32 space,
+// which does NOT coincide with POSIX (e.g. 32 = SHARING_VIOLATION on Windows but
+// EPIPE on unix), so the two maps are mutually exclusive by cfg.
+#[cfg(not(windows))]
+fn classify_errno(code: i32) -> Option<SkipReason> {
+  match code {
+    1 | 13 | 30 => Some(SkipReason::PermissionDenied), // EPERM/EACCES/EROFS
+    16 | 26 => Some(SkipReason::Busy),                 // EBUSY/ETXTBSY
+    27 => Some(SkipReason::TooLarge),                  // EFBIG
+    _ => None,
+  }
+}
+#[cfg(windows)]
+fn classify_errno(code: i32) -> Option<SkipReason> {
+  match code {
+    5 | 19 => Some(SkipReason::PermissionDenied), // ACCESS_DENIED / WRITE_PROTECT
+    32 | 33 => Some(SkipReason::Busy),            // SHARING_VIOLATION / LOCK_VIOLATION
     _ => None,
   }
 }
@@ -152,7 +168,7 @@ fn verify_readback_or_restore<B: Backend>(
     source,
   })?;
   if read_back != content {
-    restore(path, content);
+    restore(path, content)?;
     return Ok(Outcome::Skipped {
       reason: SkipReason::IntegrityRevert,
     });
@@ -167,21 +183,30 @@ fn verify_readback_or_restore<B: Backend>(
   ))
 }
 
-/// Best-effort atomic restore of the pre-apply bytes (sibling temp + rename).
-fn restore(path: &Path, bytes: &[u8]) {
+/// Atomic restore of the pre-apply bytes (sibling temp + rename). Returns `Err`
+/// when the rollback itself fails (e.g. `ENOSPC`, a read-only dir) — the caller
+/// MUST surface that as a hard error rather than a benign `Skipped`, else a
+/// corrupted file is left on disk while the outcome reads as non-fatal.
+fn restore(path: &Path, bytes: &[u8]) -> Result<(), Error> {
   use std::io::Write;
-  let Some(dir) = path.parent() else {
-    return;
-  };
+  let dir = path.parent().ok_or_else(|| Error::Io {
+    context: "rollback restore: path has no parent",
+    source: std::io::Error::from(std::io::ErrorKind::InvalidInput),
+  })?;
   let tmp = dir.join(format!(".decmpfs-restore-{}.tmp", std::process::id()));
-  let wrote = std::fs::File::create(&tmp).and_then(|mut file| {
-    file.write_all(bytes)?;
-    file.sync_all()
-  });
-  if wrote.is_ok() && std::fs::rename(&tmp, path).is_ok() {
-    return;
-  }
-  let _ = std::fs::remove_file(&tmp);
+  let wrote = std::fs::File::create(&tmp)
+    .and_then(|mut file| {
+      file.write_all(bytes)?;
+      file.sync_all()
+    })
+    .and_then(|()| std::fs::rename(&tmp, path));
+  wrote.map_err(|source| {
+    let _ = std::fs::remove_file(&tmp);
+    Error::Io {
+      context: "rollback restore",
+      source,
+    }
+  })
 }
 
 #[cfg(test)]
@@ -284,7 +309,7 @@ mod tests {
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("f");
     std::fs::write(&path, b"corrupted-by-a-broken-backend").unwrap();
-    restore(&path, b"the original loadable bytes");
+    restore(&path, b"the original loadable bytes").unwrap();
     assert_eq!(
       std::fs::read(&path).unwrap(),
       b"the original loadable bytes"
@@ -331,9 +356,10 @@ mod tests {
   }
 
   #[test]
-  fn restore_is_a_noop_when_the_path_has_no_parent() {
-    // "/" has no parent → restore returns early without touching anything.
-    restore(std::path::Path::new("/"), b"x");
+  fn restore_errors_when_the_path_has_no_parent() {
+    // "/" has no parent → the rollback can't write a sibling temp, so it must
+    // surface an Err (a silent no-op would report a corrupt file as benign).
+    assert!(restore(std::path::Path::new("/"), b"x").is_err());
   }
 
   #[test]
@@ -395,7 +421,10 @@ mod tests {
     std::fs::create_dir_all(&dir).unwrap();
     let target = dir.join("a-dir");
     std::fs::create_dir_all(&target).unwrap();
-    restore(&target, b"bytes");
+    assert!(
+      restore(&target, b"bytes").is_err(),
+      "rename-over-dir must Err"
+    );
     let tmp = dir.join(format!(".decmpfs-restore-{}.tmp", std::process::id()));
     assert!(!tmp.exists(), "temp left behind");
     assert!(target.is_dir(), "directory target untouched");

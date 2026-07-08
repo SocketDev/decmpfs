@@ -149,6 +149,12 @@ fn compress_block(src: &[u8], scratch: &mut [u8]) -> Option<Vec<u8>> {
 /// layout (what `ditto` writes): `(numBlocks+1)` u32 LE offsets, then the blocks.
 /// `offset[0]` = table size; `offset[i+1]` = end of block i; last = total size.
 fn build_resource_fork(raw: &[u8]) -> Option<Vec<u8>> {
+  // A zero-length file has no blocks. Emit the well-formed single-entry table
+  // (one u32 offset == the table size == the total length) instead of a table
+  // sized for a phantom block — keeps the invariant "last offset == buffer len".
+  if raw.is_empty() {
+    return Some(4u32.to_le_bytes().to_vec());
+  }
   let num_blocks = raw.len().div_ceil(BLOCK).max(1);
   let scratch_len = unsafe { compression_encode_scratch_buffer_size(COMPRESSION_LZVN) };
 
@@ -281,7 +287,21 @@ pub(crate) fn apply_bytes(
     .file_name()
     .ok_or_else(|| io("file_name"))?
     .to_string_lossy();
-  let tmp = dir.join(format!(".{name}.decmpfs-{}.tmp", std::process::id()));
+  // Uniqueness beyond the PID: a crash can leave `.name.decmpfs-<pid>.tmp`, and a
+  // later run that reuses that PID (common after reboot) would fail `create_new`
+  // forever. PID + wall-clock nanos + a process-local counter makes a stale
+  // sibling collision astronomically unlikely while keeping `create_new`'s
+  // concurrent-writer safety.
+  static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+  let seq = TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+  let nanos = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .map(|d| d.as_nanos())
+    .unwrap_or(0);
+  let tmp = dir.join(format!(
+    ".{name}.decmpfs-{}-{nanos}-{seq}.tmp",
+    std::process::id()
+  ));
 
   let build = (|| -> Result<(), Error> {
     let file = std::fs::OpenOptions::new()
@@ -463,6 +483,33 @@ mod tests {
     let scratch_len = unsafe { compression_encode_scratch_buffer_size(COMPRESSION_LZVN) };
     let mut scratch = vec![0u8; scratch_len];
     assert!(compress_block(b"", &mut scratch).is_none());
+  }
+
+  #[test]
+  fn build_resource_fork_zero_length_is_well_formed() {
+    // A 0-byte file must produce a consistent single-entry table (offset[0] ==
+    // total length), not a 2-entry-sized header pointing past a 4-byte blob.
+    let rf = build_resource_fork(&[]).unwrap();
+    assert_eq!(rf.len(), 4, "zero blocks → single 4-byte offset entry");
+    let last = u32::from_le_bytes(rf[0..4].try_into().unwrap()) as usize;
+    assert_eq!(last, rf.len(), "last offset must equal the buffer length");
+  }
+
+  #[test]
+  fn build_resource_fork_last_offset_equals_length() {
+    // Invariant across sizes that actually encode: the final table offset equals
+    // the total blob length. (Tiny/incompressible inputs return None — the codec
+    // declines — which is a separate, correct path.)
+    for size in [512usize, BLOCK, BLOCK + 1, BLOCK * 3 + 7] {
+      let raw = vec![0x41u8; size];
+      let Some(rf) = build_resource_fork(&raw) else {
+        continue;
+      };
+      let num_blocks = size.div_ceil(BLOCK);
+      let last_idx = num_blocks * 4; // offset[num_blocks] is the last entry
+      let last = u32::from_le_bytes(rf[last_idx..last_idx + 4].try_into().unwrap()) as usize;
+      assert_eq!(last, rf.len(), "size {size}: last offset != buffer length");
+    }
   }
 
   #[test]
