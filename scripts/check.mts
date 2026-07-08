@@ -73,4 +73,9 @@ run('asset render test (for-label sizing)', 'node', [
   '--test',
   path.join(root, 'scripts', 'repo', 'gen', 'logo.test.mts'),
 ])
+// The traced wordmark SVGs must stay svgo-optimized (collinear points removed).
+run('svg optimized (drift)', process.execPath, [
+  path.join(root, 'scripts', 'repo', 'gen', 'optimize-svg.mts'),
+  '--check',
+])
 console.log('check: all green.')

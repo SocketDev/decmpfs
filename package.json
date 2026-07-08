@@ -6,6 +6,7 @@
     "fix": "node scripts/lint.mts --fix",
     "gen": "node scripts/repo/gen/logo.mts",
     "gen:logo": "node scripts/repo/gen/logo.mts",
+    "gen:svg": "node scripts/repo/gen/optimize-svg.mts",
     "lint": "node scripts/lint.mts",
     "prepare": "node scripts/install-git-hooks.mts",
     "release": "node scripts/release.mts",
@@ -13,6 +14,14 @@
   },
   "devDependencies": {
     "@resvg/resvg-wasm": "catalog:",
+    "svgo": "catalog:",
     "typescript": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": ">=11.0.0 <12.0.0",
+      "onFail": "error"
+    }
   }
 }

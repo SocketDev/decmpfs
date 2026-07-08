@@ -4,6 +4,7 @@ packages:
 # Pinned dev-tool versions shared via `catalog:` references in package.json.
 catalog:
   '@resvg/resvg-wasm': 2.6.2
+  svgo: 4.0.1
   typescript: 7.0.2
 minimumReleaseAgeExclude:
   # typescript 7.0.2 + its per-platform binding family — first stable of the
