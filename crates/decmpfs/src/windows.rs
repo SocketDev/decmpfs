@@ -37,6 +37,10 @@ const COMPRESSION_FORMAT_DEFAULT: u16 = 1; // LZNT1
 const FILE_FILE_COMPRESSION: u32 = 0x0000_0010; // volume supports per-file compression
 const FILE_ATTRIBUTE_COMPRESSED: u32 = 0x0000_0800;
 const INVALID_FILE_ATTRIBUTES: u32 = u32::MAX;
+// Required to obtain a handle to a DIRECTORY (CreateFileW fails on a dir without
+// it). `detect()` probes the parent directory of a not-yet-created target on a
+// fresh install, so every open must set it; harmless on a regular file.
+const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
 
 fn wide(path: &Path) -> Vec<u16> {
   path
@@ -70,7 +74,7 @@ fn open_with(path: &Path, access: u32, disposition: u32) -> Result<Handle, Error
       FILE_SHARE_READ,
       std::ptr::null(),
       disposition,
-      0,
+      FILE_FLAG_BACKUP_SEMANTICS,
       std::ptr::null_mut(),
     )
   };
