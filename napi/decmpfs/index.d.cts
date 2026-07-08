@@ -48,6 +48,23 @@ export interface CopyDecmpfsOptions {
   errorOnExist?: boolean
 }
 
+/** Options for {@link rm} / {@link rmSync} — exactly Node's `fs.rm` options. */
+export interface RmOptions {
+  /** Recursive removal (`rm -rf` with `force`). Default false. */
+  recursive?: boolean
+  /**
+   * Ignore a missing path AND bypass the safe-delete guard (refusing to remove
+   * the cwd, an ancestor of it, or the filesystem root). Default false.
+   */
+  force?: boolean
+  /**
+   * Retries on EBUSY/EMFILE/ENFILE/ENOTEMPTY/EPERM (recursive only). Default 0.
+   */
+  maxRetries?: number
+  /** Milliseconds between retries, linear backoff (recursive only). Default 100. */
+  retryDelay?: number
+}
+
 /** Options for {@link packExecutable} / {@link packExecutableSync}. */
 export interface PackExeOptions {
   /**
@@ -117,6 +134,24 @@ export function copyFile(
   mode?: number,
 ): Promise<DecmpfsResult>
 
+/**
+ * `fs.rmSync(path, options)` — decmpfs-aware, with a safe-delete guard that
+ * refuses to remove the cwd, an ancestor of it, or the filesystem root unless
+ * `force`. Errors match Node's fs shape (`code`/`errno`/`syscall`/`path`).
+ */
+export function rmSync(path: string, options?: RmOptions): void
+/** Async {@link rmSync} (`fsPromises.rm`). */
+export function rm(path: string, options?: RmOptions): Promise<void>
+
+/**
+ * Turn an existing file into an OS-FS-compressed file IN PLACE (atomic rewrite).
+ * The bytes are unchanged to every reader; only the on-disk representation
+ * changes — a `chmod`-for-compression.
+ */
+export function compressFileSync(path: string): DecmpfsResult
+/** Async {@link compressFileSync}. */
+export function compressFile(path: string): Promise<DecmpfsResult>
+
 /** Pack `src` into a self-replacing executable at `dest` using `options.stub`. */
 export function packExecutableSync(
   src: string,
@@ -137,3 +172,5 @@ export declare class WriteTask {}
 export declare class CopyTask {}
 export declare class CopyFileTask {}
 export declare class PackExeTask {}
+export declare class RmTask {}
+export declare class CompressFileTask {}

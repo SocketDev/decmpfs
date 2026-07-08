@@ -570,3 +570,225 @@ pub fn pack_executable(
 ) -> AsyncTask<PackExeTask> {
   AsyncTask::new(PackExeTask { src, dest, options })
 }
+
+// ── Node-shaped fs errors ────────────────────────────────────────────────────
+// napi-rs maps a returned error to `error.code = <status>` only; to be drop-in
+// for Node's fs we build the JS Error ourselves with { code, errno, syscall,
+// path } and a Node-format message ("ENOENT: no such file or directory, rm
+// '/x'"), then throw it — matching fs.rm / fs.rmSync.
+
+fn errno_name(raw: i32) -> &'static str {
+  // Common fs errnos; the numbers below are shared across macOS + Linux, except
+  // ENOTEMPTY (macOS 66, Linux 39), handled per-target.
+  match raw {
+    1 => "EPERM",
+    2 => "ENOENT",
+    13 => "EACCES",
+    16 => "EBUSY",
+    17 => "EEXIST",
+    20 => "ENOTDIR",
+    21 => "EISDIR",
+    23 => "ENFILE",
+    24 => "EMFILE",
+    30 => "EROFS",
+    #[cfg(target_os = "macos")]
+    66 => "ENOTEMPTY",
+    #[cfg(not(target_os = "macos"))]
+    39 => "ENOTEMPTY",
+    _ => "UNKNOWN",
+  }
+}
+
+// uv-style lowercase strerror ("no such file or directory"), stripped of the
+// Rust "(os error N)" suffix.
+fn node_strerror(raw: i32) -> String {
+  let full = std::io::Error::from_raw_os_error(raw).to_string();
+  full
+    .split(" (os error")
+    .next()
+    .unwrap_or(&full)
+    .to_lowercase()
+}
+
+// (code, errno) for a decmpfs error — NotFound is ENOENT; an Io carries the OS
+// errno.
+fn fs_code_errno(err: &decmpfs::Error) -> (&'static str, i32) {
+  match err {
+    decmpfs::Error::NotFound(_) => ("ENOENT", -2),
+    decmpfs::Error::Io { source, .. } => match source.raw_os_error() {
+      Some(raw) if raw > 0 => (errno_name(raw), -raw),
+      // No OS errno — the error was built from an ErrorKind (e.g. the
+      // safe-delete guard uses PermissionDenied). Map to the closest fs code.
+      _ => match source.kind() {
+        std::io::ErrorKind::PermissionDenied => ("EACCES", -13),
+        std::io::ErrorKind::NotFound => ("ENOENT", -2),
+        std::io::ErrorKind::AlreadyExists => ("EEXIST", -17),
+        _ => ("UNKNOWN", 0),
+      },
+    },
+  }
+}
+
+// Build + throw a Node-shaped fs error; returns the pending-exception marker.
+fn throw_fs(env: &Env, code: &str, errno: i32, syscall: &str, path: &str) -> Error {
+  let strerr = node_strerror(if errno == 0 { 0 } else { -errno });
+  let message = format!("{code}: {strerr}, {syscall} '{path}'");
+  match env.create_error(Error::new(Status::GenericFailure, message)) {
+    Ok(mut obj) => {
+      let _ = obj.set_named_property("code", code);
+      let _ = obj.set_named_property("errno", errno);
+      let _ = obj.set_named_property("syscall", syscall);
+      let _ = obj.set_named_property("path", path);
+      // Return the shaped object through the Err channel — napi THROWS it for a
+      // sync fn and REJECTS the promise with it for an async Task, so both paths
+      // deliver the same { code, errno, syscall, path } error. (env.throw would
+      // fire OUTSIDE the promise on the async path → an uncaught exception.)
+      Error::from(obj.to_unknown())
+    }
+    Err(e) => e,
+  }
+}
+
+fn throw_decmpfs(env: &Env, err: &decmpfs::Error, syscall: &str, path: &str) -> Error {
+  let (code, errno) = fs_code_errno(err);
+  throw_fs(env, code, errno, syscall, path)
+}
+
+// ── rm / rmSync (Node fs.rm parity) ──────────────────────────────────────────
+
+/// Options for [`rm`] / [`rmSync`] — exactly Node's `fs.rm` options.
+#[napi(object)]
+pub struct RmOptions {
+  /// Recursive removal (`rm -rf` with `force`). Default `false`.
+  pub recursive: Option<bool>,
+  /// Ignore a missing path AND bypass the safe-delete guard (cwd/ancestor/root).
+  /// Default `false`.
+  pub force: Option<bool>,
+  /// Retries on EBUSY/EMFILE/ENFILE/ENOTEMPTY/EPERM (recursive only). Default `0`.
+  pub max_retries: Option<u32>,
+  /// Milliseconds between retries, linear backoff (recursive only). Default `100`.
+  pub retry_delay: Option<u32>,
+}
+
+fn to_rm_opts(o: Option<RmOptions>) -> decmpfs::RmOptions {
+  match o {
+    Some(o) => decmpfs::RmOptions {
+      recursive: o.recursive.unwrap_or(false),
+      force: o.force.unwrap_or(false),
+      max_retries: o.max_retries.unwrap_or(0),
+      retry_delay_ms: u64::from(o.retry_delay.unwrap_or(100)),
+    },
+    None => decmpfs::RmOptions::default(),
+  }
+}
+
+/// `fs.rmSync(path, options)` — decmpfs-aware, with the safe-delete guard.
+#[napi]
+pub fn rm_sync(env: Env, path: String, options: Option<RmOptions>) -> Result<()> {
+  decmpfs::rm(Path::new(&path), &to_rm_opts(options))
+    .map_err(|e| throw_decmpfs(&env, &e, "rm", &path))
+}
+
+/// The async task backing [`rm`]. Carries the Node error parts across the
+/// threadpool boundary — `compute` has no `Env`, so the JS error is built in
+/// `reject` where one is available.
+pub struct RmTask {
+  path: String,
+  opts: decmpfs::RmOptions,
+  err: Option<(&'static str, i32)>,
+}
+
+#[napi]
+impl Task for RmTask {
+  type Output = ();
+  type JsValue = ();
+
+  fn compute(&mut self) -> Result<()> {
+    match decmpfs::rm(Path::new(&self.path), &self.opts) {
+      Ok(()) => Ok(()),
+      Err(e) => {
+        self.err = Some(fs_code_errno(&e));
+        Err(Error::from_reason("fs error"))
+      }
+    }
+  }
+
+  fn resolve(&mut self, _env: Env, _output: ()) -> Result<()> {
+    Ok(())
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<()> {
+    match self.err.take() {
+      Some((code, errno)) => Err(throw_fs(&env, code, errno, "rm", &self.path)),
+      None => Err(err),
+    }
+  }
+}
+
+/// `fsPromises.rm(path, options)` — decmpfs-aware, with the safe-delete guard.
+#[napi]
+pub fn rm(path: String, options: Option<RmOptions>) -> AsyncTask<RmTask> {
+  AsyncTask::new(RmTask {
+    path,
+    opts: to_rm_opts(options),
+    err: None,
+  })
+}
+
+// ── compressFile / compressFileSync (chmod-like: make an existing file compfs) ─
+
+fn file_len(path: &str) -> usize {
+  std::fs::metadata(path)
+    .map(|m| m.len() as usize)
+    .unwrap_or(0)
+}
+
+/// Turn an existing file into an OS-FS-compressed file IN PLACE (atomic rewrite
+/// — read, write compressed, rename). The `chmod`-for-compression op: the file's
+/// bytes are unchanged to every reader, only its on-disk representation changes.
+#[napi]
+pub fn compress_file_sync(env: Env, path: String) -> Result<DecmpfsResult> {
+  match decmpfs::compress_file(Path::new(&path)) {
+    Ok(outcome) => Ok(to_result(outcome, file_len(&path))),
+    Err(e) => Err(throw_decmpfs(&env, &e, "open", &path)),
+  }
+}
+
+/// The async task backing [`compressFile`].
+pub struct CompressFileTask {
+  path: String,
+  err: Option<(&'static str, i32)>,
+}
+
+#[napi]
+impl Task for CompressFileTask {
+  type Output = DecmpfsResult;
+  type JsValue = DecmpfsResult;
+
+  fn compute(&mut self) -> Result<DecmpfsResult> {
+    match decmpfs::compress_file(Path::new(&self.path)) {
+      Ok(outcome) => Ok(to_result(outcome, file_len(&self.path))),
+      Err(e) => {
+        self.err = Some(fs_code_errno(&e));
+        Err(Error::from_reason("fs error"))
+      }
+    }
+  }
+
+  fn resolve(&mut self, _env: Env, output: DecmpfsResult) -> Result<DecmpfsResult> {
+    Ok(output)
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<DecmpfsResult> {
+    match self.err.take() {
+      Some((code, errno)) => Err(throw_fs(&env, code, errno, "open", &self.path)),
+      None => Err(err),
+    }
+  }
+}
+
+/// Async in-place compress — see [`compressFileSync`].
+#[napi]
+pub fn compress_file(path: String) -> AsyncTask<CompressFileTask> {
+  AsyncTask::new(CompressFileTask { path, err: None })
+}
