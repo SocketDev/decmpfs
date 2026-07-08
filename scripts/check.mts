@@ -53,4 +53,18 @@ run('cargo test (exe)', 'cargo', ['test', '--features', 'exe'])
 run('version parity', process.execPath, [
   path.join(root, 'scripts', 'check-versions.mts'),
 ])
+// Type-check the hand-maintained napi declarations with the pinned
+// typescript (the drift test asserts names exist; tsc asserts the
+// declarations themselves are well-formed and strict-clean).
+run('tsc --noEmit (napi type declarations)', path.join(root, 'node_modules', '.bin', 'tsc'), [
+  '--noEmit',
+  '--strict',
+  '--target',
+  'es2022',
+  '--module',
+  'nodenext',
+  '--moduleResolution',
+  'nodenext',
+  path.join(root, 'napi', 'decmpfs', 'index.d.cts'),
+])
 console.log('check: all green.')
