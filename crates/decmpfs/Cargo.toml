@@ -41,3 +41,11 @@ windows-sys = { version = "=0.59.0", features = [
   "Win32_Storage_FileSystem",
   "Win32_System_IO",
 ] }
+
+[dev-dependencies]
+# Dev-only (test) deps — never shipped, so prod stays dep-free. Exact-pinned to
+# match the crate's dependency policy. tempfile: isolated temp fixtures (real fs,
+# auto-cleanup) for the kernel-roundtrip tests; mockall: trait mocking for the
+# Backend seam so copy/compress branches test without touching disk.
+mockall = "=0.15.0"
+tempfile = "=3.27.0"

@@ -264,6 +264,79 @@ mod tests {
     );
   }
 
+  // Retry/backoff + force policy — the fs op is injected as a closure, so these
+  // branches are covered WITHOUT touching disk (DI is the mock).
+  #[cfg(unix)]
+  #[test]
+  fn with_policy_covers_retry_force_and_non_retryable() {
+    use std::io::Error as IoErr;
+    // retryDelay 0 keeps the test instant.
+    let recursive = RmOptions {
+      recursive: true,
+      force: false,
+      max_retries: 3,
+      retry_delay_ms: 0,
+    };
+
+    // A retryable errno (EBUSY) under recursive: retried until it succeeds.
+    let mut tries = 0;
+    let ok = with_policy(
+      || {
+        tries += 1;
+        if tries < 3 {
+          Err(IoErr::from_raw_os_error(libc::EBUSY))
+        } else {
+          Ok(())
+        }
+      },
+      &recursive,
+    );
+    assert!(ok.is_ok());
+    assert_eq!(tries, 3, "retried twice then succeeded");
+
+    // Same error, NOT recursive: Node ignores retries → fails on the first try.
+    let mut n = 0;
+    let non_recursive = RmOptions {
+      recursive: false,
+      ..recursive
+    };
+    let err = with_policy(
+      || {
+        n += 1;
+        Err::<(), _>(IoErr::from_raw_os_error(libc::EBUSY))
+      },
+      &non_recursive,
+    );
+    assert!(err.is_err());
+    assert_eq!(n, 1, "no retry when not recursive");
+
+    // force swallows a missing path.
+    let forced = with_policy(
+      || Err(IoErr::from(std::io::ErrorKind::NotFound)),
+      &RmOptions {
+        force: true,
+        ..RmOptions::default()
+      },
+    );
+    assert!(forced.is_ok());
+
+    // A non-retryable errno surfaces immediately even under recursive.
+    let mut k = 0;
+    let hard = with_policy(
+      || {
+        k += 1;
+        Err::<(), _>(IoErr::from_raw_os_error(libc::EACCES))
+      },
+      &recursive,
+    );
+    assert!(hard.is_err());
+    assert_eq!(k, 1, "non-retryable is not retried");
+
+    // retryable() classifies the errno set.
+    assert!(retryable(&IoErr::from_raw_os_error(libc::ENOTEMPTY)));
+    assert!(!retryable(&IoErr::from_raw_os_error(libc::EACCES)));
+  }
+
   #[test]
   fn rm_refuses_cwd_without_force_but_force_overrides_the_guard() {
     // Removing the real cwd is blocked by the guard (this does NOT delete it).

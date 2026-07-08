@@ -428,6 +428,7 @@ mod backend;
 /// are otherwise unreachable. Production always threads [`Os`]; static dispatch
 /// monomorphizes it to the same code as a direct backend call (no vtable, no size
 /// cost in a release build).
+#[cfg_attr(test, mockall::automock)]
 pub(crate) trait Backend {
   fn detect(&self, path: &Path) -> Result<Support, Error>;
   fn is_already_compressed(&self, path: &Path) -> Result<bool, Error>;
@@ -900,6 +901,27 @@ mod tests {
       "bytes are identical"
     );
     std::fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn copy_file_with_mock_backend_takes_the_clone_fast_path() {
+    // mockall MockBackend mocks the fs backend seam (no real syscalls); tempfile
+    // gives a real, isolated, auto-cleaned src fixture. clone_file → true
+    // short-circuits copy_file_with to the zero-cost Cloned outcome.
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("a.node");
+    std::fs::write(&src, b"native").unwrap();
+    let dest = dir.path().join("b.node");
+    let mut backend = MockBackend::new();
+    backend
+      .expect_is_already_compressed()
+      .returning(|_| Ok(true));
+    backend.expect_clone_file().returning(|_, _| Ok(true));
+    let out = copy_file_with(&backend, &src, &dest).unwrap();
+    assert!(
+      matches!(out, CopyOutcome::Cloned { compressed: true }),
+      "clone fast-path → Cloned; got {out:?}"
+    );
   }
 
   #[test]
