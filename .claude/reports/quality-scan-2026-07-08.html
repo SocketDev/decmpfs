@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>decmpfs code-quality scan — 2026-07-08</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --ink:#e6e8ec; --muted:#9aa3b2; --line:#262b36;
+    --crit:#ff5470; --high:#ff9f43; --med:#ffd166; --low:#4dd0a7; --ok:#4dd0a7; --accent:#7aa2f7;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:40px 24px 80px}
+  h1{font-size:26px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 28px}
+  .grade{display:flex;align-items:center;gap:18px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:20px 24px;margin:0 0 22px}
+  .grade .big{font-size:52px;font-weight:800;line-height:1;color:var(--high)}
+  .grade p{margin:0;color:var(--muted)}
+  .counts{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 30px}
+  .chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;
+    padding:6px 14px;font-size:13px;color:var(--muted)}
+  .chip b{color:var(--ink)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:1px}
+  .d-crit{background:var(--crit)} .d-high{background:var(--high)} .d-med{background:var(--med)} .d-low{background:var(--low)}
+  h2{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+    margin:34px 0 14px;border-bottom:1px solid var(--line);padding-bottom:8px}
+  .f{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line);
+    border-radius:10px;padding:16px 18px;margin:0 0 14px}
+  .f.crit{border-left-color:var(--crit)} .f.high{border-left-color:var(--high)}
+  .f.med{border-left-color:var(--med)} .f.low{border-left-color:var(--low)}
+  .f h3{margin:0 0 6px;font-size:16px}
+  .loc{font-family:var(--mono);font-size:12.5px;color:var(--accent);margin:0 0 10px}
+  .verified{color:var(--ok);font-weight:600;font-size:12px;margin-left:6px}
+  .f p{margin:8px 0}
+  .fix{color:var(--muted)}
+  .fix b{color:var(--ink)}
+  code{font-family:var(--mono);font-size:12.5px;background:#0b0d11;border:1px solid var(--line);
+    border-radius:5px;padding:1px 5px}
+  .solid{background:linear-gradient(180deg,#141b17,#12151b);border:1px solid #22402f}
+  footer{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>decmpfs code-quality scan</h1>
+  <p class="sub">2026-07-08 · Rust core (<code>crates/decmpfs</code>) + napi addon (<code>napi/decmpfs</code>) + build scripts · one finder per dimension → adversarial refute pass on High/Critical → dedup (3 refuted)</p>
+
+  <div class="grade">
+    <div class="big">C</div>
+    <p>Three High cross-platform correctness gaps, no Critical or systemic unsafety. Fixes landed for the macOS-core set; Windows + napi + CI groups in progress.</p>
+  </div>
+
+  <div class="counts">
+    <span class="chip"><span class="dot d-crit"></span>Critical <b>0</b></span>
+    <span class="chip"><span class="dot d-high"></span>High <b>3</b></span>
+    <span class="chip"><span class="dot d-med"></span>Medium <b>5</b></span>
+    <span class="chip"><span class="dot d-low"></span>Low <b>3</b></span>
+  </div>
+
+  <h2>High</h2>
+
+  <div class="f high">
+    <h3>Windows <code>detect()</code> can't open a directory handle<span class="verified">✓ verified</span></h3>
+    <p class="loc">crates/decmpfs/src/windows.rs:73</p>
+    <p><code>open_with</code> calls <code>CreateFileW</code> with <code>dwFlagsAndAttributes = 0</code>, which can't open a directory. A fresh install probes the parent dir → <code>ERROR_ACCESS_DENIED</code> → the <code>Err(_)</code> folds into the <code>Unsupported</code> arm, so every fresh NTFS install writes plain and misreports the reason.</p>
+    <p class="fix"><b>Fix:</b> pass <code>FILE_FLAG_BACKUP_SEMANTICS</code>, or detect via volume-root APIs.</p>
+  </div>
+
+  <div class="f high">
+    <h3><code>classify_skip</code> maps only POSIX errno for Busy<span class="verified">✓ verified</span></h3>
+    <p class="loc">crates/decmpfs/src/safety.rs:105</p>
+    <p>Not cfg-gated, so on Windows <code>ERROR_SHARING_VIOLATION</code> (32) → <code>None</code> → <code>apply_guarded</code> propagates a hard <code>Err</code>, breaking the fail-soft contract. <code>remove.rs::retryable</code> already encodes 32/33.</p>
+    <p class="fix"><b>Fix:</b> a <code>#[cfg(windows)]</code> errno arm mapping 32/33 → Busy. <b>Landed</b> (c0f008e).</p>
+  </div>
+
+  <div class="f high">
+    <h3><code>build_resource_fork</code> emits a malformed table for zero-length content<span class="verified">✓ verified</span></h3>
+    <p class="loc">crates/decmpfs/src/macos.rs:152</p>
+    <p>Empty input → <code>num_blocks = 1</code> but <code>chunks</code> yields zero blocks, so the loop writes <code>[8,0,0,0]</code> while <code>offset[0]=8</code> points past a 4-byte blob, then <code>UF_COMPRESSED</code> + rename over the original.</p>
+    <p class="fix"><b>Fix:</b> special-case <code>raw.is_empty()</code> → well-formed single-entry table + invariant test. <b>Landed</b> (c0f008e).</p>
+  </div>
+
+  <h2>Medium</h2>
+
+  <div class="f med">
+    <h3>napi errno/code table is POSIX-only</h3>
+    <p class="loc">napi/decmpfs/src/lib.rs:583</p>
+    <p>On Windows <code>raw_os_error()</code> is the Win32 space; <code>rmSync</code> on a locked file throws <code>{code:'UNKNOWN', errno:-32}</code> instead of <code>{code:'EBUSY'}</code>.</p>
+  </div>
+  <div class="f med">
+    <h3>write/copy/copyFile/pack error paths lack the Node fs shape</h3>
+    <p class="loc">napi/decmpfs/src/lib.rs:133</p>
+    <p>They throw <code>GenericFailure</code> with no <code>errno</code>/<code>syscall</code>/<code>path</code>; only <code>rm</code>/<code>compressFile</code> route through <code>throw_fs</code>.</p>
+  </div>
+  <div class="f med">
+    <h3>Unmapped IO kinds render "undefined error: 0"</h3>
+    <p class="loc">napi/decmpfs/src/lib.rs:626</p>
+    <p>The <code>ErrorKind</code> fallback feeds errno 0 to <code>node_strerror</code>, discarding the known cause (reachable via interior-NUL <code>InvalidInput</code>).</p>
+  </div>
+  <div class="f med">
+    <h3><code>cargo test --features addon</code> runs nowhere</h3>
+    <p class="loc">scripts/check.mts:47</p>
+    <p>9 integrity tests never compile in CI/pre-push; a regression in <code>unwrap_if_hybrid</code> length math ships green.</p>
+  </div>
+  <div class="f med">
+    <h3>npm publish loop has no already-published skip</h3>
+    <p class="loc">.github/workflows/publish-npm.yml:133</p>
+    <p>A mid-list transient failure can't be re-run cleanly (later re-run 403s on the earlier package). <code>publish-crate.mts</code> is already idempotent.</p>
+  </div>
+
+  <h2>Low</h2>
+
+  <div class="f low">
+    <h3>Mach-O offset u32 overflow for &gt;4 GiB payloads</h3>
+    <p class="loc">crates/decmpfs/src/exe/inject.rs:425</p>
+    <p>Unchecked <code>as u32</code> on LINKEDIT offsets truncates silently in release. <b>Fix landed</b> (c0f008e): guard <code>linkedit_end + delta</code> against <code>u32::MAX</code>.</p>
+  </div>
+  <div class="f low">
+    <h3><code>restore()</code> swallows rollback failures</h3>
+    <p class="loc">crates/decmpfs/src/safety.rs:171</p>
+    <p>An <code>ENOSPC</code> mid-rollback still returned <code>Ok(Skipped)</code>, leaving a corrupt file reported benign. <b>Fix landed</b> (c0f008e): returns <code>Result</code>, callers propagate.</p>
+  </div>
+  <div class="f low">
+    <h3>PID-only temp name can wedge re-compression</h3>
+    <p class="loc">crates/decmpfs/src/macos.rs:284</p>
+    <p>A reused-PID leftover blocked <code>create_new</code> forever. <b>Fix landed</b> (c0f008e): PID + nanos + atomic seq.</p>
+  </div>
+
+  <h2>What's solid</h2>
+  <div class="f solid">
+    <p>The fail-soft contract is real: the decmpfs path caps its u32 offset math with <code>within_decmpfs_limit</code> and documents the overflow class; <code>remove.rs::retryable</code> already encodes the Windows sharing/lock codes; <code>classify_skip</code> is <code>ErrorKind</code>-first; rollback plus an unconditional plain-write fallback net most corruption/skip paths; <code>publish-crate.mts</code> is a clean idempotent-publish reference. The theme is narrow — Windows/POSIX errno divergence and a couple of untested-by-default edges — not a structural weakness in the codec design.</p>
+  </div>
+
+  <footer>Generated from the decmpfs quality-scan workflow (6 finders → adversarial verify → dedup). Source report: <code>.claude/reports/quality-scan-2026-07-08.md</code>. Fix progress tracked across commits on <code>main</code>.</footer>
+</div>
+</body>
+</html>
