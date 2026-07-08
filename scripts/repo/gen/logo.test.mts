@@ -39,11 +39,12 @@ async function forHeightRatio(name: string): Promise<number> {
   const { height, pixels, width } = img
   let minY = height
   let maxY = -1
-  // A row counts as "for" only if it has a solid run of the flat gray. The cream
-  // wordmark's anti-alias edges blend to a near-NEUTRAL gray (R≈G≈B), while the
-  // "for" fill #b9b3ab is WARM (R−B≈14); requiring that warmth rejects the cream
-  // blend that would otherwise inflate the span up into the wordmark.
-  const MIN_RUN = 12
+  // A row counts as "for" only if it has enough of the warm gray. The cream
+  // wordmark's anti-alias edges blend to a near-NEUTRAL gray (R≈G≈B) and the
+  // orange "fs" is out of tolerance, so the warmth gate (R−B≥WARMTH) already
+  // isolates the "for" fill #b9b3ab (R−B≈14); MIN_RUN just rejects stray pixels.
+  // The serif "for" has thin strokes, so the per-row bar stays low.
+  const MIN_RUN = 4
   const WARMTH = 8
   for (let y = 0; y < height; y += 1) {
     let matches = 0
