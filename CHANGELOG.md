@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0
+
+- `rm` / `rmSync`: `fs.rm`-parity removal (`recursive` / `force` / `maxRetries`
+  / `retryDelay`) with a safe-delete guard that refuses the cwd, an ancestor, or
+  the filesystem root unless `force` overrides.
+- `compressFile` / `compressFileSync`: compress an existing file in place,
+  transparently.
+- macOS: LZVN block compression runs in parallel across cores — large addons
+  compress several times faster on write.
+- Node bindings surface `fs`-shaped errors (Node `code` / `errno` / `syscall`)
+  across `write` / `copy` / `copyFile` / `rm`.
+- Windows: `detect()` handles directories (opens with `FILE_FLAG_BACKUP_SEMANTICS`).
+- Ship TypeScript declarations (`index.d.ts`) for the addon.
+
 ## 0.2.0
 
 - `copy_file` / `try_clone_file`: compression-preserving copy — clone when the

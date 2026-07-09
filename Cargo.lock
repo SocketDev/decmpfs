@@ -77,7 +77,7 @@ checksum = "01334b89b69ff726750c5ce5073fc8bd860e99aa9a8fc5ca11b04730e3aee97a"
 
 [[package]]
 name = "decmpfs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "libc",
  "mockall",
