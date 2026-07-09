@@ -163,11 +163,7 @@ fn verify_readback_or_restore<B: Backend>(
   content: &[u8],
 ) -> Result<Outcome, Error> {
   let after = verify::on_disk_bytes(path)?;
-  let read_back = std::fs::read(path).map_err(|source| Error::Io {
-    context: "read-back",
-    source,
-  })?;
-  if read_back != content {
+  if !verify::readback_matches(path, content)? {
     restore(path, content)?;
     return Ok(Outcome::Skipped {
       reason: SkipReason::IntegrityRevert,

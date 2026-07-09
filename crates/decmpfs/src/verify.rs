@@ -71,10 +71,97 @@ pub(crate) fn magic_prefix(path: &Path) -> Result<[u8; 4], Error> {
   Ok(buf)
 }
 
+/// Stream-compare the file at `path` against `expected`, letting the kernel
+/// decompress transparently, through a fixed reusable 64 KiB buffer — never
+/// materializing a second full copy of the file (the read-back oracle runs on
+/// every compressed write, so a `std::fs::read` here would heap-allocate a whole
+/// extra copy of every addon). Returns `false` on the first differing byte or any
+/// length divergence (a short OR long read-back), and short-circuits on mismatch.
+pub(crate) fn readback_matches(path: &Path, expected: &[u8]) -> Result<bool, Error> {
+  let mut file = std::fs::File::open(path).map_err(|source| Error::Io {
+    context: "read-back",
+    source,
+  })?;
+  let mut buf = [0u8; 64 * 1024];
+  let mut off = 0usize;
+  loop {
+    let n = file.read(&mut buf).map_err(|source| Error::Io {
+      context: "read-back",
+      source,
+    })?;
+    if n == 0 {
+      break;
+    }
+    // A read-back that overruns `expected`, or a chunk that differs, is a
+    // mismatch — bail without reading the rest.
+    if off + n > expected.len() || buf[..n] != expected[off..off + n] {
+      return Ok(false);
+    }
+    off += n;
+  }
+  // Equal only if the on-disk length matched exactly (a truncated read-back is a
+  // mismatch the loop can't otherwise catch).
+  Ok(off == expected.len())
+}
+
 #[cfg(test)]
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
   use super::*;
+
+  fn scratch(tag: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("decmpfs-verify-{tag}-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+  }
+
+  #[test]
+  fn readback_matches_identical_content() {
+    let dir = scratch("rb-eq");
+    let path = dir.join("f");
+    // Larger than one 64 KiB buffer to exercise the multi-chunk loop.
+    let content = vec![0xABu8; 200 * 1024];
+    std::fs::write(&path, &content).unwrap();
+    assert!(readback_matches(&path, &content).unwrap());
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn readback_detects_a_differing_byte() {
+    let dir = scratch("rb-diff");
+    let path = dir.join("f");
+    let content = vec![0x11u8; 100 * 1024];
+    let mut on_disk = content.clone();
+    on_disk[80 * 1024] = 0x22;
+    std::fs::write(&path, &on_disk).unwrap();
+    assert!(!readback_matches(&path, &content).unwrap());
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn readback_detects_a_short_file() {
+    let dir = scratch("rb-short");
+    let path = dir.join("f");
+    std::fs::write(&path, vec![0x33u8; 4096]).unwrap();
+    // Expected is longer than what's on disk.
+    assert!(!readback_matches(&path, &vec![0x33u8; 8192]).unwrap());
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn readback_detects_a_long_file() {
+    let dir = scratch("rb-long");
+    let path = dir.join("f");
+    std::fs::write(&path, vec![0x44u8; 8192]).unwrap();
+    // Expected is shorter than what's on disk (read-back overruns).
+    assert!(!readback_matches(&path, &vec![0x44u8; 4096]).unwrap());
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn readback_errors_on_a_missing_path() {
+    assert!(readback_matches(std::path::Path::new("/no/such/rb/x"), b"x").is_err());
+  }
 
   #[test]
   fn measures_allocation_and_reads_magic() {
