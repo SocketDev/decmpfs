@@ -140,7 +140,10 @@ pub(crate) fn is_already_compressed(path: &Path) -> Result<bool, Error> {
   Ok(attrs & FILE_ATTRIBUTE_COMPRESSED != 0)
 }
 
-pub(crate) fn apply_inplace(path: &Path) -> Result<(), Error> {
+// `_snapshot` is unused on Windows: FSCTL_SET_COMPRESSION flags the EXISTING
+// file in place (the kernel recompresses), so there's no temp+rewrite that would
+// reuse the caller's bytes.
+pub(crate) fn apply_inplace(path: &Path, _snapshot: &[u8]) -> Result<(), Error> {
   let handle = open(path, GENERIC_READ | GENERIC_WRITE)?;
   set_compression(handle.0)
 }

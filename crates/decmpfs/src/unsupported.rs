@@ -11,7 +11,7 @@ pub(crate) fn is_already_compressed(_path: &Path) -> Result<bool, Error> {
   Ok(false)
 }
 
-pub(crate) fn apply_inplace(_path: &Path) -> Result<(), Error> {
+pub(crate) fn apply_inplace(_path: &Path, _snapshot: &[u8]) -> Result<(), Error> {
   Ok(())
 }
 

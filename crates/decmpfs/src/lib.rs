@@ -437,7 +437,11 @@ mod backend;
 pub(crate) trait Backend {
   fn detect(&self, path: &Path) -> Result<Support, Error>;
   fn is_already_compressed(&self, path: &Path) -> Result<bool, Error>;
-  fn apply_inplace(&self, path: &Path) -> Result<(), Error>;
+  /// Compress `path` in place. `snapshot` is the already-read file contents (the
+  /// caller holds them for rollback); backends that rewrite via temp+rename reuse
+  /// it instead of reading the file a second time, and backends that flag the
+  /// existing file in place (Windows) ignore it.
+  fn apply_inplace(&self, path: &Path, snapshot: &[u8]) -> Result<(), Error>;
   fn apply_bytes(
     &self,
     path: &Path,
@@ -463,8 +467,8 @@ impl Backend for Os {
   fn is_already_compressed(&self, path: &Path) -> Result<bool, Error> {
     backend::is_already_compressed(path)
   }
-  fn apply_inplace(&self, path: &Path) -> Result<(), Error> {
-    backend::apply_inplace(path)
+  fn apply_inplace(&self, path: &Path, snapshot: &[u8]) -> Result<(), Error> {
+    backend::apply_inplace(path, snapshot)
   }
   fn apply_bytes(
     &self,
@@ -514,7 +518,7 @@ impl Backend for FakeBackend {
   fn is_already_compressed(&self, _path: &Path) -> Result<bool, Error> {
     Ok(false)
   }
-  fn apply_inplace(&self, _path: &Path) -> Result<(), Error> {
+  fn apply_inplace(&self, _path: &Path, _snapshot: &[u8]) -> Result<(), Error> {
     self.apply_result()
   }
   fn apply_bytes(
@@ -872,7 +876,7 @@ mod tests {
     fn is_already_compressed(&self, _path: &Path) -> Result<bool, Error> {
       Ok(true)
     }
-    fn apply_inplace(&self, _path: &Path) -> Result<(), Error> {
+    fn apply_inplace(&self, _path: &Path, _snapshot: &[u8]) -> Result<(), Error> {
       Ok(())
     }
     fn apply_bytes(
@@ -964,7 +968,7 @@ mod tests {
       fn is_already_compressed(&self, _path: &Path) -> Result<bool, Error> {
         Ok(true)
       }
-      fn apply_inplace(&self, _path: &Path) -> Result<(), Error> {
+      fn apply_inplace(&self, _path: &Path, _snapshot: &[u8]) -> Result<(), Error> {
         Ok(())
       }
       fn apply_bytes(

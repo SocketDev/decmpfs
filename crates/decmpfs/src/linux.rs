@@ -170,13 +170,11 @@ pub(crate) fn is_already_compressed(path: &Path) -> Result<bool, Error> {
   Ok(get_flags(file.as_raw_fd())? & FS_COMPR_FL != 0)
 }
 
-pub(crate) fn apply_inplace(path: &Path) -> Result<(), Error> {
-  let data = std::fs::read(path).map_err(|source| Error::Io {
-    context: "read",
-    source,
-  })?;
+pub(crate) fn apply_inplace(path: &Path, snapshot: &[u8]) -> Result<(), Error> {
+  // `snapshot` is the file's bytes the caller already read for rollback — reuse
+  // it instead of a second full read.
   let mode = std::fs::metadata(path).map(|m| m.permissions()).ok();
-  apply_bytes(path, &data, mode)
+  apply_bytes(path, snapshot, mode)
 }
 
 /// Write `content` to `path` as a fresh btrfs-compressed file in ONE pass: create

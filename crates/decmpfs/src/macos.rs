@@ -242,12 +242,7 @@ fn setxattr(path: &std::ffi::CStr, name: &std::ffi::CStr, value: &[u8]) -> Resul
   Ok(())
 }
 
-pub(crate) fn apply_inplace(path: &Path) -> Result<(), Error> {
-  let raw = std::fs::read(path).map_err(|source| Error::Io {
-    context: "read",
-    source,
-  })?;
-
+pub(crate) fn apply_inplace(path: &Path, snapshot: &[u8]) -> Result<(), Error> {
   // Fail-soft: skip if we can't write the original (by mode or ownership) — the
   // temp+rename below would otherwise replace even a file we can't open for write.
   let cpath = cstring(path)?;
@@ -255,8 +250,10 @@ pub(crate) fn apply_inplace(path: &Path) -> Result<(), Error> {
     return Err(io("access"));
   }
 
+  // `snapshot` is the file's bytes the caller already read for rollback — reuse
+  // it instead of a second full read.
   let mode = std::fs::metadata(path).map(|m| m.permissions()).ok();
-  apply_bytes(path, &raw, mode)
+  apply_bytes(path, snapshot, mode)
 }
 
 /// Write `content` to `path` as a fresh decmpfs-compressed file in ONE pass — no
@@ -374,7 +371,7 @@ mod tests {
       matches!(detect(&path).unwrap(), Support::Supported),
       "temp dir is local APFS/HFS+"
     );
-    apply_inplace(&path).unwrap();
+    apply_inplace(&path, &raw).unwrap();
     assert!(is_already_compressed(&path).unwrap(), "UF_COMPRESSED set");
     assert_eq!(
       compressed_on_disk(&path).unwrap(),
@@ -451,14 +448,18 @@ mod tests {
     let dir = std::env::temp_dir().join(format!("decmpfs-noread-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("f.bin");
-    std::fs::write(&path, b"\x7fELF unreadable").unwrap();
+    let content = b"\x7fELF unreadable";
+    std::fs::write(&path, content).unwrap();
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).unwrap();
-    let out = apply_inplace(&path);
+    // apply_inplace no longer reads the file (the caller passes the snapshot it
+    // already holds); the fail-soft guard is now the W_OK access check, which
+    // rejects a file we cannot write before the temp+rename would replace it.
+    let out = apply_inplace(&path, content);
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).ok();
     assert!(matches!(
       out,
       Err(Error::Io {
-        context: "read",
+        context: "access",
         ..
       })
     ));
@@ -570,7 +571,7 @@ mod tests {
     }
     std::fs::write(&path, &raw).unwrap();
     if matches!(detect(&path).unwrap(), Support::Supported) {
-      apply_inplace(&path).unwrap();
+      apply_inplace(&path, &raw).unwrap();
       assert_eq!(
         std::fs::read(&path).unwrap(),
         raw,
