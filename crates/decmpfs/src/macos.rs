@@ -1,23 +1,23 @@
 //! macOS backend — APFS/HFS+ decmpfs transparent compression.
 //!
 //! decmpfs is an undocumented kernel ABI; afsctool and `ditto --hfsCompression` are
-//! the references. We write the LZVN resource-fork variant (compression type 8): the
-//! kernel decompresses on read(), so the file keeps its logical size + stays a
-//! loadable native binary. LZVN comes from the system libcompression framework — no
-//! Rust codec dep, so the macOS stub stays tiny.
+//! the references. We write the LZVN (type 8) and LZFSE (type 12) resource-fork
+//! variants: the kernel decompresses on read(), so the file keeps its logical size
+//! and stays a loadable native binary. Both codecs come from the system
+//! libcompression library, so the macOS stub gains no Rust codec dependency.
 //!
-//! Codec choice is LZVN, not LZFSE (type 12) or ZLIB (type 4): for a load-once
-//! `.node` we favor decode speed over ratio, and LZVN is the fastest of the three
-//! to decompress (LZFSE wins ~10-15% on size but decodes slower). LZVN has shipped
-//! in libcompression since 10.11, so there's no availability fallback to make — the
-//! only fallback path is the ephemeral cache when decmpfs can't be applied at all.
+//! Common `.node` files take the speed-first LZVN path, with LZFSE as a no-gain
+//! fallback. Large assets stream ratio-first LZFSE blocks directly into the named
+//! resource fork, avoiding both a multi-gigabyte output allocation and `setxattr`'s
+//! `E2BIG` ceiling. LZVN is the last fallback there for unusual codec-specific data.
 //!
 //! Layout written (verified by the kernel-roundtrip test):
-//!   xattr com.apple.decmpfs      = [magic u32 LE][type=8 LZVN u32 LE][rawSize u64 LE]
-//!   xattr com.apple.ResourceFork = [(numBlocks+1) u32 LE offset table][LZVN blocks]
-//! Built on a sibling temp (empty data fork + those xattrs + UF_COMPRESSED), then
-//! atomically renamed over the original — never an in-place truncate, so a crash
-//! can't leave a 0-byte file.
+//!   xattr com.apple.decmpfs      = [magic u32 LE][type=8/12 u32 LE][rawSize u64 LE]
+//!   xattr com.apple.ResourceFork = [(numBlocks+1) u32 LE offsets][codec blocks]
+//! A winning fork is built on an empty sibling temp with those xattrs and
+//! UF_COMPRESSED; an expanding fork becomes an ordinary sibling data fork. Either
+//! form is atomically renamed over the original — never an in-place truncate, so
+//! a crash can't leave a 0-byte file.
 
 use std::os::fd::AsRawFd;
 use std::path::Path;
@@ -26,16 +26,45 @@ use crate::{cstring, io, Error, Support, UnsupportedReason};
 
 const UF_COMPRESSED: u32 = 0x0000_0020;
 const DECMPFS_MAGIC: u32 = 0x636d_7066; // 'cmpf' (XNU sys/decmpfs.h); LE on disk = "fpmc"
-                                        // Type 8 = LZVN-in-resource-fork — what `ditto --hfsCompression` writes and the
-                                        // kernel reliably reads. The resource fork is a flat offset table (NOT the zlib
-                                        // type-4 resource-fork-with-map format).
-const CMP_LZVN_RESOURCE_FORK: u32 = 8;
 const BLOCK: usize = 0x1_0000; // 64 KiB
 const XATTR_NOFOLLOW: libc::c_int = 0x0001;
-// decmpfs resource-fork offsets cap at u32; stay well under 4 GiB so the offsets
-// and the kernel's own checks never overflow.
-const MAX_RAW: u64 = 3_900_000_000;
 const COMPRESSION_LZVN: i32 = 0x900;
+const COMPRESSION_LZFSE: i32 = 0x801;
+
+// 2026-07-16 — The data supports keeping a 64 MiB in-memory fast path for now.
+// The sampled Darwin ARM64 Vite ecosystem topped out at SWC 36.563 MiB, followed
+// by Rolldown 15.6–17.9 MiB, Oxlint 14.4 MiB, Lightning CSS 8.1 MiB, and Oxc
+// bindings at 1.9–5.7 MiB. Keeping <=64 MiB on parallel LZVN + one `setxattr`
+// leaves 27 MiB of headroom above that observed upper tail; larger assets stream
+// to `..namedfork/rsrc` so peak output memory stays bounded. Re-benchmark this
+// boundary as native-addon sizes or the streaming implementation changes.
+const STREAMING_THRESHOLD: usize = 64 * 1024 * 1024;
+
+fn should_stream_resource_fork(raw_len: usize, threshold: usize) -> bool {
+  raw_len > threshold
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Codec {
+  Lzvn,
+  Lzfse,
+}
+
+impl Codec {
+  const fn compression_type(self) -> u32 {
+    match self {
+      Self::Lzvn => 8,
+      Self::Lzfse => 12,
+    }
+  }
+
+  const fn algorithm(self) -> i32 {
+    match self {
+      Self::Lzvn => COMPRESSION_LZVN,
+      Self::Lzfse => COMPRESSION_LZFSE,
+    }
+  }
+}
 
 #[link(name = "compression")]
 extern "C" {
@@ -50,17 +79,11 @@ extern "C" {
   fn compression_encode_scratch_buffer_size(algorithm: i32) -> usize;
 }
 
-/// Reject files past the decmpfs u32-offset ceiling (→ Skipped(TooLarge) via
-/// safety::classify_skip on EFBIG). Pure, so the limit is testable without a 4 GiB
-/// file.
-fn within_decmpfs_limit(len: u64) -> Result<(), Error> {
-  if len > MAX_RAW {
-    return Err(Error::Io {
-      context: "file too large for decmpfs",
-      source: std::io::Error::from_raw_os_error(libc::EFBIG),
-    });
+fn resource_fork_too_large() -> Error {
+  Error::Io {
+    context: "decmpfs resource fork exceeds u32 offsets",
+    source: std::io::Error::from_raw_os_error(libc::EFBIG),
   }
-  Ok(())
 }
 
 fn statfs(path: &Path) -> Result<libc::statfs, Error> {
@@ -121,11 +144,10 @@ pub(crate) fn compressed_on_disk(path: &Path) -> Result<Option<bool>, Error> {
   Ok(Some(is_already_compressed(path)?))
 }
 
-/// LZVN-encode `src` into a kernel-decodable block. libcompression emits a valid
+/// Encode `src` into one kernel-decodable block. libcompression emits a valid
 /// frame even for incompressible input (slightly larger than `src`), so every
-/// block decodes the same way — there is no bare "stored" block. Returns `None`
-/// only if encoding fails outright (treated as a hard error upstream).
-fn compress_block(src: &[u8], scratch: &mut [u8]) -> Option<Vec<u8>> {
+/// block decodes the same way. `None` means the codec declined outright.
+fn compress_block_with_codec(src: &[u8], scratch: &mut [u8], codec: Codec) -> Option<Vec<u8>> {
   // Headroom for the worst case (incompressible data expands a little).
   let mut dst = vec![0u8; src.len() + src.len() / 16 + 1024];
   let n = unsafe {
@@ -135,7 +157,7 @@ fn compress_block(src: &[u8], scratch: &mut [u8]) -> Option<Vec<u8>> {
       src.as_ptr(),
       src.len(),
       scratch.as_mut_ptr(),
-      COMPRESSION_LZVN,
+      codec.algorithm(),
     )
   };
   if n == 0 {
@@ -145,84 +167,306 @@ fn compress_block(src: &[u8], scratch: &mut [u8]) -> Option<Vec<u8>> {
   Some(dst)
 }
 
+// The compatibility wrapper keeps the focused LZVN unit tests terse.
+#[cfg(test)]
+fn compress_block(src: &[u8], scratch: &mut [u8]) -> Option<Vec<u8>> {
+  compress_block_with_codec(src, scratch, Codec::Lzvn)
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ResourceForkPlan {
+  /// The fork would not make the file smaller. Keep the ordinary data fork.
+  Plain,
+  /// The encoded fork is smaller and every offset fits the on-disk u32 table.
+  Compressed { table_len: usize, total_len: usize },
+}
+
+fn resource_fork_table_len(num_blocks: usize) -> Result<usize, Error> {
+  num_blocks
+    .checked_add(1)
+    .and_then(|entries| entries.checked_mul(std::mem::size_of::<u32>()))
+    .ok_or_else(resource_fork_too_large)
+}
+
+/// Decide from lengths alone whether the fork is useful and representable. The
+/// raw length in `com.apple.decmpfs` is u64; only offsets inside the resource
+/// fork are u32. This allows a raw file beyond the old 3.9 GB cutoff whenever its
+/// encoded fork is smaller than both the raw file and `u32::MAX`.
+fn plan_resource_fork(
+  raw_len: usize,
+  num_blocks: usize,
+  encoded_len: usize,
+) -> Result<ResourceForkPlan, Error> {
+  let table_len = resource_fork_table_len(num_blocks)?;
+  let total_len = table_len
+    .checked_add(encoded_len)
+    .ok_or_else(resource_fork_too_large)?;
+
+  if total_len >= raw_len {
+    return Ok(ResourceForkPlan::Plain);
+  }
+  if total_len > u32::MAX as usize {
+    return Err(resource_fork_too_large());
+  }
+  Ok(ResourceForkPlan::Compressed {
+    table_len,
+    total_len,
+  })
+}
+
+fn compress_blocks(raw: &[u8], codec: Codec) -> Option<Vec<Vec<u8>>> {
+  let num_blocks = raw.len().div_ceil(BLOCK).max(1);
+  let scratch_len = unsafe { compression_encode_scratch_buffer_size(codec.algorithm()) };
+
+  // The 64 KiB blocks are independent, so fan them across cores. Each worker
+  // owns its libcompression scratch buffer. Contiguous regions keep the output
+  // in block order without a sort.
+  let workers = if std::env::var_os("DECMPFS_SERIAL").is_some() {
+    1
+  } else {
+    std::thread::available_parallelism()
+      .map(|n| n.get())
+      .unwrap_or(1)
+      .min(num_blocks)
+  };
+  if workers <= 1 || num_blocks < 8 {
+    let mut scratch = vec![0u8; scratch_len];
+    return raw
+      .chunks(BLOCK)
+      .map(|chunk| compress_block_with_codec(chunk, &mut scratch, codec))
+      .collect();
+  }
+
+  let bytes_per_worker = num_blocks.div_ceil(workers) * BLOCK;
+  let parts: Vec<Option<Vec<Vec<u8>>>> = std::thread::scope(|scope| {
+    let handles: Vec<_> = raw
+      .chunks(bytes_per_worker)
+      .map(|region| {
+        scope.spawn(move || {
+          let mut scratch = vec![0u8; scratch_len];
+          region
+            .chunks(BLOCK)
+            .map(|chunk| compress_block_with_codec(chunk, &mut scratch, codec))
+            .collect::<Option<Vec<Vec<u8>>>>()
+        })
+      })
+      .collect();
+    handles
+      .into_iter()
+      .map(|handle| handle.join().ok().flatten())
+      .collect()
+  });
+  let mut out = Vec::with_capacity(num_blocks);
+  for part in parts {
+    out.extend(part?);
+  }
+  Some(out)
+}
+
 /// Build the com.apple.ResourceFork blob for `raw` in the LZVN/LZFSE decmpfs
 /// layout (what `ditto` writes): `(numBlocks+1)` u32 LE offsets, then the blocks.
 /// `offset[0]` = table size; `offset[i+1]` = end of block i; last = total size.
-fn build_resource_fork(raw: &[u8]) -> Option<Vec<u8>> {
-  // A zero-length file has no blocks. Emit the well-formed single-entry table
-  // (one u32 offset == the table size == the total length) instead of a table
-  // sized for a phantom block — keeps the invariant "last offset == buffer len".
-  if raw.is_empty() {
-    return Some(4u32.to_le_bytes().to_vec());
-  }
+/// `Ok(None)` means this codec did not shrink the input.
+fn build_resource_fork_with_codec(raw: &[u8], codec: Codec) -> Result<Option<Vec<u8>>, Error> {
   let num_blocks = raw.len().div_ceil(BLOCK).max(1);
-  let scratch_len = unsafe { compression_encode_scratch_buffer_size(COMPRESSION_LZVN) };
-
-  // The 64 KiB LZVN blocks are independent and the encode IS the write cost, so
-  // fan them across cores — each worker keeps its OWN scratch (the libcompression
-  // scratch can't be shared concurrently). Contiguous byte regions (each a whole
-  // number of blocks) mean per-worker outputs are already in block order, so
-  // concatenation needs no re-sort. Stay serial for a handful of blocks, where
-  // thread setup would cost more than it saves. No thread-pool dep — std scoped
-  // threads keep the macOS stub dependency-free.
-  let blocks: Vec<Vec<u8>> = {
-    // DECMPFS_SERIAL forces the single-thread path — a deterministic escape hatch
-    // (and the A/B baseline for the parallel win).
-    let workers = if std::env::var_os("DECMPFS_SERIAL").is_some() {
-      1
-    } else {
-      std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1)
-        .min(num_blocks)
-    };
-    if workers <= 1 || num_blocks < 8 {
-      let mut scratch = vec![0u8; scratch_len];
-      raw
-        .chunks(BLOCK)
-        .map(|chunk| compress_block(chunk, &mut scratch))
-        .collect::<Option<Vec<Vec<u8>>>>()?
-    } else {
-      let bytes_per_worker = num_blocks.div_ceil(workers) * BLOCK;
-      let parts: Vec<Option<Vec<Vec<u8>>>> = std::thread::scope(|scope| {
-        let handles: Vec<_> = raw
-          .chunks(bytes_per_worker)
-          .map(|region| {
-            scope.spawn(move || {
-              let mut scratch = vec![0u8; scratch_len];
-              region
-                .chunks(BLOCK)
-                .map(|chunk| compress_block(chunk, &mut scratch))
-                .collect::<Option<Vec<Vec<u8>>>>()
-            })
-          })
-          .collect();
-        handles
-          .into_iter()
-          .map(|h| h.join().ok().flatten())
-          .collect()
-      });
-      let mut out = Vec::with_capacity(num_blocks);
-      for part in parts {
-        out.extend(part?);
-      }
-      out
-    }
+  let Some(blocks) = compress_blocks(raw, codec) else {
+    return Ok(None);
   };
 
-  let table_len = (num_blocks + 1) * 4;
-  let mut out = Vec::with_capacity(table_len + blocks.iter().map(Vec::len).sum::<usize>());
+  let encoded_len = blocks
+    .iter()
+    .try_fold(0usize, |sum, block| sum.checked_add(block.len()))
+    .ok_or_else(resource_fork_too_large)?;
+  let ResourceForkPlan::Compressed {
+    table_len,
+    total_len,
+  } = plan_resource_fork(raw.len(), num_blocks, encoded_len)?
+  else {
+    return Ok(None);
+  };
+
+  let mut out = Vec::with_capacity(total_len);
   // Offset table: numBlocks+1 entries. offset[i] is where block i starts.
-  let mut offset = table_len as u32;
+  let mut offset = u32::try_from(table_len).map_err(|_| resource_fork_too_large())?;
   out.extend_from_slice(&offset.to_le_bytes());
   for block in &blocks {
-    offset += block.len() as u32;
+    offset = offset
+      .checked_add(u32::try_from(block.len()).map_err(|_| resource_fork_too_large())?)
+      .ok_or_else(resource_fork_too_large)?;
     out.extend_from_slice(&offset.to_le_bytes());
   }
   for block in &blocks {
     out.extend_from_slice(block);
   }
-  Some(out)
+  debug_assert_eq!(out.len(), total_len);
+  Ok(Some(out))
+}
+
+/// The existing speed-first LZVN builder, retained as a focused test seam.
+#[cfg(test)]
+fn build_resource_fork(raw: &[u8]) -> Result<Option<Vec<u8>>, Error> {
+  build_resource_fork_with_codec(raw, Codec::Lzvn)
+}
+
+struct InMemoryResourceFork {
+  codec: Codec,
+  bytes: Vec<u8>,
+}
+
+/// Common addons prefer LZVN decode speed. Only a no-gain LZVN attempt pays for
+/// the stronger LZFSE pass.
+fn build_in_memory_resource_fork(raw: &[u8]) -> Result<Option<InMemoryResourceFork>, Error> {
+  for codec in [Codec::Lzvn, Codec::Lzfse] {
+    if let Some(bytes) = build_resource_fork_with_codec(raw, codec)? {
+      return Ok(Some(InMemoryResourceFork { codec, bytes }));
+    }
+  }
+  Ok(None)
+}
+
+/// Stream one codec into the temp file's named resource fork. One single-slot
+/// channel per worker keeps at most one encoded block per core waiting for the
+/// ordered writer, so output memory is bounded while libcompression stays
+/// parallel. `Ok(false)` means no gain, an unrepresentable u32 fork, or a codec
+/// decline; the caller may retry the original bytes with another codec.
+fn write_streaming_resource_fork(path: &Path, raw: &[u8], codec: Codec) -> Result<bool, Error> {
+  use std::io::{Seek, Write};
+  use std::sync::atomic::{AtomicBool, Ordering};
+
+  let num_blocks = raw.len().div_ceil(BLOCK).max(1);
+  let table_len = resource_fork_table_len(num_blocks)?;
+  if table_len >= raw.len() || table_len > u32::MAX as usize {
+    return Ok(false);
+  }
+
+  let fork_path = path.join("..namedfork").join("rsrc");
+  let mut file = std::fs::OpenOptions::new()
+    .write(true)
+    .create(true)
+    .truncate(true)
+    .open(fork_path)
+    .map_err(|source| Error::Io {
+      context: "open resource fork",
+      source,
+    })?;
+  file.set_len(table_len as u64).map_err(|source| Error::Io {
+    context: "reserve resource-fork table",
+    source,
+  })?;
+  file
+    .seek(std::io::SeekFrom::Start(table_len as u64))
+    .map_err(|source| Error::Io {
+      context: "seek resource-fork payload",
+      source,
+    })?;
+  // Coalesce codec blocks into larger writes. Besides syscall overhead, one
+  // write per 64 KiB block makes APFS allocate several extra MiB of extents on
+  // a multi-gigabyte fork even when its logical compressed bytes are identical.
+  let mut writer = std::io::BufWriter::with_capacity(1 << 20, file);
+
+  let workers = if std::env::var_os("DECMPFS_SERIAL").is_some() {
+    1
+  } else {
+    std::thread::available_parallelism()
+      .map(|n| n.get())
+      .unwrap_or(1)
+      .min(num_blocks)
+  };
+  let scratch_len = unsafe { compression_encode_scratch_buffer_size(codec.algorithm()) };
+  let cancelled = AtomicBool::new(false);
+  let mut offsets = Vec::with_capacity(num_blocks + 1);
+  offsets.push(u32::try_from(table_len).map_err(|_| resource_fork_too_large())?);
+  let mut offset = table_len;
+
+  let won = std::thread::scope(|scope| -> Result<bool, Error> {
+    let mut receivers = Vec::with_capacity(workers);
+    for worker in 0..workers {
+      let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+      receivers.push(receiver);
+      let cancelled = &cancelled;
+      scope.spawn(move || {
+        let mut scratch = vec![0u8; scratch_len];
+        let mut block_index = worker;
+        while block_index < num_blocks && !cancelled.load(Ordering::Relaxed) {
+          let start = block_index * BLOCK;
+          let end = start.saturating_add(BLOCK).min(raw.len());
+          let encoded = compress_block_with_codec(&raw[start..end], &mut scratch, codec);
+          if sender.send(encoded).is_err() {
+            break;
+          }
+          block_index += workers;
+        }
+      });
+    }
+
+    let result = (|| -> Result<bool, Error> {
+      for block_index in 0..num_blocks {
+        let Some(block) = receivers[block_index % workers].recv().ok().flatten() else {
+          return Ok(false);
+        };
+        let Some(next_offset) = offset.checked_add(block.len()) else {
+          return Ok(false);
+        };
+        // The fork can only grow from here. Stop early rather than writing a
+        // multi-gigabyte losing candidate before trying the fallback codec.
+        if next_offset >= raw.len() || next_offset > u32::MAX as usize {
+          return Ok(false);
+        }
+        writer.write_all(&block).map_err(|source| Error::Io {
+          context: "write resource-fork block",
+          source,
+        })?;
+        offset = next_offset;
+        offsets.push(u32::try_from(offset).map_err(|_| resource_fork_too_large())?);
+      }
+      Ok(true)
+    })();
+    cancelled.store(true, Ordering::Relaxed);
+    drop(receivers);
+    result
+  })?;
+
+  if !won {
+    return Ok(false);
+  }
+  debug_assert_eq!(offsets.len(), num_blocks + 1);
+  let mut table = Vec::with_capacity(table_len);
+  for offset in offsets {
+    table.extend_from_slice(&offset.to_le_bytes());
+  }
+  debug_assert_eq!(table.len(), table_len);
+  writer
+    .seek(std::io::SeekFrom::Start(0))
+    .and_then(|_| writer.write_all(&table))
+    .and_then(|_| writer.flush())
+    .map_err(|source| Error::Io {
+      context: "finish resource fork",
+      source,
+    })?;
+  writer.get_ref().sync_all().map_err(|source| Error::Io {
+    context: "sync resource fork",
+    source,
+  })?;
+  Ok(true)
+}
+
+/// Large assets favor ratio-first LZFSE so we do not write and discard a huge
+/// LZVN candidate like Gemini's. LZVN remains a codec-specific fallback.
+fn build_streaming_resource_fork(path: &Path, raw: &[u8]) -> Result<Option<Codec>, Error> {
+  for codec in [Codec::Lzfse, Codec::Lzvn] {
+    if write_streaming_resource_fork(path, raw, codec)? {
+      return Ok(Some(codec));
+    }
+  }
+  Ok(None)
+}
+
+fn decmpfs_header(codec: Codec, raw_len: usize) -> [u8; 16] {
+  let mut header = [0u8; 16];
+  header[..4].copy_from_slice(&DECMPFS_MAGIC.to_le_bytes());
+  header[4..8].copy_from_slice(&codec.compression_type().to_le_bytes());
+  header[8..].copy_from_slice(&(raw_len as u64).to_le_bytes());
+  header
 }
 
 fn setxattr(path: &std::ffi::CStr, name: &std::ffi::CStr, value: &[u8]) -> Result<(), Error> {
@@ -258,26 +502,32 @@ pub(crate) fn apply_inplace(path: &Path, snapshot: &[u8]) -> Result<(), Error> {
 
 /// Write `content` to `path` as a fresh decmpfs-compressed file in ONE pass — no
 /// write-then-read-back. The decmpfs is built directly from `content`, dropped on a
-/// sibling temp (empty data fork + the two xattrs + UF_COMPRESSED), then atomically
-/// renamed over `path`. A crash can only leave the original or the finished file;
-/// the rename also gives a fresh inode, the copy-break from any pnpm CAS hardlink
-/// siblings. This is the one-pass core both `compress_bytes` (no original) and
-/// `apply_inplace` (read first) share.
+/// sibling temp (empty data fork + the two xattrs + UF_COMPRESSED when compression
+/// wins; ordinary data fork on no gain), then atomically renamed over `path`. A
+/// crash can only leave the original or the finished file; the rename also gives a
+/// fresh inode, the copy-break from any pnpm CAS hardlink siblings. This is the
+/// one-pass core both `compress_bytes` (no original) and `apply_inplace` (read
+/// first) share.
 pub(crate) fn apply_bytes(
   path: &Path,
   content: &[u8],
   mode: Option<std::fs::Permissions>,
 ) -> Result<(), Error> {
-  within_decmpfs_limit(content.len() as u64)?;
+  apply_bytes_with_streaming_threshold(path, content, mode, STREAMING_THRESHOLD)
+}
 
-  let mut header = Vec::with_capacity(16);
-  header.extend_from_slice(&DECMPFS_MAGIC.to_le_bytes());
-  header.extend_from_slice(&CMP_LZVN_RESOURCE_FORK.to_le_bytes());
-  header.extend_from_slice(&(content.len() as u64).to_le_bytes());
-  let resource_fork = build_resource_fork(content).ok_or_else(|| Error::Io {
-    context: "lzvn encode",
-    source: std::io::Error::from(std::io::ErrorKind::InvalidData),
-  })?;
+fn apply_bytes_with_streaming_threshold(
+  path: &Path,
+  content: &[u8],
+  mode: Option<std::fs::Permissions>,
+  streaming_threshold: usize,
+) -> Result<(), Error> {
+  let stream = should_stream_resource_fork(content.len(), streaming_threshold);
+  let in_memory_resource_fork = if stream {
+    None
+  } else {
+    build_in_memory_resource_fork(content)?
+  };
 
   let dir = path.parent().ok_or_else(|| io("parent"))?;
   let name = path
@@ -301,20 +551,60 @@ pub(crate) fn apply_bytes(
   ));
 
   let build = (|| -> Result<(), Error> {
-    let file = std::fs::OpenOptions::new()
-      .read(true)
-      .write(true)
-      .create_new(true)
-      .open(&tmp)
-      .map_err(|source| Error::Io {
-        context: "create temp",
+    let create_temp = || {
+      std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .open(&tmp)
+        .map_err(|source| Error::Io {
+          context: "create temp",
+          source,
+        })
+    };
+    let mut file = create_temp()?;
+    let ctmp = cstring(&tmp)?;
+    let codec = if stream {
+      build_streaming_resource_fork(&tmp, content)?
+    } else if let Some(resource_fork) = &in_memory_resource_fork {
+      // Install the payload before publishing metadata that tells the kernel to
+      // decode it. The temp inode is not visible at the destination yet either
+      // way, but this ordering also keeps direct temp-path observers safe.
+      setxattr(&ctmp, c"com.apple.ResourceFork", &resource_fork.bytes)?;
+      Some(resource_fork.codec)
+    } else {
+      None
+    };
+
+    if let Some(codec) = codec {
+      setxattr(
+        &ctmp,
+        c"com.apple.decmpfs",
+        &decmpfs_header(codec, content.len()),
+      )?;
+      if unsafe { libc::fchflags(file.as_raw_fd(), UF_COMPRESSED) } != 0 {
+        return Err(io("fchflags"));
+      }
+    } else {
+      // A losing streamed attempt left a partial resource fork on the temp.
+      // Recreate the inode rather than publish a plain file with stale fork data.
+      if stream {
+        drop(file);
+        std::fs::remove_file(&tmp).map_err(|source| Error::Io {
+          context: "remove losing streamed temp",
+          source,
+        })?;
+        file = create_temp()?;
+      }
+      use std::io::Write;
+      file.write_all(content).map_err(|source| Error::Io {
+        context: "plain temp write",
         source,
       })?;
-    let ctmp = cstring(&tmp)?;
-    setxattr(&ctmp, c"com.apple.decmpfs", &header)?;
-    setxattr(&ctmp, c"com.apple.ResourceFork", &resource_fork)?;
-    if unsafe { libc::fchflags(file.as_raw_fd(), UF_COMPRESSED) } != 0 {
-      return Err(io("fchflags"));
+      file.sync_all().map_err(|source| Error::Io {
+        context: "plain temp sync",
+        source,
+      })?;
     }
     Ok(())
   })();
@@ -497,13 +787,91 @@ mod tests {
   }
 
   #[test]
-  fn build_resource_fork_zero_length_is_well_formed() {
-    // A 0-byte file must produce a consistent single-entry table (offset[0] ==
-    // total length), not a 2-entry-sized header pointing past a 4-byte blob.
-    let rf = build_resource_fork(&[]).unwrap();
-    assert_eq!(rf.len(), 4, "zero blocks → single 4-byte offset entry");
-    let last = u32::from_le_bytes(rf[0..4].try_into().unwrap()) as usize;
-    assert_eq!(last, rf.len(), "last offset must equal the buffer length");
+  fn build_resource_fork_zero_length_is_no_gain() {
+    assert!(
+      build_resource_fork(&[]).unwrap().is_none(),
+      "a resource fork cannot make an empty file smaller"
+    );
+  }
+
+  #[test]
+  fn streaming_threshold_keeps_vite_native_addons_on_the_fast_path() {
+    // The largest Darwin ARM64 addon in the 2026-07-16 Vite-family sample was
+    // SWC at 36.563 MiB. The complete observed set must stay comfortably below
+    // the in-memory cutoff, while the first byte beyond it streams.
+    assert!(!should_stream_resource_fork(37 << 20, STREAMING_THRESHOLD));
+    assert!(!should_stream_resource_fork(
+      STREAMING_THRESHOLD,
+      STREAMING_THRESHOLD
+    ));
+    assert!(should_stream_resource_fork(
+      STREAMING_THRESHOLD + 1,
+      STREAMING_THRESHOLD
+    ));
+  }
+
+  #[test]
+  fn kernel_roundtrips_forced_streaming_lzfse() {
+    let dir = std::env::temp_dir().join(format!("decmpfs-streaming-oracle-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("f.bin");
+    let raw = b"streamed lzfse decmpfs resource fork oracle ".repeat((2 << 20) / 46 + 1);
+    std::fs::write(&path, &raw).unwrap();
+
+    if matches!(detect(&path).unwrap(), Support::Supported) {
+      apply_bytes_with_streaming_threshold(&path, &raw, None, 0).unwrap();
+      assert!(is_already_compressed(&path).unwrap(), "UF_COMPRESSED set");
+      assert_eq!(
+        std::fs::read(&path).unwrap(),
+        raw,
+        "kernel read-back must decode the streamed type-12 resource fork"
+      );
+
+      let cpath = cstring(&path).unwrap();
+      let mut header = [0u8; 16];
+      let len = unsafe {
+        libc::getxattr(
+          cpath.as_ptr(),
+          c"com.apple.decmpfs".as_ptr(),
+          header.as_mut_ptr().cast(),
+          header.len(),
+          0,
+          XATTR_NOFOLLOW | 0x0020, // XATTR_SHOWCOMPRESSION
+        )
+      };
+      assert_eq!(len, header.len() as isize);
+      assert_eq!(u32::from_le_bytes(header[4..8].try_into().unwrap()), 12);
+    }
+    std::fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn in_memory_path_falls_back_to_lzfse_when_lzvn_has_no_gain() {
+    // Skewed symbol frequencies give LZFSE's entropy coder something to exploit
+    // without manufacturing the repeated strings that LZVN specializes in.
+    let mut raw = Vec::with_capacity(1 << 20);
+    let mut x: u64 = 0x9e37_79b9_7f4a_7c15;
+    while raw.len() < raw.capacity() {
+      x ^= x << 13;
+      x ^= x >> 7;
+      x ^= x << 17;
+      raw.push(if x.is_multiple_of(4) {
+        0
+      } else {
+        (x >> 32) as u8
+      });
+    }
+    assert!(
+      build_resource_fork_with_codec(&raw, Codec::Lzvn)
+        .unwrap()
+        .is_none(),
+      "fixture must reach the fallback"
+    );
+    let candidate = build_in_memory_resource_fork(&raw)
+      .unwrap()
+      .expect("LZFSE should exploit the skewed symbols");
+    assert_eq!(candidate.codec, Codec::Lzfse);
+    assert!(candidate.bytes.len() < raw.len());
   }
 
   #[test]
@@ -513,7 +881,7 @@ mod tests {
     // declines — which is a separate, correct path.)
     for size in [512usize, BLOCK, BLOCK + 1, BLOCK * 3 + 7] {
       let raw = vec![0x41u8; size];
-      let Some(rf) = build_resource_fork(&raw) else {
+      let Some(rf) = build_resource_fork(&raw).unwrap() else {
         continue;
       };
       let num_blocks = size.div_ceil(BLOCK);
@@ -555,17 +923,62 @@ mod tests {
   }
 
   #[test]
-  fn within_decmpfs_limit_rejects_oversized() {
-    // No 4 GiB file needed — the predicate is pure.
-    assert!(within_decmpfs_limit(MAX_RAW).is_ok());
-    match within_decmpfs_limit(MAX_RAW + 1).unwrap_err() {
+  fn resource_fork_plan_accepts_raw_files_beyond_the_old_limit() {
+    // The raw byte count is stored as u64. Only resource-fork offsets are u32,
+    // so a >3.9 GB input is valid whenever its encoded fork fits in u32.
+    let raw_len = 4_100_000_000usize;
+    let num_blocks = raw_len.div_ceil(BLOCK);
+    assert!(matches!(
+      plan_resource_fork(raw_len, num_blocks, 3_000_000_000).unwrap(),
+      ResourceForkPlan::Compressed { .. }
+    ));
+  }
+
+  #[test]
+  fn resource_fork_plan_accepts_raw_files_beyond_four_gib_when_the_fork_fits() {
+    let raw_len = 5_000_000_000usize;
+    let num_blocks = raw_len.div_ceil(BLOCK);
+    assert!(matches!(
+      plan_resource_fork(raw_len, num_blocks, 3_000_000_000).unwrap(),
+      ResourceForkPlan::Compressed { .. }
+    ));
+  }
+
+  #[test]
+  fn resource_fork_plan_rejects_a_compressed_fork_past_u32() {
+    let raw_len = 5_000_000_000usize;
+    let num_blocks = raw_len.div_ceil(BLOCK);
+    match plan_resource_fork(raw_len, num_blocks, 4_400_000_000).unwrap_err() {
       Error::Io { source, .. } => assert_eq!(source.raw_os_error(), Some(libc::EFBIG)),
       other => panic!("expected EFBIG Io, got {other:?}"),
     }
   }
 
-  // Incompressible data → blocks are stored verbatim (compress_block returns the
-  // chunk). The kernel must still read them back identically.
+  #[test]
+  fn gemini_nano_lzvn_resource_fork_is_no_gain() {
+    // Chrome 150's v3Nano weights.bin measured with this exact 64 KiB LZVN
+    // encoder: the encoded blocks expand enough to cross the u32 fork ceiling.
+    assert_eq!(
+      plan_resource_fork(4_269_932_544, 65_154, 4_364_775_458).unwrap(),
+      ResourceForkPlan::Plain
+    );
+  }
+
+  #[test]
+  fn gemini_nano_lzfse_resource_fork_fits_and_wins() {
+    // The streamed type-12 run encoded the same 65,154 blocks to this payload;
+    // with its 260,620-byte offset table the fork is safely below u32::MAX.
+    assert_eq!(
+      plan_resource_fork(4_269_932_544, 65_154, 3_598_249_560).unwrap(),
+      ResourceForkPlan::Compressed {
+        table_len: 260_620,
+        total_len: 3_598_510_180,
+      }
+    );
+  }
+
+  // Incompressible data → LZVN would expand the resource fork, so keep an
+  // ordinary data fork. The bytes and compression-state signal must agree.
   #[test]
   fn kernel_roundtrips_incompressible_blocks() {
     let dir = std::env::temp_dir().join(format!("decmpfs-raw-{}", std::process::id()));
@@ -581,11 +994,18 @@ mod tests {
     }
     std::fs::write(&path, &raw).unwrap();
     if matches!(detect(&path).unwrap(), Support::Supported) {
-      apply_inplace(&path, &raw).unwrap();
+      assert!(matches!(
+        crate::compress_file(&path).unwrap(),
+        crate::Outcome::NoGain { .. }
+      ));
       assert_eq!(
         std::fs::read(&path).unwrap(),
         raw,
-        "verbatim blocks read back"
+        "plain fallback reads back identically"
+      );
+      assert!(
+        !is_already_compressed(&path).unwrap(),
+        "no-gain input must not carry UF_COMPRESSED"
       );
     }
     std::fs::remove_dir_all(&dir).ok();
