@@ -1,0 +1,31 @@
+name: Release app token
+description: >-
+  Mint a short-lived GitHub App installation token for the decmpfs release app
+  (create releases, push tags). Least-privilege: PERMISSIONS is the exact scope
+  the release needs. The co-located dep-0 minter runs via $GITHUB_ACTION_PATH so
+  it needs no recent runner Node and no install step.
+
+inputs:
+  client-id:
+    description: 'Release app Client ID — pass vars.RELEASE_APP_CLIENT_ID.'
+    required: true
+  private-key:
+    description: 'Release app private key (PEM) — pass secrets.RELEASE_APP_PRIVATE_KEY.'
+    required: true
+
+outputs:
+  token:
+    description: 'The minted installation token (pass as GH_TOKEN / checkout token).'
+    value: ${{ steps.app-token.outputs.token }}
+
+runs:
+  using: composite
+  steps:
+    - id: app-token
+      shell: bash
+      env:
+        APP_PRIVATE_KEY: ${{ inputs.private-key }}
+        CLIENT_ID: ${{ inputs.client-id }}
+        PERMISSIONS: '{"contents":"write"}'
+        REPOSITORY: ${{ github.repository }}
+      run: node "${{ github.action_path }}/mint-app-installation-token.mts"

@@ -1,0 +1,20 @@
+[package]
+name = "decmpfs-node"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+description = "N-API binding for the decmpfs core: write a file straight to OS-compressed form."
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = "3"
+napi-derive = "3"
+# The FS-compression core (compress_bytes single-pass write + Gate + Outcome);
+# `exe` adds self-replacing-executable packing (pack_executable).
+decmpfs = { path = "../../crates/decmpfs", features = ["exe"] }
+
+[build-dependencies]
+napi-build = "2"

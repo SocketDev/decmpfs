@@ -1,0 +1,44 @@
+{
+  "name": "decmpfs",
+  "version": "0.1.1-prerelease",
+  "description": "Write files straight to OS transparent filesystem compression (APFS decmpfs / btrfs / NTFS) in one pass.",
+  "keywords": [
+    "apfs",
+    "btrfs",
+    "compression",
+    "decmpfs",
+    "ntfs"
+  ],
+  "license": "MIT",
+  "repository": "https://github.com/decmpfs/decmpfs",
+  "files": [
+    "index.cjs",
+    "index.d.cts"
+  ],
+  "main": "index.cjs",
+  "types": "index.d.cts",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "node scripts/build.mts",
+    "test": "node --test",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "optionalDependencies": {
+    "@decmpfs/darwin-arm64": "0.1.1-prerelease",
+    "@decmpfs/darwin-x64": "0.1.1-prerelease",
+    "@decmpfs/linux-arm64-gnu": "0.1.1-prerelease",
+    "@decmpfs/linux-x64-gnu": "0.1.1-prerelease",
+    "@decmpfs/win32-x64-msvc": "0.1.1-prerelease"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,25 @@
+# libFuzzer dictionary for the decmpfs addon-decoder fuzz targets.
+# Passed via `-dict=fuzz.dict`. Tokens are the load-bearing byte sequences of the
+# bin-infra pressed-data blob and the three executable-container magics, steering
+# the mutator toward structurally interesting inputs (a valid header prefix, a
+# real container magic) instead of rediscovering them from scratch.
+
+# --- pressed-data blob framing ---
+# "__SMOL_PRESSED_DATA_MAGIC_MARKER" (32B), the fixed leading magic.
+pressed_magic="__SMOL_PRESSED_DATA_MAGIC_MARKER"
+
+# --- executable-container magics (unwrap_if_hybrid dispatch) ---
+macho64_le="\xcf\xfa\xed\xfe"
+macho64_be="\xfe\xed\xfa\xcf"
+elf_magic="\x7fELF"
+pe_magic="MZ"
+pe_sig="PE\x00\x00"
+
+# --- section / segment names walked out of the container ---
+macho_segment="SMOL"
+macho_section="__PRESSED_DATA"
+elf_section=".PRESSED_DATA"
+pe_section=".PRESSED"
+
+# --- zstd frame magic (the payload the decoder inflates) ---
+zstd_magic="\x28\xb5\x2f\xfd"

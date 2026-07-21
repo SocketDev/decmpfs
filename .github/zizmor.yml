@@ -1,0 +1,15 @@
+# zizmor audit config.
+#
+# cache-poisoning on the release/publish workflows: their setup-node steps run
+# on `release`/dispatch triggers but set no `cache:` input, so no dependency
+# cache is restored, and each publish/release is OIDC- or App-token-gated — the
+# poisoning path zizmor flags (a restored, attacker-influenced cache reaching a
+# privileged publish) does not exist here. Suppressed by file rather than an
+# inline comment so the SHA-pinned `uses:` lines keep their canonical
+# `# <tag> (YYYY-MM-DD)` stamps.
+rules:
+  cache-poisoning:
+    ignore:
+      - github-release.yml
+      - publish-crate.yml
+      - publish-npm.yml

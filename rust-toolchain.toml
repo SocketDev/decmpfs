@@ -1,0 +1,10 @@
+# Fleet toolchain for repositories whose primary build is Rust. Keep the
+# channel exact so local development and CI compile with the same compiler.
+# rustfmt and clippy are declared here because the shared format/check commands
+# depend on them; profile=minimal avoids unrelated documentation components.
+# Fuzz (cargo-fuzz) and the soak updater (-Zmin-publish-age) pin their own
+# nightly per job; this stable channel is the primary build + lint compiler.
+[toolchain]
+channel = "1.97.1"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

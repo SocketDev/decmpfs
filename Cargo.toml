@@ -1,33 +1,18 @@
-[package]
-name = "decmpfs"
-version = "0.1.0"
-edition = "2021"
-description = "Apply OS-level transparent filesystem compression (APFS decmpfs / btrfs / NTFS) to a file in place."
-license = "MIT"
-repository = "https://github.com/decmpfs/decmpfs"
-keywords = ["apfs", "btrfs", "compression", "decmpfs", "ntfs"]
-categories = ["filesystem"]
+[workspace]
+members = ["crates/*", "napi/*"]
+# `fuzz/` is a STANDALONE cargo-fuzz workspace with its own inverted profile; keep
+# it out of the root workspace so a plain `cargo build` never sweeps the fuzzer in.
+exclude = ["fuzz"]
+resolver = "2"
 
-[features]
-# Off by default — the FS-compression core has no codec dep. The `addon` feature
-# pulls zstd + sha2 to unwrap a napi `--compress` hybrid back to the raw .node.
-default = []
-addon = ["dep:zstd", "dep:sha2"]
-
-[dependencies]
-# Only the `addon` feature codec/integrity deps; the core stays dep-free.
-zstd = { version = "=0.13.3", optional = true }
-sha2 = { version = "=0.10.9", optional = true }
-
-# Backend syscalls, cfg-gated so non-target builds stay dep-free. Linux (btrfs
-# ioctls) and macOS (statfs/xattr/chflags + libcompression) both use libc.
-[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
-libc = "=0.2.186"
-
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "=0.59.0", features = [
-  "Win32_Foundation",
-  "Win32_Security",
-  "Win32_Storage_FileSystem",
-  "Win32_System_IO",
-] }
+# Release tuning for the shipped artifacts (the decmpfs.node cdylib + the
+# decmpfs-stub exe both inherit this). Fat LTO + a single codegen unit let the
+# codec/integrity glue inline into the addon; strip drops symbols a dlopen'd
+# .node never needs. Panic stays the default `unwind` — napi-rs wraps every
+# binding in `catch_unwind` to turn a Rust panic into a thrown JS error, so
+# `abort` would turn a recoverable panic into a hard process crash.
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = "symbols"

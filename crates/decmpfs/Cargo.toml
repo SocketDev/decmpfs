@@ -1,0 +1,59 @@
+[package]
+name = "decmpfs"
+version = "0.1.1-prerelease"
+edition = "2021"
+description = "Apply OS-level transparent filesystem compression (APFS decmpfs / btrfs / NTFS) to a file in place."
+license = "MIT"
+repository = "https://github.com/decmpfs/decmpfs"
+keywords = ["apfs", "btrfs", "compression", "decmpfs", "ntfs"]
+categories = ["filesystem"]
+
+# The self-replacing runtime stub. Built only with the `exe` feature; a packer
+# injects a payload into a copy of it (see src/bin/decmpfs-stub.rs).
+[[bin]]
+name = "decmpfs-stub"
+required-features = ["exe"]
+
+[features]
+# Off by default — the FS-compression core has no codec dep. The `addon` feature
+# pulls zstd + sha2 to unwrap a napi `--compress` hybrid back to the raw .node.
+# The `exe` feature adds self-replacing-executable packing: it reuses the codec +
+# integrity deps. macOS re-signing shells out to the system `codesign` (always
+# present on macOS), so the stub stays dep-lean + panic=abort.
+default = []
+addon = ["dep:zstd", "dep:sha2"]
+exe = ["dep:zstd", "dep:sha2"]
+
+[lints.rust]
+# `coverage` / `coverage_nightly` are set by cargo-llvm-cov (nightly) to gate the
+# `#[coverage(off)]` test-module markers; declare them so stable builds don't warn.
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(coverage)',
+  'cfg(coverage_nightly)',
+] }
+
+[dependencies]
+# Only the `addon` / `exe` feature codec/integrity deps; the core stays dep-free.
+zstd = { version = "=0.13.3", optional = true }
+sha2 = { version = "=0.10.9", optional = true }
+
+# Backend syscalls, cfg-gated so non-target builds stay dep-free. Linux (btrfs
+# ioctls) and macOS (statfs/xattr/chflags + libcompression) both use libc.
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+libc = "=0.2.186"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.59.0", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Storage_FileSystem",
+  "Win32_System_IO",
+] }
+
+[dev-dependencies]
+# Dev-only (test) deps — never shipped, so prod stays dep-free. Exact-pinned to
+# match the crate's dependency policy. tempfile: isolated temp fixtures (real fs,
+# auto-cleanup) for the kernel-roundtrip tests; mockall: trait mocking for the
+# Backend seam so copy/compress branches test without touching disk.
+mockall = "=0.15.0"
+tempfile = "=3.27.0"

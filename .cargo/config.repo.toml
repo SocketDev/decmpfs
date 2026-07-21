@@ -1,0 +1,26 @@
+# Per-platform CPU baselines for the shipped `decmpfs.node` matrix. Keyed per
+# exact target triple so the release build picks the right floor for each
+# published `@decmpfs/<triple>` package. NEVER `target-cpu=native` — that would
+# bake the CI build machine's microarchitecture into a binary shipped to every
+# consumer.
+#
+# x86-64-v2 (SSE4.2 / POPCNT, ~2009 Nehalem+) is a safe modern floor that lets
+# the zstd/sha2 codec paths use better codegen than the stock SSE2-only baseline.
+# apple-m1 covers every arm64 Mac. aarch64 Linux stays at the armv8-a default
+# (already has NEON); a global `[build] rustflags` is deliberately avoided so a
+# flag never leaks to an unintended target.
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "target-cpu=x86-64-v2"]
+
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "target-cpu=x86-64-v2"]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-cpu=x86-64-v2"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "target-cpu=x86-64-v2"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "target-cpu=apple-m1"]

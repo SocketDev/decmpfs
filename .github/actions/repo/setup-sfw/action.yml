@@ -1,0 +1,40 @@
+name: Setup Socket Firewall
+description: >
+  Download the pinned sfw-free binary (integrity-verified) and export SFW_BIN.
+  Package-manager invocations that fetch from a registry should run through it:
+  "$SFW_BIN" npm …, "$SFW_BIN" cargo … — the firewall scores what the install
+  pulls and blocks known-malicious packages.
+
+runs:
+  using: composite
+  steps:
+    - name: Download sfw-free
+      shell: bash
+      run: | # zizmor: ignore[github-env]
+        set -euo pipefail
+        VERSION="v1.12.0"
+        case "${RUNNER_OS}-${RUNNER_ARCH}" in
+          Linux-X64)     ASSET="sfw-free-linux-x86_64";      SHA256_B64="UYJPAqJC+JLGHEIiPgW36Cu2JHYjN/Amr8KsIp/8rec=" ;;
+          Linux-ARM64)   ASSET="sfw-free-linux-arm64";       SHA256_B64="WYyNGcgIMu9cp/2wqfw1wEWEf9AoiRJqcRXANFpHjaM=" ;;
+          macOS-ARM64)   ASSET="sfw-free-macos-arm64";       SHA256_B64="MZrrqT1eV8LbaNZwnloEqhIuMmstlaJ8EHTQqExWcDE=" ;;
+          macOS-X64)     ASSET="sfw-free-macos-x86_64";      SHA256_B64="sF/KJci6E/rQGhbwW5nSG4Zlkca0b5xmL2i6MSC1obM=" ;;
+          Windows-X64)   ASSET="sfw-free-windows-x86_64.exe"; SHA256_B64="gg0IaLeHCvtHwJTJNoZmv5rxh0TXXJRlM6M0tX7Z8Yo=" ;;
+          *) echo "sfw-free has no asset for ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 1 ;;
+        esac
+        DIR="${RUNNER_TEMP}/sfw-bin"
+        mkdir -p "$DIR"
+        BIN="$DIR/sfw"
+        [ "$RUNNER_OS" = "Windows" ] && BIN="$BIN.exe"
+        curl -fsSL --retry 3 -o "$BIN" \
+          "https://github.com/SocketDev/sfw-free/releases/download/${VERSION}/${ASSET}"
+        GOT="$(openssl dgst -sha256 -binary "$BIN" | openssl base64 -A)"
+        if [ "$GOT" != "$SHA256_B64" ]; then
+          echo "sfw-free integrity mismatch for ${ASSET}@${VERSION}" >&2
+          echo "  expected sha256(b64): $SHA256_B64" >&2
+          echo "  got      sha256(b64): $GOT" >&2
+          echo "  Fix: re-pin VERSION + SHA256_B64 in .github/actions/repo/setup-sfw/action.yml" >&2
+          exit 1
+        fi
+        chmod +x "$BIN"
+        echo "SFW_BIN=$BIN" >> "$GITHUB_ENV"
+        "$BIN" --version || true

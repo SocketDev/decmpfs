@@ -1,0 +1,7 @@
+# Cargo only reads these runners when building for a macOS target. Linux and
+# Windows builds bypass this file even though it is present in the repository.
+[target.aarch64-apple-darwin]
+runner = "./.cargo/sign-and-run.sh"
+
+[target.x86_64-apple-darwin]
+runner = "./.cargo/sign-and-run.sh"

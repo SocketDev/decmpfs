@@ -1,0 +1,57 @@
+# cargo-fuzz workspace for the decmpfs `addon` decoder (fleet property-and-fuzz
+# lane; mirrors envrypt/fuzz).
+#
+# STANDALONE WORKSPACE (empty `[workspace]` table below + the parent workspace's
+# `exclude = ["fuzz"]`): so a stray `cargo build` at the repo root never sweeps
+# the fuzzer in, and the fuzzer never inherits the ship `[profile.release]`
+# (fat LTO + strip). This crate's own INVERTED profile turns assertions + overflow
+# checks back ON — a silent wrapping add or an assertion violation on fuzz bytes
+# becomes a crash finding instead of a quiet wrong answer.
+#
+# `Cargo.lock` is COMMITTED (reproducible fuzz builds). The path-dep enables the
+# `addon` feature so the untrusted-input decoder (`decode_pressed_data` /
+# `unwrap_if_hybrid`) is compiled in — it links the SAME dependency graph
+# (zstd + sha2) the real PM-helper decode path uses.
+
+[workspace]
+
+[package]
+name = "decmpfs-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+# `addon` pulls zstd + sha2 so the hybrid decoder entry points are present.
+decmpfs = { path = "../crates/decmpfs", features = ["addon"] }
+
+[lints.rust]
+# cargo-fuzz sets `--cfg fuzzing`; keep it out of the unexpected_cfgs warning so a
+# clippy run over the fuzz crate stays clean.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+
+# INVERTED profile — the fuzzer must NOT inherit the ship profile. Assertions +
+# overflow checks back ON so silent wraps / assertion violations become findings.
+[profile.release]
+debug = 1                # symbolized backtraces in crash reports
+debug-assertions = true  # assertion violations become findings
+overflow-checks = true   # silent wrapping arithmetic becomes a crash finding
+
+[[bin]]
+name = "decode_pressed_data"
+path = "fuzz_targets/decode_pressed_data.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "unwrap_if_hybrid"
+path = "fuzz_targets/unwrap_if_hybrid.rs"
+test = false
+doc = false
+bench = false
