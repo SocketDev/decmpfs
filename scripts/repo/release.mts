@@ -3,9 +3,13 @@
 // and (with --push) pushes it, which fires github-release.yml → the GitHub
 // Release → publish-crate.yml + publish-npm.yml.
 //
-//   node scripts/repo/release.mts           # release the already-committed version
-//   node scripts/repo/release.mts 0.3.0     # bump to 0.3.0 first, then release
-//   node scripts/repo/release.mts [ver] --push   # also push branch + tag (triggers CI)
+//   node scripts/repo/release.mts               # release the committed version
+//   node scripts/repo/release.mts --dry-run     # preview: detected version + CHANGELOG, no writes
+//   node scripts/repo/release.mts 0.3.0         # bump to 0.3.0 first, then release
+//   node scripts/repo/release.mts [ver] --push  # also push branch + tag (triggers CI)
+//
+// A committed `-prerelease` version (e.g. 0.1.1-prerelease) auto-finalizes to the
+// plain semver (0.1.1), reusing the CHANGELOG section already written for it.
 //
 // Two modes:
 //   - No version arg (or a version equal to the current one): release WHAT IS
@@ -29,8 +33,30 @@ import { spawnSync } from '@socketsecurity/lib-stable/process/spawn/child'
 const logger = getDefaultLogger()
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-const arg = (process.argv[2] ?? '').replace(/^v/, '')
+const argv = process.argv.slice(2).filter(a => !a.startsWith('--'))
+const arg = (argv[0] ?? '').replace(/^v/, '')
 const push = process.argv.includes('--push')
+const dryRun = process.argv.includes('--dry-run')
+
+// Resolve the version to release from the committed version and an optional arg:
+//   - a `-prerelease` (or any `-suffix`) committed version + no arg → FINALIZE
+//     to the plain semver (0.1.1-prerelease → 0.1.1), reusing the CHANGELOG
+//     section already written for it (kept verbatim, never re-stubbed);
+//   - a new semver arg → BUMP (insert a CHANGELOG stub to fill in);
+//   - otherwise release WHAT IS COMMITTED.
+function resolveRelease(current: string, argVersion: string): {
+  version: string
+  mode: 'finalize' | 'bump' | 'as-committed'
+} {
+  const pre = current.match(/^(?<base>\d+\.\d+\.\d+)-[0-9A-Za-z.-]+$/)
+  if (pre && !argVersion) {
+    return { version: pre.groups!['base']!, mode: 'finalize' }
+  }
+  if (argVersion && argVersion !== current) {
+    return { version: argVersion, mode: 'bump' }
+  }
+  return { version: current, mode: 'as-committed' }
+}
 
 function die(msg: string): never {
   process.stderr.write(`release: ${msg}\n`)
@@ -67,20 +93,22 @@ function currentVersion(): string {
 
 if (arg && !/^\d+\.\d+\.\d+$/.test(arg)) {
   die(
-    `usage: node scripts/repo/release.mts [x.y.z] [--push]\n` +
-      `  saw: ${JSON.stringify(process.argv[2])}. fix: omit the arg to release the ` +
+    `usage: node scripts/repo/release.mts [x.y.z] [--dry-run] [--push]\n` +
+      `  saw: ${JSON.stringify(argv[0])}. fix: omit the arg to release the ` +
       `committed version, or pass a semver like 0.3.0 to bump first.`,
   )
 }
 
 // A release must reflect committed state — the tag points at a commit, so a
-// dirty tree would tag something that was never tested.
-if (git(['status', '--porcelain']).trim()) {
+// dirty tree would tag something that was never tested. A dry run only reads, so
+// it tolerates a dirty tree.
+if (!dryRun && git(['status', '--porcelain']).trim()) {
   die('working tree is dirty. Fix: commit or stash before releasing.')
 }
 
 const current = currentVersion()
-const version = arg || current
+const { version, mode } = resolveRelease(current, arg)
+// Finalize and bump both rewrite the manifests to the release version.
 const bump = version !== current
 
 function edit(rel: string, fn: (src: string) => string): void {
@@ -93,6 +121,23 @@ function edit(rel: string, fn: (src: string) => string): void {
     )
   }
   writeFileSync(p, after)
+}
+
+// Preview the plan and exit before touching anything.
+if (dryRun) {
+  const changelogHas = readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8').includes(
+    `## ${version}`,
+  )
+  logger.log(
+    `release (dry-run):\n` +
+      `  committed version: ${current}\n` +
+      `  release version:   ${version}  (${mode})\n` +
+      `  changelog:         ${changelogHas ? `## ${version} present — kept verbatim` : `## ${version} MISSING — a section must be written first`}\n` +
+      `  manifests:         ${bump ? `rewrite Cargo.toml + napi/decmpfs/package.json + Cargo.lock to ${version}` : 'unchanged'}\n` +
+      `  tag:               v${version} at HEAD\n` +
+      `  push:              ${push ? 'yes → github-release.yml publishes' : 'no (re-run with --push)'}`,
+  )
+  process.exit(0)
 }
 
 if (bump) {
@@ -125,14 +170,18 @@ if (bump) {
   if (updateResult.status !== 0) {
     die(`cargo update exited ${updateResult.status ?? 'on a signal'}.`)
   }
-  edit('CHANGELOG.md', src =>
-    src.includes(`## ${version}`)
-      ? src
-      : src.replace(
-          /\n## /,
-          `\n## ${version}\n\n- TODO: describe the user-visible changes in this release.\n\n## `,
-        ),
-  )
+  // Finalizing a prerelease keeps the section already written for this version;
+  // only a fresh bump inserts a TODO stub to fill in. (The gate below still
+  // requires a real, non-stub section before the release proceeds.)
+  const changelog = readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8')
+  if (!changelog.includes(`## ${version}`)) {
+    edit('CHANGELOG.md', src =>
+      src.replace(
+        /\n## /,
+        `\n## ${version}\n\n- TODO: describe the user-visible changes in this release.\n\n## `,
+      ),
+    )
+  }
 }
 
 // Every release path runs the lockstep gate + requires a real CHANGELOG section.
