@@ -1,4 +1,11 @@
-# decmpfs
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/decmpfs-for-npm-dark.svg">
+    <img alt="decmpfs — by socket labs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/decmpfs-for-npm-light.svg" width="360">
+  </picture>
+</p>
+
+[![Socket Badge](https://badge.socket.dev/npm/package/decmpfs)](https://socket.dev/npm/package/decmpfs)
 
 Apply the operating system's **transparent per-file filesystem compression** to a
 file — smaller on disk, byte-identical on read, decompressed by the kernel at
