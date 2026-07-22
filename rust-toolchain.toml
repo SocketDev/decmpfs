@@ -2,9 +2,13 @@
 # channel exact so local development and CI compile with the same compiler.
 # rustfmt and clippy are declared here because the shared format/check commands
 # depend on them; profile=minimal avoids unrelated documentation components.
-# Fuzz (cargo-fuzz) and the soak updater (-Zmin-publish-age) pin their own
-# nightly per job; this stable channel is the primary build + lint compiler.
+# Pinned to nightly-2026-07-20 so the cargo soak updater (`-Zmin-publish-age`)
+# runs on the SAME toolchain as the build — no separate updater-only nightly.
+# Fuzz (cargo-fuzz) still pins its own nightly per job.
+#
+# TEMPORARY: revert to a stable pin (1.98) once Cargo stabilizes the soak
+# feature — https://github.com/rust-lang/cargo/issues/17009.
 [toolchain]
-channel = "1.97.1"
+channel = "nightly-2026-07-20"
 components = ["clippy", "rustfmt"]
 profile = "minimal"

@@ -108,6 +108,7 @@ export function replaceCargoVersion(
     if (/^\s*\[/.test(line)) {
       break
     }
+    // Capture a `version = "X"` line as (indent+key+open-quote)(value)(close-quote+rest).
     const m = /^(\s*version\s*=\s*")([^"]*)(".*)$/.exec(line)
     if (m) {
       lines[i] = `${m[1]}${nextVersion}${m[3]}`
@@ -205,11 +206,16 @@ export async function runBump(options: {
     // heuristic. MAJOR can't be smuggled in through a hint (it still needs
     // --release-as major), and the hint must advance PAST the last released
     // base or it would re-publish / move backward.
-    const currentMajor = pkg.version.split('.')[0]
-    if (hinted.split('.')[0] !== currentMajor) {
+    // Compare against the last released `base`, not the manifest — `hinted` is
+    // the manifest with its suffix stripped, so its major always equals the
+    // manifest's; comparing them was dead code that let a `X.0.0-prerelease`
+    // hint smuggle a major into a PERMANENT crates.io publish.
+    const baseMajor = base.split('.')[0]
+    if (hinted.split('.')[0] !== baseMajor) {
       logger.fail(
-        `Version hint ${pkg.version} names a MAJOR jump — a major requires ` +
-          `the explicit --release-as major signal, not a hint.`,
+        `Version hint ${pkg.version} names ${hinted}, a MAJOR jump past the ` +
+          `last released version ${base} — a major requires the explicit ` +
+          `--release-as major signal, not a hint.`,
       )
       process.exitCode = 1
       return

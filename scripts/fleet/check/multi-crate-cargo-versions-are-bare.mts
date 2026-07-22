@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * @file Code-as-law: a MULTI-crate cargo workspace keeps every publishable crate
- *   at a BARE release version. Its crates wire together with inter-crate deps
- *   that reference published crates.io versions (`{ workspace = true }` → a
- *   `version = "X.Y.Z"` pin), and cargo excludes prereleases from a `^X.Y.Z`
+ * @file Code-as-law: a MULTI-crate cargo workspace keeps every publishable
+ *   crate at a BARE release version. Its crates wire together with inter-crate
+ *   deps that reference published crates.io versions (`{ workspace = true }` →
+ *   a `version = "X.Y.Z"` pin), and cargo excludes prereleases from a `^X.Y.Z`
  *   range — so a `-prerelease` on any crate breaks inter-crate resolution
  *   (`cargo build` / `cargo update` fail). A single-crate workspace has no
  *   inter-crate deps, so the `-prerelease` hint is OPTIONAL there: with no hint
- *   the release bumps from the PUBLISHED version by heuristic (patch by default,
- *   minor when a feature landed; never an auto-major), and a hint just names a
- *   specific target. Publishable crates resolve via `cargo metadata` (so
- *   `[workspace.package]` inheritance is applied). Anti-skip is a separate gate
- *   (version-is-not-ahead-of-published). Fail-OPEN (skip) with no Cargo.toml, no
- *   cargo toolchain, or unreadable metadata — never a false-fail on a lane
- *   without Rust. Usage: node
+ *   the release bumps from the PUBLISHED version by heuristic (patch by
+ *   default, minor when a feature landed; never an auto-major), and a hint just
+ *   names a specific target. Publishable crates resolve via `cargo metadata`
+ *   (so `[workspace.package]` inheritance is applied). Anti-skip is a separate
+ *   gate (version-is-not-ahead-of-published). Fail-OPEN (skip) with no
+ *   Cargo.toml, no cargo toolchain, or unreadable metadata — never a false-fail
+ *   on a lane without Rust. Usage: node
  *   scripts/fleet/check/multi-crate-cargo-versions-are-bare.mts [--quiet]
  */
 
@@ -35,19 +35,19 @@ export interface CargoCrateVersion {
 }
 
 /**
- * A prerelease/build-suffixed version (`0.1.0-prerelease`, `1.2.3-rc.1`). A bare
- * `X.Y.Z` is not one.
+ * A prerelease/build-suffixed version (`0.1.0-prerelease`, `1.2.3-rc.1`). A
+ * bare `X.Y.Z` is not one.
  */
 export function isPrereleaseHint(version: string): boolean {
   return version.includes('-') || version.includes('+')
 }
 
 /**
- * Which publishable crates violate "multi-crate workspaces stay bare": with more
- * than one publishable crate, ANY crate carrying a prerelease is a violation (it
- * breaks inter-crate `^X.Y.Z` resolution). A single-crate workspace has no
- * inter-crate deps and uses the optional `-prerelease` hint, so it never
- * violates — returns `[]`. Pure; the test drives it.
+ * Which publishable crates violate "multi-crate workspaces stay bare": with
+ * more than one publishable crate, ANY crate carrying a prerelease is a
+ * violation (it breaks inter-crate `^X.Y.Z` resolution). A single-crate
+ * workspace has no inter-crate deps and uses the optional `-prerelease` hint,
+ * so it never violates — returns `[]`. Pure; the test drives it.
  */
 export function barePolicyViolations(
   packages: readonly CargoCrateVersion[],

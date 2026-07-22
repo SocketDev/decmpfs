@@ -21,11 +21,11 @@ export interface CargoPackage {
 
 // A raw `cargo metadata` package entry, projected to the fields we read.
 interface RawCargoPackage {
-  manifest_path?: unknown
-  name?: unknown
-  publish?: unknown
-  repository?: unknown
-  version?: unknown
+  manifest_path?: unknown | undefined
+  name?: unknown | undefined
+  publish?: unknown | undefined
+  repository?: unknown | undefined
+  version?: unknown | undefined
 }
 
 /**
@@ -99,10 +99,10 @@ export async function readPublishableCargoPackages(): Promise<CargoPackage[]> {
 }
 
 /**
- * Resolve the single publishable package. Fails LOUD when nothing is publishable
- * (every package sets `publish = false`) or when more than one is (ambiguous —
- * pass `packageName`, wired to the `--package` selector, to disambiguate).
- * Returns the package's name/version/repository/manifest_path.
+ * Resolve the single publishable package. Fails LOUD when nothing is
+ * publishable (every package sets `publish = false`) or when more than one is
+ * (ambiguous — pass `packageName`, wired to the `--package` selector, to
+ * disambiguate). Returns the package's name/version/repository/manifest_path.
  */
 export async function readCargoPackage(
   packageName?: string | undefined,

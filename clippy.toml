@@ -1,0 +1,21 @@
+# Fleet Rust lint config — the Rust half of the cross-language lint parity
+# effort. Cascaded to cargo-capability repos (CONDITIONAL_FILES `cargo` group),
+# alongside rustfmt.toml / rust-toolchain.toml.
+#
+# This file holds only what clippy.toml can express (thresholds + disallowed
+# APIs). The deny-set itself lives in each crate's Cargo.toml `[lints]` table
+# (see .claude/rules/fleet/lint-parity-across-languages.md for the canonical
+# snippet), and the language-agnostic socket/* doctrine rules that no linter can
+# express are enforced by the shared fleet check-script.
+
+# Port of socket/no-boolean-trap-param: a fn taking >1 bool param is a call-site
+# trap (`foo(true, false)` is unreadable). Clippy's fn_params_excessive_bools.
+max-fn-params-bools = 1
+
+# Port of socket/no-process-chdir + socket/no-process-cwd-in-scripts-hooks:
+# process-global cwd mutation/reads are non-deterministic under parallelism and
+# break relative-path assumptions. Prefer absolute paths / explicit base dirs.
+disallowed-methods = [
+  { path = "std::env::set_current_dir", reason = "process-global chdir is a race under parallel tasks; pass an explicit base path instead" },
+  { path = "std::env::current_dir", reason = "cwd is ambient state; thread an explicit base path through instead of reading the process cwd" },
+]

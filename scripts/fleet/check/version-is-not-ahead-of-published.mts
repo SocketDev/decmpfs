@@ -123,11 +123,11 @@ async function checkNpm(): Promise<void> {
 }
 
 /**
- * The crates.io twin. Every publishable crate's version (resolved via
- * `cargo metadata`, so `[workspace.package]` inheritance is applied) must not be
- * more than one release ahead of what that crate published on crates.io.
- * Fail-OPEN when there is no Cargo.toml, no cargo toolchain, no publishable
- * package, or `cargo metadata` is unreadable — a skip, never a false-fail.
+ * The crates.io twin. Every publishable crate's version (resolved via `cargo
+ * metadata`, so `[workspace.package]` inheritance is applied) must not be more
+ * than one release ahead of what that crate published on crates.io. Fail-OPEN
+ * when there is no Cargo.toml, no cargo toolchain, no publishable package, or
+ * `cargo metadata` is unreadable — a skip, never a false-fail.
  */
 async function checkCargo(): Promise<void> {
   if (!existsSync(path.join(REPO_ROOT, 'Cargo.toml'))) {
