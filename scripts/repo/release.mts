@@ -170,6 +170,17 @@ if (bump) {
   if (updateResult.status !== 0) {
     die(`cargo update exited ${updateResult.status ?? 'on a signal'}.`)
   }
+  // The napi manifest version changed — resync pnpm-lock.yaml so a release never
+  // leaves the lock drifted (a dirty lock blocks the next release and ships
+  // stale `link:` specifiers).
+  const relocked = spawnSync(
+    'pnpm',
+    ['install', '--lockfile-only', '--ignore-scripts'],
+    { cwd: root, stdio: 'inherit' },
+  )
+  if (relocked.status !== 0) {
+    die(`pnpm install --lockfile-only exited ${relocked.status ?? 'on a signal'}.`)
+  }
   // Finalizing a prerelease keeps the section already written for this version;
   // only a fresh bump inserts a TODO stub to fill in. (The gate below still
   // requires a real, non-stub section before the release proceeds.)
@@ -211,14 +222,21 @@ if (!notes || /TODO: describe the user-visible changes/.test(notes)) {
 }
 
 if (bump) {
+  const files = [
+    'crates/decmpfs/Cargo.toml',
+    'napi/decmpfs/package.json',
+    'Cargo.lock',
+    'CHANGELOG.md',
+  ]
+  // Include the lockfile only when the resync above actually changed it.
+  if (git(['status', '--porcelain', 'pnpm-lock.yaml']).trim()) {
+    files.push('pnpm-lock.yaml')
+  }
   git(
     [
       'commit',
       '-o',
-      'crates/decmpfs/Cargo.toml',
-      'napi/decmpfs/package.json',
-      'Cargo.lock',
-      'CHANGELOG.md',
+      ...files,
       '-m',
       `chore: bump version to ${version}`,
     ],
