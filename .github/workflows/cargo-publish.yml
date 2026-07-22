@@ -47,7 +47,7 @@ jobs:
     timeout-minutes: 20
     # Real publishes run in the `release` environment (reviewer gate + a tighter
     # OIDC trusted-publisher match); only a manual dry-run dispatch skips it.
-    environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry-run == 'true') && '' || 'release' }}
+    environment: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.dry-run == 'true') && '' || 'release' }}
     permissions:
       # Needed for crates.io Trusted Publishing via OIDC.
       id-token: write
@@ -70,7 +70,7 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
           # Release-triggered = real publish; manual dispatch honors its input.
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || 'false' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry-run || 'false' }}
         run: |
           ARGS=""
           if [ "$DRY_RUN" != "true" ]; then
