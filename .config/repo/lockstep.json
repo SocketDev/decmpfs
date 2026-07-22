@@ -1,0 +1,5 @@
+{
+  "$schema": "../fleet/lockstep.schema.json",
+  "area": "decmpfs",
+  "rows": []
+}
