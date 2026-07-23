@@ -2,7 +2,21 @@
   "$schema": "../socket-wheelhouse-schema.json",
   "schemaVersion": 1,
   "repoName": "decmpfs",
-  "repo": { "type": "solo" },
-  "build": { "from": "crates-registry", "type": "rust" },
-  "secondaries": [{ "from": "npm-registry", "type": "addon" }]
+  "repo": {
+    "type": "solo"
+  },
+  "build": {
+    "from": "crates-registry",
+    "type": "rust"
+  },
+  "secondaries": [
+    {
+      "from": "npm-registry",
+      "type": "addon"
+    }
+  ],
+  "fuzz": {
+    "exempt": true,
+    "reason": "JS surface is thin napi glue over the Rust core; the untrusted-input boundary (decmpfs header/xattr decode) is fuzzed in Rust via cargo-fuzz fuzz/fuzz_targets, which stays in place. A vitiate JS lane would only re-fuzz the binding shims."
+  }
 }

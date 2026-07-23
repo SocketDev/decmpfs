@@ -1,8 +1,8 @@
 # Per-platform CPU baselines for the shipped `decmpfs.node` matrix. Keyed per
 # exact target triple so the release build picks the right floor for each
-# published `@decmpfs/<triple>` package. NEVER `target-cpu=native` — that would
-# bake the CI build machine's microarchitecture into a binary shipped to every
-# consumer.
+# published `@decmpfs/<triple>` package. NEVER pin the CPU to the build host's
+# own microarchitecture — that would bake the CI build machine's ISA into a
+# binary shipped to every consumer.
 #
 # x86-64-v2 (SSE4.2 / POPCNT, ~2009 Nehalem+) is a safe modern floor that lets
 # the zstd/sha2 codec paths use better codegen than the stock SSE2-only baseline.

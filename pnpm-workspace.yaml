@@ -52,6 +52,11 @@ catalog:
   'playwright-core': 1.61.1
   'portless': 0.15.4
   'regjsparser': 0.13.2
+  # rolldown — bundles .claude/hooks/fleet into _dist/bundle.cjs via
+  # scripts/fleet/build-hook-bundle.mts. Pin matches the wheelhouse
+  # catalogOptional entry; the per-platform @rolldown/binding-* stay as
+  # soak-excluded transitives (consumers depend on `rolldown` only).
+  'rolldown': 1.1.4
   'semver': 7.8.5
   'shell-quote': 1.10.0
   svgo: 4.0.1
