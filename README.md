@@ -29,7 +29,7 @@ uncompressed and no portable API exists to fix that. decmpfs is that API:
   recompresses so the savings survive the copy. Node's own `fs.copyFile` cannot
   do this on macOS — libuv has no `clonefile` path (`COPYFILE_FICLONE` falls back
   to a byte copy, `COPYFILE_FICLONE_FORCE` throws `ENOSYS`).
-- **Speed-first codecs** (a file is written once, read on load): LZVN on macOS,
+- **Speed-first codecs** — a file is written once, read on load: LZVN on macOS,
   zstd→lzo→zlib on btrfs, LZNT1 on NTFS (survives a reinstall's open-for-write,
   unlike WOF).
 
@@ -74,7 +74,7 @@ The `Gate` decides which files to compress by glob and/or size:
 let gate = Gate::new(Some("**/*.node"), Some(">= 1MB"))?;
 ```
 
-Node (an N-API binding in [`napi/`](napi/), async + `Sync` variants of each):
+Node — an N-API binding in [`napi/`](napi/), async + `Sync` variants of each:
 
 - `writeDecmpfsFile(path, data)` — `fs.writeFile`-shaped, atomic by default,
   lands the bytes already compressed.
