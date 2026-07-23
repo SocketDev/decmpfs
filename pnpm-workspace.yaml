@@ -95,8 +95,6 @@ overrides:
 
 minimumReleaseAgeExclude:
   - '@sdxgen/*'
-  - '@socketaddon/*'
-  - '@socketbin/*'
   - '@socketoverride/*'
   - '@socketregistry/*'
   - '@socketsecurity/*'
