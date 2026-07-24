@@ -55,7 +55,15 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/fleet/cargo-publish.mts ${{ inputs.publish == true && '--direct' || '--staged --dry-run' }}
+        # The rustup cargo goes AHEAD of the SFW shim for the publish leg:
+        # the shim's proxy interposes the crates.io publish PUT (uploads are
+        # outside its registry-read bypass), and cargo then fails TLS
+        # verification with curl error 60. Reads (index, downloads) already
+        # happened in earlier steps under the shim; the upload is outbound
+        # publish traffic with an OIDC token — no supply-chain read surface.
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          node scripts/fleet/cargo-publish.mts ${{ inputs.publish == true && '--direct' || '--staged --dry-run' }}
       - name: Attest build provenance (.crate)
         if: ${{ inputs.publish == true }}
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
