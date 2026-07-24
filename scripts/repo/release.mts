@@ -154,7 +154,18 @@ if (bump) {
   }
   // The napi manifest version changed — resync pnpm-lock.yaml so a release never
   // leaves the lock drifted (a dirty lock blocks the next release and ships
-  // stale `link:` specifiers).
+  // stale `link:` specifiers). The platform workspace manifests must exist
+  // first (they are generated, gitignored, and referenced by `link:` from the
+  // napi package) or the relock DROPS their importers and CI's frozen install
+  // — which generates them before installing — mismatches (the v0.1.2 red).
+  const manifests = spawnSync(
+    process.execPath,
+    [path.join(root, 'napi', 'decmpfs', 'scripts', 'make-npm-dirs.mts')],
+    { cwd: root, stdio: 'inherit' },
+  )
+  if (manifests.status !== 0) {
+    die(`make-npm-dirs exited ${manifests.status ?? 'on a signal'}.`)
+  }
   const relocked = spawnSync(
     'pnpm',
     ['install', '--lockfile-only', '--ignore-scripts'],
