@@ -1,6 +1,13 @@
-# Fleet toolchain for repositories whose primary build is Rust. Keep the
-# channel exact so local development and CI compile with the same compiler.
-# rustfmt and clippy are declared here because the shared format/check commands
+# THE canonical fleet Rust pin — single source of truth for the toolchain
+# version. Bump here, never in a Dockerfile or a member copy. Cascades to the
+# root of every rust-buildType member (rustup discovers it there); the
+# wheelhouse itself builds no Rust, so no root copy exists here. Derived
+# copies kept in lockstep by scripts/fleet/check/rust-toolchain-pins-are-synced.mts:
+#   - RUST_UPDATER_TOOLCHAIN (scripts/fleet/update/cargo.mts) — the cargo soak
+#     updater's nightly
+#   - RUST_VERSION build-arg for docker/fleet/{rust,acorn}-base
+#     (scripts/repo/prebake-pins.mts reads this file)
+# rustfmt and clippy are declared because the shared format/check commands
 # depend on them; profile=minimal avoids unrelated documentation components.
 # Pinned to nightly-2026-07-20 so the cargo soak updater (`-Zmin-publish-age`)
 # runs on the SAME toolchain as the build — no separate updater-only nightly.
