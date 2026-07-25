@@ -82,6 +82,9 @@ overrides:
   'hasown': 'npm:@socketregistry/hasown@1.0.7'
   'iconv-lite': '0.7.2'
   'isexe@>=3': '4.0.0'
+  # js-yaml 5.x < 5.2.2 has GHSA-pm4m-ph32-ghv5 (exponential parse time in
+  # flow collections); scoped so the unaffected 4.x line stays untouched.
+  'js-yaml@>=5.0.0 <5.2.2': '5.2.2'
   'lru-cache@>=10': '11.3.6'
   'magic-string': '1.0.0'
   'mime-db': '1.54.0'
@@ -188,6 +191,12 @@ minimumReleaseAgeExclude:
   - '@shadscan/cli@0.2.0'
   # published: 2026-07-21 | removable: 2026-07-28
   - 'oxlint@1.75.0'
+  # js-yaml 5.2.2 — HIGH-severity security bypass: GHSA-pm4m-ph32-ghv5
+  # (exponential parse time in flow collections) is fixed in 5.2.2; the
+  # scoped override above forces the vulnerable 5.x line onto it ahead of
+  # the soak. Exact-pinned so a future version re-soaks.
+  # published: 2026-07-23 | removable: 2026-07-30
+  - 'js-yaml@5.2.2'
 
 allowBuilds:
   '@socketsecurity/sdk': false
