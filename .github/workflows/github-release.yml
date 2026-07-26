@@ -90,18 +90,54 @@ jobs:
             fi
             echo "✓ ${NAME}@${VERSION} is live on npm."
           elif [ -f Cargo.toml ]; then
-            NAME="$(node -e "const m=/^name *= *\"([^\"]+)\"/m.exec(require('node:fs').readFileSync('Cargo.toml','utf8')); if(!m){process.exit(1)}; console.log(m[1])")"
-            case "${#NAME}" in
-              1) IDX="1/${NAME}" ;;
-              2) IDX="2/${NAME}" ;;
-              3) IDX="3/${NAME:0:1}/${NAME}" ;;
-              *) IDX="${NAME:0:2}/${NAME:2:2}/${NAME}" ;;
-            esac
-            if ! curl -fsS "https://index.crates.io/${IDX}" | grep -q "\"vers\":\"${VERSION}\""; then
-              echo "× ${NAME}@${VERSION} is not in the crates.io index — refusing to cut the GH release before the registry publish." >&2
-              exit 1
+            # Single crate: the root [package] name. Workspace: every
+            # publishable member's name (publish = false members are skipped).
+            # Empty output + exit 0 = nothing publishable (stub-only
+            # workspace); a malformed manifest fails LOUD instead of dying
+            # silently under `set -e`.
+            NAMES="$(node -e '
+              const fs = require("node:fs")
+              const root = fs.readFileSync("Cargo.toml", "utf8")
+              const pkgName = /^\[package\][^]*?^name *= *"([^"]+)"/m.exec(root)
+              if (pkgName) {
+                console.log(pkgName[1])
+                process.exit(0)
+              }
+              const members = /^members *= *\[([^\]]*)\]/m.exec(root)
+              if (!members) {
+                console.error("× Cargo.toml has neither a [package] name nor a [workspace] members list — cannot derive crate names for the registry-liveness gate.")
+                console.error("  Fix: give the root manifest a [package] section or a members = [...] list.")
+                process.exit(1)
+              }
+              const entries = [...members[1].matchAll(/"([^"]+)"/g)].map(m => m[1])
+              const dirs = entries.flatMap(e => e.includes("*") ? fs.globSync(e) : [e])
+              const names = []
+              for (const dir of dirs) {
+                const manifestPath = `${dir}/Cargo.toml`
+                if (!fs.existsSync(manifestPath)) { continue }
+                const manifest = fs.readFileSync(manifestPath, "utf8")
+                if (/^publish *= *false/m.test(manifest)) { continue }
+                const name = /^name *= *"([^"]+)"/m.exec(manifest)
+                if (name) { names.push(name[1]) }
+              }
+              console.log(names.join("\n"))
+            ')"
+            if [ -z "${NAMES}" ]; then
+              echo "No publishable crate in the workspace — skipping the crates.io liveness gate."
             fi
-            echo "✓ ${NAME}@${VERSION} is live on crates.io."
+            for NAME in ${NAMES}; do
+              case "${#NAME}" in
+                1) IDX="1/${NAME}" ;;
+                2) IDX="2/${NAME}" ;;
+                3) IDX="3/${NAME:0:1}/${NAME}" ;;
+                *) IDX="${NAME:0:2}/${NAME:2:2}/${NAME}" ;;
+              esac
+              if ! curl -fsS "https://index.crates.io/${IDX}" | grep -q "\"vers\":\"${VERSION}\""; then
+                echo "× ${NAME}@${VERSION} is not in the crates.io index — refusing to cut the GH release before the registry publish." >&2
+                exit 1
+              fi
+              echo "✓ ${NAME}@${VERSION} is live on crates.io."
+            done
           else
             echo "No public npm package or crate manifest — skipping the registry-liveness gate (github-release-only repo)."
           fi

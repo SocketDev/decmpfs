@@ -23,7 +23,7 @@ catalog:
   '@socketsecurity/lib-stable': npm:@socketsecurity/lib@6.2.3
   '@socketsecurity/registry': 2.0.4
   '@socketsecurity/registry-stable': npm:@socketsecurity/registry@2.0.2
-  '@socketsecurity/sdk': 4.0.4
+  '@socketsecurity/sdk': 4.1.1
   '@socketsecurity/sdk-stable': npm:@socketsecurity/sdk@4.0.3
   '@types/mdast': 4.0.4
   '@types/node': 26.1.1
@@ -38,7 +38,7 @@ catalog:
   'dtu-github-actions': 0.17.1
   'fast-check': 4.9.0
   'magic-string': 1.0.0
-  'markdownlint-cli2': 0.23.0
+  'markdownlint-cli2': 0.23.1
   'mdast-util-from-markdown': 2.0.3
   'micromark': 4.0.2
   'neosanitize': 0.3.0
@@ -60,7 +60,7 @@ catalog:
   'rolldown': 1.1.4
   'semver': 7.8.5
   'shell-quote': 1.10.0
-  svgo: 4.0.1
+  svgo: 4.0.2
   'taze': 19.16.0
   typescript: 7.0.2
   'vitest': 4.1.10
@@ -80,12 +80,10 @@ overrides:
   'has-symbols': 'npm:@socketregistry/has-symbols@1.0.7'
   'has-tostringtag': 'npm:@socketregistry/has-tostringtag@1.0.7'
   'hasown': 'npm:@socketregistry/hasown@1.0.7'
-  'iconv-lite': '0.7.2'
+  'iconv-lite': '0.7.3'
   'isexe@>=3': '4.0.0'
-  # js-yaml 5.x < 5.2.2 has GHSA-pm4m-ph32-ghv5 (exponential parse time in
-  # flow collections); scoped so the unaffected 4.x line stays untouched.
   'js-yaml@>=5.0.0 <5.2.2': '5.2.2'
-  'lru-cache@>=10': '11.3.6'
+  'lru-cache@>=10': '11.5.2'
   'magic-string': '1.0.0'
   'mime-db': '1.54.0'
   'mime-types@>=3': '3.0.2'
@@ -95,7 +93,7 @@ overrides:
   'semver@>=5.0.0 <7.6.0': '7.8.1'
   'side-channel': 'npm:@socketregistry/side-channel@1.0.10'
   'ssri@>=12': '13.0.1'
-  'string-width@>=5': '8.1.0'
+  'string-width@>=5': '8.2.2'
   'update-notifier@>=4.0.0': '7.3.1'
   'uuid': '11.1.1'
   'which': '7.0.0'
