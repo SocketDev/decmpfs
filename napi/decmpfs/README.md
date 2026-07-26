@@ -12,7 +12,7 @@ file — smaller on disk, byte-identical on read, decompressed by the kernel at
 near-native speed. macOS APFS (decmpfs/LZVN), Linux btrfs (zstd→lzo→zlib),
 Windows NTFS (LZNT1).
 
-This is the Node addon for [decmpfs](https://github.com/decmpfs/decmpfs). The
+This is the Node addon for [decmpfs](https://github.com/SocketDev/decmpfs). The
 prebuilt native binary ships as an optional dependency per platform
 (`@decmpfs/<triple>`); pnpm installs only the one matching the host.
 
@@ -34,7 +34,7 @@ const result = writeDecmpfsFile('data.bin', bytes)
 copyDecmpfsFile('data.bin', 'copy.bin')
 ```
 
-See the [repository](https://github.com/decmpfs/decmpfs) for the full API and the
+See the [repository](https://github.com/SocketDev/decmpfs) for the full API and the
 Rust crate.
 
 ## License

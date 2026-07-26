@@ -18,7 +18,7 @@ import { TARGETS } from './targets.mts'
 // Kept in lockstep with the crate description (crates/decmpfs/Cargo.toml).
 const DESCRIPTION =
   'Apply OS-level transparent filesystem compression (APFS decmpfs / btrfs / NTFS) to a file in place.'
-const REPOSITORY = 'https://github.com/decmpfs/decmpfs'
+const REPOSITORY = 'https://github.com/SocketDev/decmpfs'
 
 interface Placeholder {
   cpu?: string | undefined

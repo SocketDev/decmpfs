@@ -10,7 +10,7 @@
     "ntfs"
   ],
   "license": "MIT",
-  "repository": "https://github.com/decmpfs/decmpfs",
+  "repository": "https://github.com/SocketDev/decmpfs",
   "files": [
     "index.cjs",
     "index.d.cts"
