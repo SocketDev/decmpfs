@@ -112,6 +112,49 @@ Never re-race a pool that survives across iterations (the handlers stack). See `
 
 When you `await Promise.all([...])` and DISCARD the resolved array — the await is its own statement — the only thing `Promise.all` does that `Promise.allSettled` doesn't is abort the whole batch on the first rejection — leaving the sibling promises' rejections unhandled. For order-independent concurrent work prefer `Promise.allSettled(...)` so one failure doesn't abandon the rest (then `.filter(Boolean)` / inspect the settled results). Keep `Promise.all` when you consume the positional result (`const [a, b] = await Promise.all(...)`) or genuinely want fail-fast — for the latter, mark it: `// oxlint-disable-next-line socket/prefer-all-settled -- fail-fast: <reason>`. Enforced by `socket/prefer-all-settled` (report-only; the fix changes error semantics, so it's the author's call).
 
+## Prefer the keyed combinators for named values
+
+The positional forms fit a list of the SAME kind of thing. When you are
+combining a fixed set of NAMED things, positional destructuring bites: put the
+names in a different order than the calls and the values swap, with no error
+anywhere.
+
+```ts
+// Runs fine. config now holds the lockfile and lockfile holds the config.
+const [config, lockfile] = await Promise.all([readLockfile(), readConfig()])
+```
+
+Keys can't swap. Use the keyed helpers from socket-lib
+(`@socketsecurity/lib/promises/all-keyed`, the tc39 proposal-await-dictionary
+shapes; no engine ships them natively yet):
+
+```ts
+import { pAllKeyed } from '@socketsecurity/lib/promises/all-keyed'
+
+// All three reads start together (no waterfall), and each value lands
+// under its own name no matter how the lines are ordered.
+const { config, manifest, lockfile } = await pAllKeyed({
+  config: readConfig(),
+  manifest: readManifest(),
+  lockfile: readLockfile(),
+})
+```
+
+Decision table:
+
+| Shape of the work | Use |
+| --- | --- |
+| A fixed set of named values, fail-fast | `pAllKeyed({...})` |
+| A fixed set of named values, per-key failure handling | `pAllSettledKeyed({...})` |
+| A list of the same kind, result consumed positionally, fail-fast | `Promise.all([...])` |
+| A list of the same kind, order-independent, failures inspected | `Promise.allSettled([...])` (the rule above) |
+| List with a concurrency cap / retries | `pEach` / `pFilter` (`promises/iterate`) |
+
+Same rejection semantics as their positional cousins: `pAllKeyed` fail-fast
+with every value subscribed (no unhandled-rejection stragglers), and
+`pAllSettledKeyed` always resolves with `{ status, value | reason }` records.
+The result is a null-prototype object; own enumerable keys, symbols included.
+
 ## `Safe` suffix
 
 Non-throwing wrappers end in `Safe` (`safeDelete`, `safeDeleteSync`, `applySafe`, `weakRefSafe`). Read it as "X, but safe from throwing." The wrapper traps the thrown value internally and returns `undefined` (or the documented fallback). Don't invent alternative suffixes (`Try`, `OrUndefined`, `Maybe`). Pick `Safe`.

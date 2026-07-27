@@ -3,6 +3,10 @@ type FleetCommentStyle = 'hash' | 'html' | 'slash';
 interface BundleManifest {
   readonly files: Record<string, string>;
   readonly generatedPaths?: readonly string[] | undefined;
+  readonly movedPaths?: ReadonlyArray<{
+    from: string;
+    to: string;
+  }> | undefined;
   readonly removedPaths?: readonly string[] | undefined;
   readonly segments?: readonly SegmentEntry[] | undefined;
   readonly settingsSegment?: SettingsSegmentEntry | undefined;
@@ -145,10 +149,59 @@ declare function readAppliedFiles(dest: string): string[] | undefined;
 declare function writeAppliedFiles(dest: string, files: readonly string[]): void;
 declare function writeAppliedRef(dest: string, ref: string): void;
 //#endregion
+//#region template/bootstrap/src/install-prune.d.mts
+/**
+ * Apply the manifest's per-repo-owned file MOVES (`movedPaths`) — the rename
+ * half of relocating a file the fleet does NOT byte-mirror. A plain tombstone
+ * would delete the member's only copy with nothing in the bundle to re-create
+ * it (the file is repo-owned; the bundle never ships it), so the move renames
+ * `from` → `to` when `to` is absent — repo-owned content survives
+ * byte-for-byte — and deletes a stale `from` leftover once `to` exists. Runs
+ * BEFORE removeTombstonedPaths. Idempotent: a missing `from` is a no-op.
+ * Belt: a move whose `from` the current manifest ships a file at/under is
+ * skipped, so a bad producer entry can never displace freshly placed payload.
+ * Returns the count of paths acted on (renamed or cleaned up).
+ */
+declare function applyMovedPaths(dest: string, manifest: FleetFileManifest): number;
+/**
+ * Delete the manifest's TOMBSTONED paths (`removedPaths`) — files or whole
+ * dirs a past bundle shipped that the wheelhouse has since moved/retired. The
+ * applied-files prune below only covers a member whose record OWNED the old
+ * path; a fresh clone or a member whose record began after the move keeps the
+ * orphan forever (the v1.0.12 `.github/actions/fleet/lib` → `_shared` move did
+ * exactly that fleet-wide). Manifest-scoped like the prune — never a directory
+ * walk. Belt: a tombstone the current manifest ships a file at/under is
+ * skipped, so a bad producer entry can never delete freshly placed payload.
+ */
+declare function removeTombstonedPaths(dest: string, manifest: FleetFileManifest): number;
+/**
+ * Prune stale fleet files so a fetch is a true SYNC (place + prune) — scoped
+ * to what the bundle PREVIOUSLY owned. Only a file the last-applied manifest
+ * shipped (the applied-files record, see readAppliedFiles) that the current
+ * manifest no longer ships is deleted. The prune list comes from MANIFESTS,
+ * never a directory walk, so repo-owned files that merely live beside the
+ * fleet payload — per-repo EXPECTED variants like
+ * `.config/fleet/tsconfig.check.json`, `.gitkeep` seeds, cascade-only
+ * release-excluded scripts under `scripts/fleet/` — can never be collateral.
+ * With no record (fresh clone, or the first refresh that introduces the
+ * record) nothing is pruned; the record starts with this apply and the next
+ * refresh prunes precisely.
+ */
+declare function pruneStaleFleetFiles(dest: string, manifest: FleetFileManifest, previousFiles: readonly string[] | undefined): number;
+//#endregion
 //#region template/bootstrap/src/install.d.mts
 /**
- * Copy every verified byte-identical file from `filesDir` into `dest`,
- * creating parent directories as needed.
+ * Place every verified bundle file from `filesDir` into `dest`, creating
+ * parent directories as needed. Sentinel-scoped ONLY for the DESIGNATED
+ * segment files (FLEET_CANONICAL_SPLICE_FILES): the bundle bytes replace
+ * everything through the fleet-canonical end sentinel and the member tail
+ * after it survives byte-for-byte — the repo-local oxlintrc ignorePatterns,
+ * the derived .prettierignore lockstep-mirrors block. A whole-file copy here
+ * wiped exactly those tails on every bootstrap-path refresh. Every other file
+ * is a plain byte copy — the PATH gate is load-bearing: content-only gating
+ * spliced ANY placed file merely mentioning the sentinel token, stitching
+ * stale member tails onto fresh bundle heads (the v1.0.14 fetcher-chimera
+ * incident). A designated file landing for the first time also byte-copies.
  */
 declare function installFiles(filesDir: string, dest: string, manifest: BundleManifest): void;
 /**
@@ -197,6 +250,10 @@ declare function normalizeManifestEntryPath(entry: {
 }): string;
 interface FleetFileManifest {
   files: Record<string, string>;
+  movedPaths?: ReadonlyArray<{
+    from: string;
+    to: string;
+  }> | undefined;
   removedPaths?: readonly string[] | undefined;
   segments?: ReadonlyArray<{
     path: string;
@@ -209,7 +266,10 @@ interface FleetFileManifest {
  * Compute the gitignore entries for thin mode — the wholly-fleet files that the
  * download/fetch action supplies, so they need not be git-tracked. Hybrid paths
  * (manifest.segments — CLAUDE.md, pnpm-workspace.yaml, …) are merged per repo
- * and stay tracked, so they're excluded.
+ * and stay tracked, so they're excluded. The DESIGNATED sentinel-splice files
+ * are hybrids too — they carry a member tail below the fleet-canonical end
+ * sentinel that only the member's git history preserves; untracking one turns
+ * the next fresh clone into a tail wipe.
  *
  * EVERY entry is EXPLICIT — one line per bundle file, never a blanket
  * `…/fleet/` dir entry. A dir blanket also swallows any future non-bundle
@@ -224,31 +284,6 @@ declare function thinIgnoreEntries(manifest: FleetFileManifest): string[];
  * untrack them from git so the fetch action repopulates them going forward.
  */
 declare function applyThinMode(config: ThinConfig): void;
-/**
- * Delete the manifest's TOMBSTONED paths (`removedPaths`) — files or whole
- * dirs a past bundle shipped that the wheelhouse has since moved/retired. The
- * applied-files prune below only covers a member whose record OWNED the old
- * path; a fresh clone or a member whose record began after the move keeps the
- * orphan forever (the v1.0.12 `.github/actions/fleet/lib` → `_shared` move did
- * exactly that fleet-wide). Manifest-scoped like the prune — never a directory
- * walk. Belt: a tombstone the current manifest ships a file at/under is
- * skipped, so a bad producer entry can never delete freshly placed payload.
- */
-declare function removeTombstonedPaths(dest: string, manifest: FleetFileManifest): number;
-/**
- * Prune stale fleet files so a fetch is a true SYNC (place + prune) — scoped
- * to what the bundle PREVIOUSLY owned. Only a file the last-applied manifest
- * shipped (the applied-files record, see readAppliedFiles) that the current
- * manifest no longer ships is deleted. The prune list comes from MANIFESTS,
- * never a directory walk, so repo-owned files that merely live beside the
- * fleet payload — per-repo EXPECTED variants like
- * `.config/fleet/tsconfig.check.json`, `.gitkeep` seeds, cascade-only
- * release-excluded scripts under `scripts/fleet/` — can never be collateral.
- * With no record (fresh clone, or the first refresh that introduces the
- * record) nothing is pruned; the record starts with this apply and the next
- * refresh prunes precisely.
- */
-declare function pruneStaleFleetFiles(dest: string, manifest: FleetFileManifest, previousFiles: readonly string[] | undefined): number;
 //#endregion
 //#region template/bootstrap/src/lockstep.d.mts
 type LockStepStateName = 'current' | 'out-of-sync' | 'update-available';
@@ -492,4 +527,4 @@ declare function runStatus(config: InstallConfig): number;
 declare function installFleet(config: InstallConfig): Promise<number>;
 declare function isMainModule(): boolean;
 //#endregion
-export { BundleConfig, BundleManifest, ERR_LOCKSTEP_MISMATCH, FLEET_STATUS_SCRIPT, FleetCommentStyle, FleetFileManifest, InstallConfig, LockStepConfig, LockStepErrorParts, LockStepInputs, LockStepState, LockStepStateName, MergeWorkspaceConfig, NoticeDecisionInputs, NoticeStore, PREPARE_FETCH, RefValidation, SYNC_FLEET_SCRIPT, SegmentEntry, SettingsSegmentEntry, SpliceConfig, TarExtractConfig, ThinConfig, UPDATE_NOTIFIER_OPT_OUT_ENV, WorkspaceSegmentEntry, YamlEntryChunk, applyThinMode, assertLockStep, beginMarker, computeSha256, endMarker, errorMessage, formatLockStepError, formatUpdateNotice, installFiles, installFleet, installSegments, installSettingsSegment, installWorkspaceSegment, isMainModule, legacyBeginMarker, legacyEndMarker, lockStepExitCode, maybeShowUpdateNotice, mergeWorkspaceYaml, mergeYamlKeyBlock, normalizeBundlePath, normalizeManifestEntryPath, parseArgs, parseYamlEntryChunks, parseYamlKeyBlocks, printStatusReport, pruneStaleFleetFiles, readAppliedFiles, readAppliedRef, readBundleConfig, readBundleRef, readManifest, readNoticeStore, removeTombstonedPaths, resolveLockStepState, resolveNewestRef, resolveReleaseTemplateSha, resolveRepoRoot, resolveSettingsPath, run, runStatus, segmentFileName, shouldShowNotice, spliceFleetBlock, statusJson, tarExecutable, tarExtractArgs, thinIgnoreEntries, untrackGeneratedOutputs, validateBundleBlock, validateCascadeSha, validateRef, verifyBundleFiles, verifySegments, wirePackageJson, writeAppliedFiles, writeAppliedRef, writeNoticeStore };
+export { BundleConfig, BundleManifest, ERR_LOCKSTEP_MISMATCH, FLEET_STATUS_SCRIPT, FleetCommentStyle, FleetFileManifest, InstallConfig, LockStepConfig, LockStepErrorParts, LockStepInputs, LockStepState, LockStepStateName, MergeWorkspaceConfig, NoticeDecisionInputs, NoticeStore, PREPARE_FETCH, RefValidation, SYNC_FLEET_SCRIPT, SegmentEntry, SettingsSegmentEntry, SpliceConfig, TarExtractConfig, ThinConfig, UPDATE_NOTIFIER_OPT_OUT_ENV, WorkspaceSegmentEntry, YamlEntryChunk, applyMovedPaths, applyThinMode, assertLockStep, beginMarker, computeSha256, endMarker, errorMessage, formatLockStepError, formatUpdateNotice, installFiles, installFleet, installSegments, installSettingsSegment, installWorkspaceSegment, isMainModule, legacyBeginMarker, legacyEndMarker, lockStepExitCode, maybeShowUpdateNotice, mergeWorkspaceYaml, mergeYamlKeyBlock, normalizeBundlePath, normalizeManifestEntryPath, parseArgs, parseYamlEntryChunks, parseYamlKeyBlocks, printStatusReport, pruneStaleFleetFiles, readAppliedFiles, readAppliedRef, readBundleConfig, readBundleRef, readManifest, readNoticeStore, removeTombstonedPaths, resolveLockStepState, resolveNewestRef, resolveReleaseTemplateSha, resolveRepoRoot, resolveSettingsPath, run, runStatus, segmentFileName, shouldShowNotice, spliceFleetBlock, statusJson, tarExecutable, tarExtractArgs, thinIgnoreEntries, untrackGeneratedOutputs, validateBundleBlock, validateCascadeSha, validateRef, verifyBundleFiles, verifySegments, wirePackageJson, writeAppliedFiles, writeAppliedRef, writeNoticeStore };

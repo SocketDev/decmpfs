@@ -1,15 +1,17 @@
 /**
  * @file `--staged` / `--direct` publish over a MULTI-PACKAGE workspace layout
  *   (decmpfs, stuie): gate the whole set first — version lockstep, no hollow
- *   platform package, an orderable dependency graph — then publish each
- *   member in dependency order (platform packages before the loader that
+ *   platform package, an orderable dependency graph — then publish each member
+ *   in dependency order (platform packages before the loader that
  *   optional-depends on them; `pnpm -r publish`'s topological semantics,
  *   computed via computePublishOrder so the per-package gates run in the same
- *   order the registry receives the uploads). Already-published members are
- *   skipped LOUD (the partial-publish recovery path); the first failed upload
- *   aborts the rest so a dependent never publishes ahead of its missing
- *   dependency. Single-package repos never reach this module — staged.mts
- *   delegates here only for `kind: 'multi'` layouts.
+ *   order the registry receives the uploads). Every member also stands behind
+ *   the pack preflight (pack-preflight.mts) — its packed tarball must carry
+ *   every declared payload file before the publish command runs.
+ *   Already-published members are skipped LOUD (the partial-publish recovery
+ *   path); the first failed upload aborts the rest so a dependent never
+ *   publishes ahead of its missing dependency. Single-package repos never reach
+ *   this module — staged.mts delegates here only for `kind: 'multi'` layouts.
  */
 
 import crypto from 'node:crypto'
@@ -35,6 +37,7 @@ import {
 } from '../shared.mts'
 import { withPinnedReadme } from '../pin-readme.mts'
 import { withPrunedPackManifest } from './pack-manifest.mts'
+import { verifyPackedPayload } from './pack-preflight.mts'
 import { diagnoseStagedAuthFailure, isAlreadyPublished } from './registry.mts'
 import { isStagingExpected } from './shared.mts'
 import {
@@ -415,11 +418,34 @@ export async function runWorkspacePublish(
       args.push('--dry-run')
     }
     // Same README-pin + manifest-prune brackets as the single-subject modes,
-    // per member, so the approve-time verify pack sees identical bytes.
+    // per member, so the approve-time verify pack sees identical bytes. The
+    // pack preflight runs inside them, before the command, so a member whose
+    // tarball is missing declared payload never stages or publishes.
+    let preflightOk = true
     // eslint-disable-next-line no-await-in-loop -- serial by design
     const code = await withPinnedReadme(pinTargetForPackage(layout, pkg), () =>
-      withPrunedPackManifest(pkg.dir, () => runInherit('pnpm', args, pkg.dir)),
+      withPrunedPackManifest(pkg.dir, async () => {
+        preflightOk = await verifyPackedPayload({
+          dir: pkg.dir,
+          manifest: pkg.manifest,
+          name: pkg.name,
+          version,
+        })
+        if (!preflightOk) {
+          return 1
+        }
+        return await runInherit('pnpm', args, pkg.dir)
+      }),
     )
+    if (!preflightOk) {
+      logger.fail(
+        `Pack preflight failed for ${pkg.name}@${version} ` +
+          `(${path.relative(layout.rootPath, pkg.dir)}). Aborting the ` +
+          `remaining members — a hollow tarball must never stage or publish.`,
+      )
+      process.exitCode = 1
+      return
+    }
     if (code !== 0) {
       logger.fail(
         `pnpm ${mode === 'staged' ? 'stage publish' : 'publish'} exited ` +

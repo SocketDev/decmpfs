@@ -5,7 +5,7 @@
  */
 
 import crypto from 'node:crypto'
-import { existsSync, promises as fs } from 'node:fs'
+import { existsSync, promises as fs, readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
@@ -31,6 +31,7 @@ import {
 } from '../shared.mts'
 import { withPinnedReadme } from '../pin-readme.mts'
 import { withPrunedPackManifest } from './pack-manifest.mts'
+import { verifyPackedPayload } from './pack-preflight.mts'
 import { diagnoseStagedAuthFailure, isAlreadyPublished } from './registry.mts'
 import type { StageListEntry } from './shared.mts'
 import { isStagingExpected } from './shared.mts'
@@ -42,6 +43,7 @@ import { resolveNpmWorkspaceLayout } from './workspace.mts'
 import { resolveReleaseSubject } from '../../_shared/release-subject.mts'
 import { tarExecutable } from '../../_shared/tar-executable.mts'
 
+import type { WorkspaceManifestShape } from './workspace.mts'
 import type { ReleaseSubject } from '../../_shared/release-subject.mts'
 
 // The README-pin bracket target for a publish subject: the pinned README is
@@ -133,10 +135,32 @@ export async function runStaged(
   // immutable + matches this version instead of a moving HEAD ref, and prune
   // repo-only lifecycle scripts from the manifest that packs. The same
   // brackets wrap the --approve verify pack (defaultPackTarball) so the
-  // integrity gate sees identical bytes.
+  // integrity gate sees identical bytes. The pack preflight runs INSIDE the
+  // brackets too — the bytes it inspects are the bytes the stage command
+  // uploads — and a tarball missing any declared payload file stops the
+  // publish before the command runs.
+  const subjectManifest = JSON.parse(
+    readFileSync(pkg.manifestPath, 'utf8'),
+  ) as WorkspaceManifestShape
+  let preflightOk = true
   const code = await withPinnedReadme(pinTargetFor(pkg), () =>
-    withPrunedPackManifest(pkg.dir, () => runInherit('pnpm', args, rootPath)),
+    withPrunedPackManifest(pkg.dir, async () => {
+      preflightOk = await verifyPackedPayload({
+        dir: pkg.dir,
+        manifest: subjectManifest,
+        name: pkg.name,
+        version: pkg.version,
+      })
+      if (!preflightOk) {
+        return 1
+      }
+      return await runInherit('pnpm', args, rootPath)
+    }),
   )
+  if (!preflightOk) {
+    process.exitCode = 1
+    return
+  }
   if (code !== 0) {
     logger.fail(`pnpm stage publish exited ${code}`)
     for (const line of await diagnoseStagedAuthFailure(pkg.name)) {
@@ -234,10 +258,30 @@ export async function runDirect(
     args.push('--dry-run')
   }
   // Pin the SUBJECT README to the release tag + prune repo-only lifecycle
-  // scripts for the published tarball only (see runStaged).
+  // scripts for the published tarball only, and run the pack preflight inside
+  // the same brackets so a hollow tarball never publishes (see runStaged).
+  const subjectManifest = JSON.parse(
+    readFileSync(pkg.manifestPath, 'utf8'),
+  ) as WorkspaceManifestShape
+  let preflightOk = true
   const code = await withPinnedReadme(pinTargetFor(pkg), () =>
-    withPrunedPackManifest(pkg.dir, () => runInherit('pnpm', args, rootPath)),
+    withPrunedPackManifest(pkg.dir, async () => {
+      preflightOk = await verifyPackedPayload({
+        dir: pkg.dir,
+        manifest: subjectManifest,
+        name: pkg.name,
+        version: pkg.version,
+      })
+      if (!preflightOk) {
+        return 1
+      }
+      return await runInherit('pnpm', args, rootPath)
+    }),
   )
+  if (!preflightOk) {
+    process.exitCode = 1
+    return
+  }
   if (code !== 0) {
     logger.fail(`pnpm publish exited ${code}`)
     process.exitCode = code
