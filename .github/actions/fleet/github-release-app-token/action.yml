@@ -1,8 +1,8 @@
 name: Release app token
 description: >-
   Mint a short-lived GitHub App installation token for the Socket RELEASE app
-  (create releases, push tags). Org-wide when owner is set, so the token reaches
-  member repos. Fleet-shared: authored in socket-wheelhouse's socket-registry override,
+  (create releases, push tags, and open + squash-merge the version-bump promote
+  PR). Org-wide when owner is set, so the token reaches member repos. Fleet-shared: authored in socket-wheelhouse's socket-registry override,
   cascaded into socket-registry, and consumed fleet-wide via
   `uses: ./.github/actions/fleet/github-release-app-token`.
 
@@ -39,12 +39,16 @@ runs:
     # privilege: PERMISSIONS is the exact scope this app needs; zizmor doesn't
     # inspect a run-step mint, so app-tokens-are-scoped.mts is the sole gate that
     # PERMISSIONS is present + non-blank.
+    # `pull_requests: write` covers the publish promote leg — release-branch.mts
+    # lands the bump commit on the default branch by opening a PR from
+    # `<channel>-publish-v<version>` and squash auto-merging it, which the REST
+    # create + the GraphQL auto-merge/merge mutations all require.
     - id: app-token
       shell: bash
       env:
         APP_PRIVATE_KEY: ${{ inputs.private-key }}
         CLIENT_ID: ${{ inputs.client-id }}
         OWNER: ${{ inputs.owner || github.repository_owner }}
-        PERMISSIONS: '{"contents":"write"}'
+        PERMISSIONS: '{"contents":"write","pull_requests":"write"}'
         REPOSITORIES: ${{ inputs.repositories }}
       run: node "${{ github.action_path }}/mint-app-installation-token.mjs"

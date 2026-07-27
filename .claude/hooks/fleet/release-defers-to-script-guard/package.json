@@ -1,5 +1,5 @@
 {
-  "name": "hook-actionlint-on-workflow-edit",
+  "name": "hook-release-defers-to-script-guard",
   "private": true,
   "type": "module",
   "main": "./index.mts",
