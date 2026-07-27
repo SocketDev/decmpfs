@@ -92,3 +92,28 @@ for (const target of TARGETS) {
     }
   }
 }
+
+// Re-pin the loader's optionalDependencies rows to this manifest's own
+// version. The bump lifts the version field and this generator stamps the
+// platform manifests from it, but the loader's exact sibling pins live in
+// THIS manifest — leaving them behind fails the bump's version-lockstep gate
+// (`pins 0.1.2 != 0.1.3`). The generator is the lockstep owner, so it closes
+// the loop.
+const optionalDeps = mainManifest.optionalDependencies ?? {}
+let pinsChanged = false
+for (const target of TARGETS) {
+  const depName = `@decmpfs/${target.triple}`
+  if (
+    typeof optionalDeps[depName] === 'string' &&
+    optionalDeps[depName] !== mainManifest.version
+  ) {
+    optionalDeps[depName] = mainManifest.version
+    pinsChanged = true
+  }
+}
+if (pinsChanged) {
+  writeFileSync(
+    path.join(nodeRoot, 'package.json'),
+    `${JSON.stringify(mainManifest, undefined, 2)}\n`,
+  )
+}
