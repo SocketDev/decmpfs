@@ -1,10 +1,14 @@
 name: 📦 npm publish
 
-# Cascade-owned — every npm-publishing repo carries the byte-identical copy
-# (adopt by copying the template once; the sync then keeps it in lock-step;
-# member edits are reverted on the next cascade). The thin dispatch shell:
-# checkout → setup-and-install → build → scripts/fleet/npm-publish.mts, which
-# owns what + how the repo publishes.
+# decmpfs napi-matrix variant, shipped via the override channel
+# (template/overrides/decmpfs/ — same pattern as stuie's interim matrix and
+# socket-cli's frozen variant). The engine flow is the byte-canonical shell
+# (checkout → setup-and-install → build → scripts/fleet/npm-publish.mts)
+# with ONE addition: a five-leg `build-addons` matrix builds each platform's
+# napi cdylib on its native host and the publish job stages the artifacts
+# into napi/decmpfs/npm/<triple>/ before the engine runs — otherwise the
+# engine's hollow-package gate (correctly) refuses the payload-less platform
+# dirs. Collapses into the shared napi flavor when that lands canonically.
 #
 # Default flow: manual dispatch, DRY-RUN unless `publish: true`; publishes the
 # workspace's publishable packages via the fleet staged-publish script with
@@ -79,7 +83,68 @@ permissions:
   contents: read
 
 jobs:
+  # One leg per shipped platform (napi/decmpfs/scripts/targets.mts is the
+  # name/loader source of truth; this include list mirrors it and pins each
+  # triple to its native runner). Each leg cargo-builds the decmpfs-node
+  # cdylib, stages it into its napi/decmpfs/npm/<triple>/ dir via
+  # make-npm-dirs.mts (host-copy branch), and uploads the .node payload for
+  # the publish job to stage back in.
+  build-addons:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - triple: darwin-arm64
+            runner: macos-14
+          - triple: darwin-x64
+            runner: macos-15-intel
+          - triple: linux-arm64-gnu
+            runner: ubuntu-24.04-arm
+          - triple: linux-x64-gnu
+            runner: ubuntu-latest
+          - triple: win32-x64-msvc
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      SOCKET_API_KEY: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 (2026-05-15)
+        with:
+          # Backfill builds the content ref; empty = the dispatched ref.
+          ref: ${{ inputs.checkout-ref }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0 (2026-06-29)
+        with:
+          node-version: 24
+      - uses: ./.github/actions/repo/setup-sfw
+      - name: Build addon
+        working-directory: napi/decmpfs
+        run: node scripts/build.mts
+      - name: Stage into the platform package dir
+        shell: bash
+        env:
+          TRIPLE: ${{ matrix.triple }}
+        # make-npm-dirs host-copies target/release/<artifact> into the host
+        # triple's dir; the test asserts the runner↔triple mapping above is
+        # right (a mismapped leg would stage into a DIFFERENT triple's dir
+        # and this leg's upload would be empty).
+        run: |
+          set -euo pipefail
+          node napi/decmpfs/scripts/make-npm-dirs.mts
+          test -s "napi/decmpfs/npm/${TRIPLE}/decmpfs.${TRIPLE}.node" || {
+            echo "× napi/decmpfs/npm/${TRIPLE}/ has no staged .node — runner/triple mismatch?" >&2
+            exit 1
+          }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2 (2026-07-24)
+        with:
+          if-no-files-found: error
+          name: addon-${{ matrix.triple }}
+          path: napi/decmpfs/npm/${{ matrix.triple }}/*.node
+
   publish:
+    needs: build-addons
     runs-on: ubuntu-latest
     # npm's trusted-publisher config pins this GitHub environment name; the
     # OIDC token exchange 404s if the job runs outside it.
@@ -124,6 +189,27 @@ jobs:
       # resolves to dist/), and `files` ships dist/, so the tarball needs it.
       - name: Build
         run: pnpm run build
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (2026-07-24)
+        with:
+          path: staged-addons
+      # Every platform's payload lands in its package dir BEFORE the engine
+      # runs, so the hollow-package gate sees six publishable packages. The
+      # bump's own make-npm-dirs pass rewrites manifests but never deletes a
+      # staged .node, so ordering here is safe.
+      - name: Stage platform addons
+        shell: bash
+        run: |
+          set -euo pipefail
+          node napi/decmpfs/scripts/make-npm-dirs.mts
+          for dir in staged-addons/addon-*; do
+            triple="${dir#staged-addons/addon-}"
+            dest="napi/decmpfs/npm/${triple}"
+            test -d "$dest" || {
+              echo "× no generated platform dir for ${triple}." >&2
+              exit 1
+            }
+            cp "$dir"/*.node "$dest/"
+          done
       # The release App signs the bump commit via the GitHub API — the
       # workflow's own GITHUB_TOKEN stays contents: read. A backfill never
       # commits a bump, and a bump=false pipeline dispatch already carries
