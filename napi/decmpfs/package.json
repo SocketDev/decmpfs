@@ -1,6 +1,6 @@
 {
   "name": "decmpfs",
-  "version": "0.1.2",
+  "version": "0.1.3-prerelease",
   "description": "Write files straight to OS transparent filesystem compression (APFS decmpfs / btrfs / NTFS) in one pass.",
   "keywords": [
     "apfs",
