@@ -27,10 +27,15 @@ import process from 'node:process'
 import { safeDelete } from '@socketsecurity/lib-stable/fs/safe'
 
 import { releaseBehindLiveGate } from '../release.mts'
-import { logger, runCapture, runInherit } from '../shared.mts'
+import {
+  logger,
+  provenanceAllowed,
+  runCapture,
+  runInherit,
+} from '../shared.mts'
 import { withPinnedReadme } from '../pin-readme.mts'
 import { withPrunedPackManifest } from './pack-manifest.mts'
-import { isAlreadyPublished } from './registry.mts'
+import { diagnoseStagedAuthFailure, isAlreadyPublished } from './registry.mts'
 import { isStagingExpected } from './shared.mts'
 import {
   checkVersionLockstep,
@@ -395,7 +400,16 @@ export async function runWorkspacePublish(
       '--ignore-scripts',
     )
     if (process.env['GITHUB_ACTIONS'] === 'true') {
-      args.push('--provenance')
+      if (provenanceAllowed()) {
+        args.push('--provenance')
+      } else {
+        logger.warn(
+          'Provenance skipped: npm only verifies sigstore bundles from ' +
+            'PUBLIC source repositories, and this run is not one. The ' +
+            'upload proceeds unattested; provenance turns back on ' +
+            'automatically when the repo is public.',
+        )
+      }
     }
     if (dryRun) {
       args.push('--dry-run')
@@ -414,6 +428,10 @@ export async function runWorkspacePublish(
           `remaining members — a dependent must never publish ahead of a ` +
           `failed dependency.`,
       )
+      // eslint-disable-next-line no-await-in-loop -- failure path, loop exits here
+      for (const line of await diagnoseStagedAuthFailure(pkg.name)) {
+        logger.fail(line)
+      }
       process.exitCode = code
       return
     }

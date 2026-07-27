@@ -22,10 +22,16 @@ import {
   hashTarball,
 } from '../../lib/verify-release-hashes.mts'
 import { releaseBehindLiveGate } from '../release.mts'
-import { logger, rootPath, runCapture, runInherit } from '../shared.mts'
+import {
+  logger,
+  provenanceAllowed,
+  rootPath,
+  runCapture,
+  runInherit,
+} from '../shared.mts'
 import { withPinnedReadme } from '../pin-readme.mts'
 import { withPrunedPackManifest } from './pack-manifest.mts'
-import { isAlreadyPublished } from './registry.mts'
+import { diagnoseStagedAuthFailure, isAlreadyPublished } from './registry.mts'
 import type { StageListEntry } from './shared.mts'
 import { isStagingExpected } from './shared.mts'
 import {
@@ -63,8 +69,10 @@ function pinTargetFor(subject: ReleaseSubject): {
  * Reads the local package.json for name + version, refuses to stage an
  * already-published version (npm rejects republishes outright; we surface the
  * error before the network call). Runs `pnpm stage publish` with --provenance
- * when GITHUB_ACTIONS is set so the OIDC token gets embedded into the
- * provenance attestation.
+ * when GITHUB_ACTIONS is set AND the source repository is public
+ * (provenanceAllowed) so the OIDC token gets embedded into the provenance
+ * attestation; a private-repo run skips the flag loudly instead of hitting
+ * npm's E422 sigstore-visibility rejection.
  */
 export async function runStaged(
   tag: string,
@@ -103,7 +111,16 @@ export async function runStaged(
     '--ignore-scripts',
   ]
   if (process.env['GITHUB_ACTIONS'] === 'true') {
-    args.push('--provenance')
+    if (provenanceAllowed()) {
+      args.push('--provenance')
+    } else {
+      logger.warn(
+        'Provenance skipped: npm only verifies sigstore bundles from PUBLIC ' +
+          'source repositories, and this run is not one. The upload proceeds ' +
+          'unattested; provenance turns back on automatically when the repo ' +
+          'is public.',
+      )
+    }
   }
   if (dryRun) {
     // pnpm stage publish --dry-run does everything except the actual
@@ -122,6 +139,9 @@ export async function runStaged(
   )
   if (code !== 0) {
     logger.fail(`pnpm stage publish exited ${code}`)
+    for (const line of await diagnoseStagedAuthFailure(pkg.name)) {
+      logger.fail(line)
+    }
     process.exitCode = code
     return
   }
@@ -140,7 +160,8 @@ export async function runStaged(
  * `--direct` mode: classic single-step `pnpm publish` — upload + make public in
  * one call, no stage/approve. Escape hatch for environments where the stage
  * endpoint is unreachable. Adds `--provenance` automatically when
- * GITHUB_ACTIONS is set so the OIDC token still embeds into the provenance
+ * GITHUB_ACTIONS is set and the source repository is public
+ * (provenanceAllowed) so the OIDC token still embeds into the provenance
  * attestation.
  *
  * Refuses to run when the package's prior versions used staging (per the
@@ -198,7 +219,16 @@ export async function runDirect(
     '--ignore-scripts',
   ]
   if (process.env['GITHUB_ACTIONS'] === 'true') {
-    args.push('--provenance')
+    if (provenanceAllowed()) {
+      args.push('--provenance')
+    } else {
+      logger.warn(
+        'Provenance skipped: npm only verifies sigstore bundles from PUBLIC ' +
+          'source repositories, and this run is not one. The upload proceeds ' +
+          'unattested; provenance turns back on automatically when the repo ' +
+          'is public.',
+      )
+    }
   }
   if (dryRun) {
     args.push('--dry-run')

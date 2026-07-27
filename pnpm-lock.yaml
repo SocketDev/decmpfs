@@ -238,8 +238,8 @@ catalogs:
     '@types/shell-quote':
       specifier: 1.7.5
       version: 1.7.5
-    '@ultrathink/acorn.wasm':
-      specifier: npm:@ultrathink/acorn-wasm@0.0.1
+    '@ultrathink/acorn.rs.wasm':
+      specifier: 0.0.1
       version: 0.0.1
     '@vitest/coverage-v8':
       specifier: 4.1.10
@@ -874,9 +874,9 @@ importers:
 
   .claude/hooks/fleet/error-message-quality-nudge:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -902,6 +902,15 @@ importers:
 
   .claude/hooks/fleet/follow-direct-imperative-nudge:
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+
+  .claude/hooks/fleet/generic-export-name-nudge:
+    devDependencies:
+      '@socketsecurity/lib-stable':
+        specifier: 'catalog:'
+        version: '@socketsecurity/lib@6.2.3(typescript@7.0.2)'
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
@@ -999,9 +1008,9 @@ importers:
 
   .claude/hooks/fleet/logger-guard:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1148,6 +1157,12 @@ importers:
         specifier: 'catalog:'
         version: 26.1.1
 
+  .claude/hooks/fleet/no-fleet-scope-in-non-member-guard:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+
   .claude/hooks/fleet/no-force-push-guard:
     devDependencies:
       '@types/node':
@@ -1172,9 +1187,9 @@ importers:
 
   .claude/hooks/fleet/no-meta-comments-guard:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1286,9 +1301,9 @@ importers:
 
   .claude/hooks/fleet/no-private-path-in-source-guard:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1448,9 +1463,9 @@ importers:
 
   .claude/hooks/fleet/options-param-naming-guard:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
 
   .claude/hooks/fleet/overeager-staging-guard:
     dependencies:
@@ -1507,15 +1522,15 @@ importers:
 
   .claude/hooks/fleet/path-guard:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
 
   .claude/hooks/fleet/path-regex-normalize-nudge:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1561,9 +1576,9 @@ importers:
 
   .claude/hooks/fleet/pointer-comment-nudge:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1607,9 +1622,9 @@ importers:
 
   .claude/hooks/fleet/prefer-json-clone-guard:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
 
   .claude/hooks/fleet/prefer-pipx-over-pip-guard:
     devDependencies:
@@ -2020,9 +2035,9 @@ importers:
 
   .config/fleet/oxlint-plugin:
     dependencies:
-      '@ultrathink/acorn.wasm':
+      '@ultrathink/acorn.rs.wasm':
         specifier: 'catalog:'
-        version: '@ultrathink/acorn-wasm@0.0.1'
+        version: 0.0.1
       regjsparser:
         specifier: 'catalog:'
         version: 0.13.2
@@ -2030,6 +2045,8 @@ importers:
   .config/fleet/oxlint-plugin/fleet/bag-param-optionality-naming: {}
 
   .config/fleet/oxlint-plugin/fleet/export-top-level-functions: {}
+
+  .config/fleet/oxlint-plugin/fleet/exported-name-has-domain-word: {}
 
   .config/fleet/oxlint-plugin/fleet/guard-contract: {}
 
@@ -3119,8 +3136,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@ultrathink/acorn-wasm@0.0.1':
-    resolution: {integrity: sha512-XAYEvamnSuvhLxQm5eXl31dxMmh+fhhJrZDOY70siPU46feNF9In5utVjhzskezBoqRaSn7/QlbMcZSTd4KE7A==}
+  '@ultrathink/acorn.rs.wasm@0.0.1':
+    resolution: {integrity: sha512-XZLeVZKgcswjnBqHD/jfdAxS+/8wUwShxPjJjTmJD9CtHwZ8sb/XNWYt0oGfUErX+YzzJfX9JCd+gWTmkw6/cQ==}
     engines: {node: '>=18'}
 
   '@vitest/coverage-v8@4.1.10':
@@ -4959,7 +4976,7 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@ultrathink/acorn-wasm@0.0.1': {}
+  '@ultrathink/acorn.rs.wasm@0.0.1': {}
 
   '@vitest/coverage-v8@4.1.10(vitest@4.1.10)':
     dependencies:
