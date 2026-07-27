@@ -1,6 +1,6 @@
 {
   "name": "decmpfs",
-  "version": "0.1.3-prerelease",
+  "version": "0.1.3",
   "description": "Write files straight to OS transparent filesystem compression (APFS decmpfs / btrfs / NTFS) in one pass.",
   "keywords": [
     "apfs",
@@ -33,11 +33,11 @@
     "typescript": "catalog:"
   },
   "optionalDependencies": {
-    "@decmpfs/darwin-arm64": "0.1.2",
-    "@decmpfs/darwin-x64": "0.1.2",
-    "@decmpfs/linux-arm64-gnu": "0.1.2",
-    "@decmpfs/linux-x64-gnu": "0.1.2",
-    "@decmpfs/win32-x64-msvc": "0.1.2"
+    "@decmpfs/darwin-arm64": "0.1.3",
+    "@decmpfs/darwin-x64": "0.1.3",
+    "@decmpfs/linux-arm64-gnu": "0.1.3",
+    "@decmpfs/linux-x64-gnu": "0.1.3",
+    "@decmpfs/win32-x64-msvc": "0.1.3"
   },
   "engines": {
     "node": ">=18"
