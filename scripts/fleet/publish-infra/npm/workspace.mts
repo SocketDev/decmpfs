@@ -391,7 +391,14 @@ export function resolveNpmWorkspaceLayout(
     )
   }
   const main = selectMainPackage(packages, rootPath)
-  const rootHasVersion = typeof root?.version === 'string' && !!root.version
+  // A 0.0.0 root is the private-placeholder convention (the root never bumps
+  // and never publishes) — versionless for layout purposes, so the MAIN
+  // member is the version source and release versions live on the package
+  // that actually ships.
+  const rootHasVersion =
+    typeof root?.version === 'string' &&
+    !!root.version &&
+    root.version !== '0.0.0'
   return {
     kind: 'multi',
     main,

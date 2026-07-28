@@ -67,6 +67,15 @@ export function buildPathsAndSupplyChainSteps(): CheckStep[] {
     // someone left in-tree (a full fleet-scaffold copy) that gets swept into
     // cascade commits — fail loud so it's removed, not gitignored.
     () => run('node', ['scripts/fleet/check/member-dirs-are-not-nested.mts']),
+    // Sibling stray-dir gate: pnpm reads any dir holding `node_modules/` as a
+    // workspace importer, so one sitting above a workspace glob with no
+    // package.json beside it takes EVERY `pnpm run <script>` down with
+    // ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND. Incident: a fleet script anchored its
+    // cache at a template/base/** file and wrote template/base/node_modules/.
+    () =>
+      run('node', [
+        'scripts/fleet/check/workspace-importers-have-manifests.mts',
+      ]),
     // A package's `exports` map and its public file surface must agree: every
     // exports target resolves to a real file (no stale map entry that throws
     // ERR_MODULE_NOT_FOUND for consumers), and every public built file (privacy

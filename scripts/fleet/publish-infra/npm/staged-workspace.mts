@@ -38,8 +38,12 @@ import {
 import { withPinnedReadme } from '../pin-readme.mts'
 import { withPrunedPackManifest } from './pack-manifest.mts'
 import { verifyPackedPayload } from './pack-preflight.mts'
-import { diagnoseStagedAuthFailure, isAlreadyPublished } from './registry.mts'
-import { isStagingExpected } from './shared.mts'
+import {
+  diagnoseStageConflict,
+  diagnoseStagedAuthFailure,
+  isAlreadyPublished,
+} from './registry.mts'
+import { isStagingExpected, logNpmApproveHandoff } from './shared.mts'
 import {
   checkVersionLockstep,
   computePublishOrder,
@@ -455,6 +459,10 @@ export async function runWorkspacePublish(
           `failed dependency.`,
       )
       // eslint-disable-next-line no-await-in-loop -- failure path, loop exits here
+      for (const line of await diagnoseStageConflict(pkg.name, version)) {
+        logger.fail(line)
+      }
+      // eslint-disable-next-line no-await-in-loop -- failure path, loop exits here
       for (const line of await diagnoseStagedAuthFailure(pkg.name)) {
         logger.fail(line)
       }
@@ -481,11 +489,9 @@ export async function runWorkspacePublish(
   if (mode === 'staged') {
     logger.success(
       `Staged ${published} package(s) at ${version}` +
-        `${skipped ? ` (${skipped} already published, skipped)` : ''}. Run ` +
-        `\`pnpm run publish -- --approve\` locally to promote — the git tag ` +
-        `and GitHub release are created at approve time, when the packages ` +
-        `go public.`,
+        `${skipped ? ` (${skipped} already published, skipped)` : ''}.`,
     )
+    logNpmApproveHandoff()
   } else {
     logger.success(
       `Published ${published} package(s) at ${version} directly` +

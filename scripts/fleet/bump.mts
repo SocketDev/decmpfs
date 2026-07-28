@@ -618,17 +618,47 @@ async function main(): Promise<void> {
   let hintedVersion: string | undefined
   if (typeof releaseAs === 'string') {
     if (
-      releaseAs !== 'major' &&
-      releaseAs !== 'minor' &&
-      releaseAs !== 'patch'
+      releaseAs === 'major' ||
+      releaseAs === 'minor' ||
+      releaseAs === 'patch'
     ) {
+      level = releaseAs
+    } else if (/^\d+\.\d+\.\d+$/.test(releaseAs)) {
+      // An exact `--release-as X.Y.Z` names the landing version outright —
+      // the release pipeline forwards the USER-named version this way, since
+      // translating it into a level is lossy (bump.mts increments from the
+      // released base, never the manifest, so base+level can land somewhere
+      // other than the named version). Same guardrails as a committed hint.
+      const baseMajor = base.split('.')[0]
+      if (releaseAs.split('.')[0] !== baseMajor) {
+        logger.fail(
+          `--release-as ${releaseAs} is a MAJOR jump past the last released ` +
+            `version ${base} — a major requires the explicit --release-as ` +
+            `major signal, not an exact version.`,
+        )
+        process.exitCode = 1
+        return
+      }
+      if (!gt(releaseAs, base)) {
+        logger.fail(
+          `--release-as ${releaseAs} is not ahead of the last released ` +
+            `version ${base} — it would re-publish or move backward. ` +
+            `Name a version greater than ${base}.`,
+        )
+        process.exitCode = 1
+        return
+      }
+      hintedVersion = releaseAs
+      level = 'patch'
+      logger.log(`--release-as names the exact landing version ${releaseAs}.`)
+    } else {
       logger.fail(
-        `--release-as must be one of major | minor | patch (got "${releaseAs}").`,
+        `--release-as must be major | minor | patch or an exact X.Y.Z ` +
+          `version (got "${releaseAs}").`,
       )
       process.exitCode = 1
       return
     }
-    level = releaseAs
   } else if (hinted) {
     // Compare the hint's major against the LAST RELEASED version (`base`), not
     // the manifest — `hinted` is the manifest with its suffix stripped, so its

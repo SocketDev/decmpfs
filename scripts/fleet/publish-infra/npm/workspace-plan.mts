@@ -137,6 +137,21 @@ export function computePublishOrder(packages: readonly WorkspacePackage[]): {
  * requires them on disk pre-publish; the approve-time structural verify
  * requires them inside the staged tarball. Pure.
  */
+/**
+ * True when the manifest's declared payload carries a machine-built artifact
+ * (.wasm / .node). Such a payload has no local byte-twin — it comes from the
+ * CI build, and a re-build on a different host/toolchain legitimately differs
+ * byte-for-byte — so pre-approve verification must be STRUCTURAL on the
+ * staged bytes (verifyStagedPlatformEntry), never a local-pack byte-compare.
+ */
+export function hasMachineBuiltPayload(
+  manifest: WorkspaceManifestShape,
+): boolean {
+  return requiredPayloadFiles(manifest).some(
+    rel => rel.endsWith('.wasm') || rel.endsWith('.node'),
+  )
+}
+
 export function requiredPayloadFiles(
   manifest: WorkspaceManifestShape,
 ): string[] {
