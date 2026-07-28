@@ -60,12 +60,20 @@ both are required (and enforced):
 
 ## Enforcement (code-is-law)
 
-`checks/thin-consumer-wiring.mts` (`thin_wiring_missing`) fails when a member
-that went thin (its `.gitignore` untracks the fleet payload — detected by the
-`scripts/fleet/` untrack entry, which every repo has but only a thin one
-gitignores) is missing the prepare belt. A non-thin member (it tracks the
-payload) is exempt. Run `node scripts/repo/bootstrap/fleet.mjs --wire` to add the belt +
-`sync-fleet` script. The CI suspenders are enforced by the `ci.yml`-shape check
+Thin membership is a roster capability: the canonical roster
+(`.claude/skills/fleet/cascading-fleet/lib/fleet-repos.json`) opts a member into
+`thin` via its `optIns` array, alongside `freeform-readme` and `squash-history`.
+That roster is the single source of truth — `isThinOptIn` (in the shared
+`fleet-roster.mts`) resolves it, and `KNOWN_OPT_INS` in the same module is the
+enum every opt-in value is validated against, so a typo is rejected by
+`fleet-members-are-onboarded`.
+
+`checks/thin-consumer-wiring.mts` (`thin_wiring_missing`) fails when a member the
+roster opts into `thin` is missing the prepare belt — its fresh clones / CI
+would otherwise run against a missing payload. A non-thin member (the roster
+does not opt it into `thin`) tracks the payload and is exempt. Run
+`node scripts/repo/bootstrap/fleet.mjs --wire` to add the belt + `sync-fleet`
+script. The CI suspenders are enforced by the `ci.yml`-shape check
 (workflow-fleet-block), which pins the fleet block that runs the
 setup-and-install composite.
 

@@ -158,6 +158,14 @@ export function buildReleaseAndDocsSteps(): CheckStep[] {
             output: '',
             skipped: !process.env['FLEET_CHECK_RELEASE'],
           }),
+    // The thin-distribution untrack set must NEVER contain a CI-critical GitHub
+    // path. A thin member git-untracks whatever thinIgnoreEntries returns; GitHub
+    // reads .github/workflows/** + .github/actions/fleet/** from the committed
+    // tree BEFORE any fetch could repopulate them, so untracking one breaks CI
+    // outright. Proves the shipped fetcher honors isAlwaysTrackedGitHubSurface.
+    // Runs per-tree (imports the member's own scripts/repo/bootstrap/fleet.mjs);
+    // vacuous pass where that fetcher is absent.
+    () => run('node', ['scripts/fleet/check/thin-untrack-excludes-ci.mts']),
     // Every slashed pattern in .config/fleet/.prettierignore must be `**/`-anchored
     // or it silently matches nothing (oxfmt roots the matcher at the ignore file's
     // dir via Gitignore::new). Catches the footgun where a bare `vendor/**` looks

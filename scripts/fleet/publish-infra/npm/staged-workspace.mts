@@ -1,7 +1,8 @@
 /**
  * @file `--staged` / `--direct` publish over a MULTI-PACKAGE workspace layout
- *   (decmpfs, stuie): gate the whole set first — version lockstep, no hollow
- *   platform package, an orderable dependency graph — then publish each member
+ *   (decmpfs, stuie): gate the whole set first — version lockstep, every
+ *   declared platform package present on disk, no hollow platform package, an
+ *   orderable dependency graph — then publish each member
  *   in dependency order (platform packages before the loader that
  *   optional-depends on them; `pnpm -r publish`'s topological semantics,
  *   computed via computePublishOrder so the per-package gates run in the same
@@ -47,6 +48,7 @@ import { isStagingExpected, logNpmApproveHandoff } from './shared.mts'
 import {
   checkVersionLockstep,
   computePublishOrder,
+  findAbsentPlatformPackages,
   findHollowPackages,
   requiredPayloadFiles,
 } from './workspace-plan.mts'
@@ -113,9 +115,10 @@ export async function packWorkspaceMemberTarball(
 
 /**
  * Run the pre-publish gates every multi-package publish stands behind, in
- * fail-loud order: version lockstep across every member, no hollow platform
- * package, an orderable dependency graph. Returns the publish order, or
- * undefined after failing loud (process.exitCode set). Exported for tests.
+ * fail-loud order: version lockstep across every member, every declared
+ * platform package present on disk, no hollow platform package, an orderable
+ * dependency graph. Returns the publish order, or undefined after failing loud
+ * (process.exitCode set). Exported for tests.
  */
 export function gateWorkspaceForPublish(
   layout: NpmWorkspaceLayout,
@@ -129,6 +132,35 @@ export function gateWorkspaceForPublish(
         `\n  Fix: run the bump (scripts/fleet/bump.mts) so every manifest ` +
         `and sibling pin moves to ${layout.versionSource.version} in ` +
         `lockstep; never hand-edit one member.`,
+    )
+    process.exitCode = 1
+    return undefined
+  }
+  const absent = findAbsentPlatformPackages(layout.packages)
+  if (absent.length > 0) {
+    const detail = absent
+      .map(
+        report =>
+          `    ${report.owner.relDir} (${report.owner.name}) declares ` +
+          `${report.missing.join(', ')}`,
+      )
+      .join('\n')
+    logger.fail(
+      `Refusing to publish a loader whose declared platform package(s) are ` +
+        `ABSENT from the workspace — an optionalDependency that never ` +
+        `publishes 404s on every consumer install.\n` +
+        `  Where:\n${detail}\n` +
+        `  Saw vs wanted: the loader's optionalDependencies name platform ` +
+        `siblings with NO package directory on disk (repos gitignore their ` +
+        `generated npm/<platformId>/ dirs, so a clean checkout has none); ` +
+        `wanted every declared name backed by a real package directory ` +
+        `carrying its payload before any upload.\n` +
+        `  Fix: run the platform matrix build so the artifacts exist — ` +
+        `decmpfs's build-addons job builds each runner's .node, runs ` +
+        `make-npm-dirs.mts, and stages the payload into ` +
+        `napi/decmpfs/npm/<platformId>/ before the publish leg — or, if these ` +
+        `names are genuinely unpublished, reserve and publish them FIRST; a ` +
+        `loader whose optionalDependencies 404 breaks every consumer install.`,
     )
     process.exitCode = 1
     return undefined

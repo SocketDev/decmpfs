@@ -401,12 +401,14 @@ export function buildPathsAndSupplyChainSteps(): CheckStep[] {
     // Every fleet/repo CLI entrypoint must FAIL SOFT (use runMain / a .catch),
     // never crash the user with a raw unhandled-rejection stack trace.
     () => run('node', ['scripts/fleet/check/entry-scripts-are-fail-soft.mts']),
-    // No package.json may use a `link:` protocol dependency — non-portable,
-    // outside the lockfile integrity guarantees, breaks the zero-dep bundle
-    // contract. Use workspace: (in-repo) or catalog: (centrally pinned).
+    // No committed dependency spec resolves through a local filesystem path
+    // the repo does not carry: a hand-written `link:`/`file:` spec in a
+    // package.json dependency block, or a pnpm-GENERATED lockfile `link:`
+    // pointing at an untracked (generated/gitignored) directory. Use
+    // workspace: (in-repo), catalog: (centrally pinned), or a registry range.
     () =>
       run('node', [
-        'scripts/fleet/check/package-deps-have-no-link-protocol.mts',
+        'scripts/fleet/check/dependency-specs-are-registry-or-workspace.mts',
       ]),
     // Per-platform tail packages match their naming domain: binaries (bin/
     // payload) use pnpm pack-app triplets (linux-x64, glibc unsuffixed); ABI/

@@ -248,6 +248,7 @@ Supply-chain hygiene:
 - `check-new-deps` — Socket-scores newly added dependencies at edit time
 - `dep-derived-source-nudge` — PostToolUse(Edit/Write), non-blocking. After an edit to a manifest's dependency surface, reminds to regenerate the lockfile AND update the derived canonical sources (soak-exclude parity, cross-major dedup, catalog).
 - `dirty-lockfile-nudge` — PostToolUse(git|pnpm Bash), non-blocking. After a git/pnpm command, checks whether `pnpm-lock.yaml` is dirty in the working tree and reminds to run `pnpm i` before landing.
+- `link-protocol-dep-guard` — blocks an Edit/Write that adds a `link:`/`file:` dependency spec to any `package.json` dependency block (including `overrides`/`resolutions`/`pnpm.overrides`). A local-path spec has no registry identity and no integrity hash, so it resolves to nothing on a fresh clone. `workspace:` is the sanctioned in-repo form. Bypass `Allow link-protocol-dep bypass`. Companion commit-time gate: `scripts/fleet/check/dependency-specs-are-registry-or-workspace.mts`, which also catches the `link:` specs pnpm GENERATES into `pnpm-lock.yaml` from a `packages:` glob over gitignored dirs.
 - `minimum-release-age-guard` — enforces the 7-day soak on new deps
 - `no-pkgjson-pnpm-overrides-guard` — version-range pins go in `pnpm-workspace.yaml` `overrides:`, not `package.json`
 - `npmrc-trust-optout-guard` — blocks the pnpm trust-aware env-expansion opt-out (`PNPM_CONFIG_NPMRC_AUTH_FILE`/`NPM_CONFIG_USERCONFIG`) + `${ENV}`-beside-`_authToken` in a committed `.npmrc`

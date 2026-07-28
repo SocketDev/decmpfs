@@ -26,11 +26,11 @@ import { resolveEditedText } from '../_shared/payload.mts'
 
 // Fleet-internal first-party scopes published by trusted Socket pipelines —
 // soak-exempt by design. What the guard targets is a third-party entry: a
-// bare package like `cowsay`, or worse a `@cowsay/*` glob exempting
-// everything ever published under it. A fleet repo's own scope is not that
-// risk. Besides the `@socket*` publishing scopes, every entry below belongs
-// to a fleet repo that publishes from its own OIDC pipeline, so soaking it
-// only delays the fleet behind itself.
+// bare package like `cowsay`, or worse a scope glob like `@types/*` that
+// exempts everything ever published under it. A fleet repo's own scope is
+// not that risk. Besides the `@socket*` publishing scopes, every entry
+// below belongs to a fleet repo that publishes from its own OIDC pipeline,
+// so soaking it only delays the fleet behind itself.
 const ALLOWED_SCOPES = new Set([
   '@abitious',
   '@decmpfs',
