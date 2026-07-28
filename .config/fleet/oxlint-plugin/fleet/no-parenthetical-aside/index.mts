@@ -10,11 +10,11 @@
  *   as `probe(toolsFile, keys)`, sits after a control-flow keyword such as `for
  *   (const item of arr)`, falls inside a backtick inline-code span such as
  *   `` `fn(a, b)` ``, or its inner text carries a code shape per the pure
- *   inner-only `innerLooksLikeCode`. Autofix rewrites each flagged `(X)` aside
- *   into comma-delimited appositive prose via the pure, exported
- *   `rewriteAsides`: ` word (X) rest` becomes ` word, X, rest`, and ` word (X)`
- *   at a clause or comment end becomes ` word, X`. Commas, not em-dashes: an
- *   em-dash chain would trip the fleet anti-prose guard.
+ *   inner-only `innerLooksLikeCode`.
+ *   The rule REPORTS ONLY. `rewriteAsides` still exists as a pure, exported
+ *   helper for a deliberate codemod, but it is not wired as an autofix:
+ *   swapping parens for commas is mechanical and often ungrammatical, so the
+ *   rewrite needs a human's reading of the sentence.
  */
 
 import type { AstNode, RuleContext } from '../../lib/rule-types.mts'
@@ -290,7 +290,12 @@ const rule = {
       category: 'Stylistic Issues',
       recommended: true,
     },
-    fixable: 'code',
+    // NOT `fixable: 'code'`. The rewrite is mechanical — it swaps the parens
+    // for commas — and a comma cannot carry what a parenthesis did, so the
+    // output is frequently ungrammatical: `config (and, for Claude, memory)
+    // directories` became `config, and, for Claude, memory, directories`. Run
+    // repo-wide it rewrote 492 files that way. Rewriting an aside needs a
+    // human's reading of the sentence, so the rule reports and stops.
     messages: {
       parentheticalAside:
         'Comment contains a prose parenthetical aside `{{snippet}}`. The fleet house style forbids `(...)` asides in prose — rewrite the clause with commas, a colon, or an em-dash.',
@@ -316,20 +321,6 @@ const rule = {
               node: comment as unknown as AstNode,
               messageId: 'parentheticalAside',
               data: { snippet: snippets[j]! },
-              // Every flagged snippet in a comment shares one whole-comment
-              // rewrite: rewriteAsides clears them all at once, so the fix is
-              // idempotent and identical across a comment's reports. The
-              // comment's range covers its delimiters, so reconstruct them
-              // around the rewritten body — `//` for a line comment, `/*…*/`
-              // for a block comment — leaving the leader untouched.
-              fix(fixer: {
-                replaceText: (n: unknown, text: string) => unknown
-              }) {
-                const body = rewriteAsides(value)
-                const fixed =
-                  comment.type === 'Block' ? `/*${body}*/` : `//${body}`
-                return fixer.replaceText(comment, fixed)
-              },
             })
           }
         }
