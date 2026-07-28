@@ -3,7 +3,7 @@
 //
 //   node scripts/repo/lint.mts            # modified .rs files (working tree vs HEAD)
 //   node scripts/repo/lint.mts --staged   # staged .rs files (pre-commit)
-//   node scripts/repo/lint.mts --all      # whole workspace (cargo fmt)
+//   node scripts/repo/lint.mts --all      # whole workspace via cargo fmt
 //   node scripts/repo/lint.mts --fix      # rewrite instead of --check
 //
 // Scope escalates to --all automatically when a config that affects every

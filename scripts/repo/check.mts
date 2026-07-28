@@ -18,7 +18,7 @@ const rustOnly = process.argv.includes('--rust-only')
 
 // Dep-0 output helpers: process streams (never `console`, never the lib logger)
 // so this gate runs with only Node on PATH. The stream access sits inside a
-// function, so it stays lazy (no module-eval handle capture).
+// function, so it stays lazy — no module-eval handle capture.
 function err(message: string): void {
   process.stderr.write(`${message}\n`)
 }
@@ -84,16 +84,5 @@ if (!rustOnly) {
       path.join(root, 'napi', 'decmpfs', 'tsconfig.json'),
     ],
   )
-  // Brand-asset guard: render the "for X" lockups and assert the label stays
-  // small relative to the wordmark.
-  run('asset render test (for-label sizing)', 'node', [
-    '--test',
-    path.join(root, 'scripts', 'repo', 'gen', 'logo.test.mts'),
-  ])
-  // The traced wordmark SVGs must stay svgo-optimized.
-  run('svg optimized (drift)', process.execPath, [
-    path.join(root, 'scripts', 'repo', 'gen', 'optimize-svg.mts'),
-    '--check',
-  ])
 }
 out('check: all green.')

@@ -13,7 +13,7 @@ export interface Target {
   triple: string
   os: string
   cpu: string
-  // The npm install gate (Linux glibc vs musl).
+  // The npm install gate: Linux glibc vs musl.
   libc?: string | undefined
   // The cdylib basename cargo emits on this target's native host.
   artifact: string

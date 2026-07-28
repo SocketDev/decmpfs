@@ -2,7 +2,7 @@
 // of resolve()/run() and the reachable Outcome mappings, driven through the addon.
 // Run: node --test (zero-install). The FS-compression itself is exercised on the
 // host filesystem; on APFS/btrfs/NTFS compressible data lands `compressed: true`,
-// elsewhere it falls back to a plain write (still asserted to round-trip).
+// elsewhere it falls back to a plain write that is still asserted to round-trip.
 
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'

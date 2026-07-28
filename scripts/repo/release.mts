@@ -12,7 +12,7 @@
 // plain semver (0.1.1), reusing the CHANGELOG section already written for it.
 //
 // Two modes:
-//   - No version arg (or a version equal to the current one): release WHAT IS
+//   - No version arg, or a version equal to the current one: release WHAT IS
 //     COMMITTED. No bump commit; the tag lands on HEAD. Use this for a version
 //     already bumped in the manifests (and to debut the automation itself —
 //     HEAD is where github-release.yml lives).
@@ -179,7 +179,7 @@ if (bump) {
   // Finalizing a prerelease keeps the section already written for this
   // version; only a fresh bump derives one. The section comes from the
   // conventional-commit subjects since the previous tag: feat/fix/perf
-  // become bullets, plumbing (ci, deps, fleet churn, test scaffolding) is
+  // become bullets, plumbing — ci, deps, fleet churn, test scaffolding — is
   // dropped, and a release with nothing user-facing says so plainly. Edit
   // the generated section before pushing if a bullet needs better prose —
   // an existing section is always kept verbatim.
@@ -249,7 +249,7 @@ if (bump) {
 
 // The script owns the tag: place it at the release commit (HEAD), moving a
 // stale local tag forward if one exists. -f is safe for a tag not yet pushed;
-// a published tag must never move (immutable release), so pushing below is
+// a published tag is an immutable release and must never move, so pushing below is
 // non-forced and will reject a moved-after-publish tag loudly.
 const tag = `v${version}`
 // verify-before-acting: a tag whose GitHub Release was already cut is immutable

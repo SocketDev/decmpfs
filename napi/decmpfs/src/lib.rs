@@ -540,9 +540,11 @@ pub struct RmOptions {
   /// Ignore a missing path AND bypass the safe-delete guard (cwd/ancestor/root).
   /// Default `false`.
   pub force: Option<bool>,
-  /// Retries on EBUSY/EMFILE/ENFILE/ENOTEMPTY/EPERM (recursive only). Default `0`.
+  /// Retries on EBUSY/EMFILE/ENFILE/ENOTEMPTY/EPERM — recursive mode only.
+  /// Default `0`.
   pub max_retries: Option<u32>,
-  /// Milliseconds between retries, linear backoff (recursive only). Default `100`.
+  /// Milliseconds between retries with linear backoff — recursive mode only.
+  /// Default `100`.
   pub retry_delay: Option<u32>,
 }
 
@@ -676,7 +678,7 @@ pub struct DecmpfsStat {
   pub compressed: bool,
   /// Logical (apparent) size in bytes — constant regardless of compression.
   pub logical: i64,
-  /// Physical (on-disk allocated) size in bytes — where the win shows.
+  /// Physical, on-disk allocated size in bytes — where the win shows.
   pub physical: i64,
 }
 

@@ -4,9 +4,9 @@
  *   pnpm/sfw/zizmor install steps. Built-in `fetch` follows redirects
  *   automatically (github.com → objects.githubusercontent.com),
  *   `node:crypto.createHash` computes the digest in-process, and tar/unzip
- *   shell out (already preinstalled on every supported runner image). Usage:
- *   node install-tool.mjs <url> <integrity> <dest-dir> [<bin-name>] <integrity>
- *   is a Subresource Integrity string: `<algo>-<base64>`. Examples:
+ *   shell out — both already preinstalled on every supported runner image.
+ *   Usage: node install-tool.mjs <url> <integrity> <dest-dir> [<bin-name>]
+ *   <integrity> is a Subresource Integrity string: `<algo>-<base64>`. Examples:
  *   `sha256-67PM...=`, `sha512-l/kG...==`. The algorithm is parsed from the
  *   prefix; multiple algos are supported (sha256, sha384, sha512). Same
  *   encoding as npm package-lock.json's `integrity` field and as
@@ -18,7 +18,7 @@
  *   - Aborts and removes the file if integrity mismatches.
  *   - Extracts .tar.gz/.tgz with tar, .zip with unzip (POSIX) or Expand-Archive
  *     (Windows). Removes the archive after extracting.
- *   - For non-archive assets (bare binaries like sfw): the asset IS the binary —
+ *   - For non-archive assets, bare binaries like sfw, the asset IS the binary —
  *     chmod +x it and rename to <bin-name> if provided. Exit codes: 0 success 1
  *     download or extraction failed 2 integrity mismatch (stderr names expected
  *     vs actual + the path)
@@ -93,7 +93,7 @@ const archivePath = path.join(destDir, assetName)
 
 const headers = { __proto__: null }
 // GitHub release assets in private repos require auth. When
-// GITHUB_TOKEN is in env (every Actions run sets it), forward it as
+// GITHUB_TOKEN is in env — every Actions run sets it — forward it as
 // a bearer header so the same call site works for both public and
 // private release-asset URLs.
 if (process.env.GITHUB_TOKEN) {
@@ -118,8 +118,8 @@ async function main() {
   const bytes = new Uint8Array(await res.arrayBuffer())
   const actual = crypto.createHash(algo).update(bytes).digest('base64')
 
-  // Compare base64 forms directly. Trailing `=` padding may differ
-  // (npm strips it, our hash adds it) — strip both sides before
+  // Compare base64 forms directly. Trailing `=` padding may differ:
+  // npm strips it, our hash adds it. Strip both sides before
   // comparing so `sha512-...=` and `sha512-...` match.
   const stripPadding = b64 => b64.replace(/=+$/, '')
   if (stripPadding(actual) !== stripPadding(expected)) {
@@ -166,7 +166,7 @@ async function main() {
     // oxlint-disable-next-line socket/prefer-safe-delete -- pre-setup-node action; @socketsecurity/lib-stable not installed yet, and the path is this script's own tmp archive.
     rmSync(archivePath, { force: true })
   } else if (binName) {
-    // Bare-binary asset (no archive). Rename to bin-name and chmod.
+    // Bare-binary asset — no archive to extract. Rename to bin-name and chmod.
     const finalPath = path.join(destDir, binName)
     renameSync(archivePath, finalPath)
     chmodSync(finalPath, 0o755)

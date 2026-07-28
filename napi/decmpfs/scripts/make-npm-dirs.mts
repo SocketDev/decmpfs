@@ -1,8 +1,8 @@
 // Generate the per-triple npm package directories under napi/decmpfs/npm/<triple>/, one
 // per TARGETS entry: a manifest gated by os/cpu/libc that ships only that
 // platform's `.node`. Idempotent codegen — the publish workflow runs this on each
-// matrix host, then copies the freshly built binary into its matching directory
-// (this script also does that copy locally when a host build is present).
+// matrix host, then copies the freshly built binary into its matching directory.
+// This script also does that copy locally when a host build is present.
 
 import {
   copyFileSync,

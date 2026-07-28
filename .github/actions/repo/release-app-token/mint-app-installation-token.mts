@@ -15,7 +15,7 @@
  *   APP_PRIVATE_KEY (required) the app private key (PEM)
  *   REPOSITORY      (required) `owner/repo` (pass github.repository)
  *   PERMISSIONS     (optional) JSON object, e.g. {"contents":"write"}; an empty
- *                              object is rejected (would mint blanket perms)
+ *                              object is rejected — it would mint blanket perms
  *   GITHUB_OUTPUT   (required) set by the runner; token is written here.
  */
 

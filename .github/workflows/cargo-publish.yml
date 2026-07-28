@@ -39,6 +39,9 @@ jobs:
       - name: Checkout (bootstrap)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 (2026-05-15)
         with:
+          # The --bump leg anchors CHANGELOG derivation on the last reachable
+          # v-tag; a tagless depth-1 clone would mis-derive from zero history.
+          fetch-tags: true
           persist-credentials: false
       - name: Setup + install
         uses: ./.github/actions/fleet/setup-and-install

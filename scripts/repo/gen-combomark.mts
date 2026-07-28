@@ -7,7 +7,7 @@
  *   light/dark via `prefers-color-scheme`, plus forced `-light` / `-dark`
  *   copies for contexts that can't honor the media query.
  *
- *   Palette (grounded in the committed brand): mark orange anchored on
+ *   Palette, grounded in the committed brand: mark orange anchored on
  *   #f15a24, a controlled brick-red `fs` accent, and a tagline in brand
  *   gray/cream (dark) or gray/ink (light) — never the AI-slop violet.
  *

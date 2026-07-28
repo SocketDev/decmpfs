@@ -47,15 +47,15 @@ export interface DecmpfsResult {
  */
 export interface WriteDecmpfsOptions {
   /**
-   * Replace an existing destination (default true).
+   * Replace an existing destination. Default true.
    */
   force?: boolean | undefined
   /**
-   * Throw if the destination exists (default false).
+   * Throw if the destination exists. Default false.
    */
   errorOnExist?: boolean | undefined
   /**
-   * Write atomically via a temp file + rename (default true).
+   * Write atomically via a temp file + rename. Default true.
    */
   atomic?: boolean | undefined
   /**
@@ -77,11 +77,11 @@ export interface StreamDecmpfsOptions {
    */
   size: number
   /**
-   * Replace an existing destination (default true).
+   * Replace an existing destination. Default true.
    */
   force?: boolean | undefined
   /**
-   * Throw if the destination exists (default false).
+   * Throw if the destination exists. Default false.
    */
   errorOnExist?: boolean | undefined
   /**
@@ -117,11 +117,11 @@ export function createDecmpfsWriteStream(
  */
 export interface CopyDecmpfsOptions {
   /**
-   * Replace an existing destination (default true).
+   * Replace an existing destination. Default true.
    */
   force?: boolean | undefined
   /**
-   * Throw if the destination exists (default false).
+   * Throw if the destination exists. Default false.
    */
   errorOnExist?: boolean | undefined
 }
@@ -140,11 +140,13 @@ export interface RmOptions {
    */
   force?: boolean | undefined
   /**
-   * Retries on EBUSY/EMFILE/ENFILE/ENOTEMPTY/EPERM (recursive only). Default 0.
+   * Retries on EBUSY/EMFILE/ENFILE/ENOTEMPTY/EPERM — recursive mode only.
+   * Default 0.
    */
   maxRetries?: number | undefined
   /**
-   * Milliseconds between retries, linear backoff (recursive only). Default 100.
+   * Milliseconds between retries with linear backoff — recursive mode only.
+   * Default 100.
    */
   retryDelay?: number | undefined
 }
@@ -213,7 +215,7 @@ export function writeDecmpfsFile(
 ): Promise<DecmpfsResult>
 
 /**
- * Copy `src` to `dest`, preserving OS compression (clone or recompress).
+ * Copy `src` to `dest`, preserving OS compression — clone or recompress.
  */
 export function copyDecmpfsFileSync(
   src: string,
@@ -288,7 +290,7 @@ export interface DecmpfsStat {
    */
   logical: number
   /**
-   * Physical (on-disk allocated) size in bytes — where the win shows.
+   * Physical, on-disk allocated size in bytes — where the win shows.
    */
   physical: number
 }

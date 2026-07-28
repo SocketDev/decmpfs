@@ -13,7 +13,8 @@ import { test } from 'node:test'
 import { safeDeleteSync } from '@socketsecurity/lib-stable/fs/safe'
 
 // The addon's `module.exports = load()` is built dynamically, so it can't be
-// statically named-imported under ESM — require it (matches the sibling tests).
+// statically named-imported under ESM — require it, the same way the sibling
+// tests do.
 const require = createRequire(import.meta.url)
 const { decmpfsStat, writeDecmpfsFile } = require('../index.cjs')
 

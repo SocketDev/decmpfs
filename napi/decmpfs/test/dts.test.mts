@@ -3,7 +3,7 @@
 // the native addon doesn't ship; tsc can't see that, this can. The TYPE half —
 // that the declarations are valid and complete — is `pnpm run typecheck` (native
 // tsc against the type-tests/uses-api.ts fixture), run as its own CI job so the
-// unit tests stay dependency-free (no tsc, no typescript install).
+// unit tests stay dependency-free — no tsc, no typescript install.
 
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'

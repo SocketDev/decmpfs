@@ -2,7 +2,7 @@
 //
 // npm trusted publishing (OIDC) can only be configured on a package that already
 // exists, and a brand-new name's first publish can't use OIDC — so these v0.0.0
-// stubs are published manually (web auth) to claim every name (the main `decmpfs`
+// stubs are published manually via web auth to claim every name (the main `decmpfs`
 // package plus each @decmpfs/<triple>). Trusted publishing is then configured, and
 // CI publishes the real binaries at the crate version with provenance.
 //

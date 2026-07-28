@@ -1,7 +1,7 @@
 // Publish the decmpfs crate to crates.io. Owns the whole flow so CI and a
-// local operator run the SAME code: version-parity gate → registry read
-// (skip if this version is already live) → cargo publish (dry-run by default;
-// pass --publish for the real thing).
+// local operator run the SAME code: version-parity gate → registry read →
+// cargo publish (dry-run by default; pass --publish for the real thing). The
+// registry read skips the publish when this version is already live.
 //
 // Usage:
 //   node scripts/repo/publish-crate.mts            # gate + dry-run
@@ -26,7 +26,7 @@ const publish = process.argv.includes('--publish')
 
 // Dep-0 output helpers: process streams (never `console`, never the lib logger)
 // so the publish workflow can run this with only Node on PATH. The stream access
-// lives inside a function, so it stays lazy (no module-eval capture).
+// lives inside a function, so it stays lazy — no module-eval capture.
 function err(message: string): void {
   process.stderr.write(`${message}\n`)
 }

@@ -10,7 +10,7 @@ export interface Resolution {
 // Resolve the version to release from the committed version and an optional arg:
 //   - a `-prerelease` (or any `-suffix`) committed version + no arg → FINALIZE
 //     to the plain semver (0.1.1-prerelease → 0.1.1), reusing the CHANGELOG
-//     section already written for it (kept verbatim, never re-stubbed);
+//     section already written for it, kept verbatim and never re-stubbed;
 //   - a new semver arg → BUMP (insert a CHANGELOG stub to fill in);
 //   - otherwise release WHAT IS COMMITTED.
 export function resolveRelease(

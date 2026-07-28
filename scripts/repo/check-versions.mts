@@ -21,7 +21,7 @@ const repoRoot = path.join(
 
 // Dep-0 output helpers: process streams (never `console`, never the lib logger)
 // so both publish workflows can run this gate with only Node on PATH. The stream
-// access lives inside a function, so it stays lazy (no module-eval capture).
+// access lives inside a function, so it stays lazy — no module-eval capture.
 function err(message: string): void {
   process.stderr.write(`${message}\n`)
 }

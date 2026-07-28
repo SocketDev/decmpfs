@@ -3,7 +3,7 @@
 //
 //   node scripts/repo/test.mts            # test if modified .rs (working tree vs HEAD)
 //   node scripts/repo/test.mts --staged   # pre-commit: test if staged .rs; else no-op
-//   node scripts/repo/test.mts --all      # whole workspace (cargo test)
+//   node scripts/repo/test.mts --all      # whole workspace via cargo test
 //   node scripts/repo/test.mts <t.test.mts…>  # run the named JS tests (node --test)
 //
 // The crate is the product, so `cargo test --workspace --locked` is the suite
