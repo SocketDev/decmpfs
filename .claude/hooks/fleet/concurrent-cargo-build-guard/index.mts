@@ -15,7 +15,7 @@
 // Detection model:
 //   - Fires on Bash invocations of `cargo build --release` / `cargo build -r`
 //     / `cargo b --release` / `pnpm build:prod` / `node scripts/build.mts --prod`
-//     (extend the pattern list when more aliases land).
+//     extend the pattern list when more aliases land.
 //   - Probes for an in-flight build via `pgrep -f` on POSIX or a Win32 process
 //     command-line query. If count ≥ 1, block.
 //   - Cargo `check` / dev builds are explicitly exempt (fast + parallel-safe).
