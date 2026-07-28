@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.3](https://github.com/SocketDev/decmpfs/releases/tag/v0.1.3) - 2026-07-28
+
+### Fixed
+
+- **`release`** — mint the release and PR App tokens for the cargo bump leg
+- **`release`** — finalize the prerelease hint in the cargo-publish legs via --bump
+- **`deps`** — take the acorn.rs.wasm catalog pin to 0.1.1
+- **`deps`** — resolve @decmpfs platform packages from the registry
+- **`deps`** — absorb the fleet catalog heal
+
 ## [0.1.3](https://github.com/SocketDev/decmpfs/releases/tag/v0.1.3) - 2026-07-27
 
 ### Fixed
