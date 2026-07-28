@@ -42,7 +42,7 @@ both are required (and enforced):
 
 - **Belt (dev / clone)** — `package.json` `prepare` starts with
   `node scripts/repo/bootstrap/prepare.mts` (`PREPARE_FETCH` in
-  `template/bootstrap/src/install.mts`),
+  `scripts/repo/gen/bootstrap/src/install.mts`),
   which runs `node scripts/repo/bootstrap/fleet.mjs --if-current` then reconciles the
   install. A fresh clone / `pnpm install` fetches + applies the pinned bundle
   BEFORE the (itself-untracked) install-git-hooks step + any chained build.
@@ -86,7 +86,7 @@ A bundle update reaches a thin member as a true SYNC, and two different
 mechanisms prune what a new release dropped:
 
 - **The applied-files record**: after placing the bundle,
-  `pruneStaleFleetFiles()` (`template/bootstrap/src/install.mts`) deletes any file the
+  `pruneStaleFleetFiles()` (`scripts/repo/gen/bootstrap/src/install.mts`) deletes any file the
   LAST-applied manifest owned (the `applied-files` record under
   `node_modules/.cache/`) that the fetched manifest no longer lists. Renames,
   deletions, and additions inside a mirror tree need NO bookkeeping — but the
@@ -98,7 +98,7 @@ mechanisms prune what a new release dropped:
   `scripts/repo/sync-scaffolding/manifest/bundle.json`): the durable deletion
   record. The cascade fixer `safeDelete`s each path in every member, AND
   `make-release-bundle` ships the same list in the bundle manifest as
-  `removedPaths`, which both installers (`template/bootstrap/src/install.mts`
+  `removedPaths`, which both installers (`scripts/repo/gen/bootstrap/src/install.mts`
   `removeTombstonedPaths()` + `scripts/fleet/fetch-fleet-bundle.mts`) delete
   after placement — so a moved/retired path heals on the next refresh even
   with no applied-files record. A move must ship its deletion: retire a path,
