@@ -1,6 +1,10 @@
+# napi/decmpfs/npm/<triple> stays OUT of this list on purpose: those dirs are
+# gitignored generated output, and as workspace members `linkWorkspacePackages`
+# resolves napi/decmpfs's @decmpfs/<triple> optionalDependencies to `link:`
+# specs whenever they exist at a matching version. The publish engine finds
+# them by convention instead (publish-infra/npm/workspace.mts:200-280).
 packages:
   - napi/*
-  - napi/decmpfs/npm/*
   - '.config/fleet/oxlint-plugin'
   - '.config/fleet/oxlint-plugin/fleet/*'
   - '.claude/hooks/fleet/*'
@@ -194,6 +198,23 @@ minimumReleaseAgeExclude:
   # the soak. Exact-pinned so a future version re-soaks.
   # published: 2026-07-23 | removable: 2026-07-30
   - 'js-yaml@5.2.2'
+  # @decmpfs/<triple> 0.1.3 — this repo's OWN prebuilt-binary platform
+  # packages, published by its release pipeline. The loader (napi/decmpfs)
+  # declares them as optionalDependencies, so an install resolves them from
+  # the registry the moment they publish; without these entries the soak gate
+  # fails the install (ERR_PNPM_NO_MATURE_MATCHING_VERSION) and the only way
+  # out is a `link:` spec pointing at gitignored generated dirs. Exact-pinned
+  # so a future version re-soaks.
+  # published: 2026-07-27 | removable: 2026-08-03
+  - '@decmpfs/darwin-arm64@0.1.3'
+  # published: 2026-07-27 | removable: 2026-08-03
+  - '@decmpfs/darwin-x64@0.1.3'
+  # published: 2026-07-27 | removable: 2026-08-03
+  - '@decmpfs/linux-arm64-gnu@0.1.3'
+  # published: 2026-07-27 | removable: 2026-08-03
+  - '@decmpfs/linux-x64-gnu@0.1.3'
+  # published: 2026-07-27 | removable: 2026-08-03
+  - '@decmpfs/win32-x64-msvc@0.1.3'
 
 allowBuilds:
   '@socketsecurity/sdk': false
