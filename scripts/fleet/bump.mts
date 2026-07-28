@@ -132,16 +132,21 @@ export function npmReleaseLane(
 }
 
 /**
- * The commit that FLIPPED package.json's root `version` to `version` — the
- * npm binding of the shared flip probe, kept exported for the tag-gap
- * reconciler (release-pipeline/reconcile-gap.mts).
+ * The commit that FLIPPED the repo's VERSION-SOURCE manifest to `version` —
+ * the npm binding of the shared flip probe, kept exported for the tag-gap
+ * reconciler (release-pipeline/reconcile-gap.mts). The manifest comes from
+ * the workspace layout, not a hard-coded root `package.json`: a private
+ * workspace root carries no version, so its releases flip the MAIN member's
+ * manifest (decmpfs bumps `napi/decmpfs/package.json`) and a root-only probe
+ * would never find the commit to tag.
  */
 export async function findVersionFlipCommit(
   version: string,
   cwd: string = rootPath,
 ): Promise<string | undefined> {
+  const layout = resolveNpmWorkspaceLayout(cwd)
   return await findAnchorVersionFlipCommit(
-    npmReleaseLane(undefined),
+    npmReleaseLane(undefined, layout.versionSource.relManifestPath),
     version,
     cwd,
   )
