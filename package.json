@@ -6,7 +6,7 @@
     "coverage": "node scripts/repo/coverage.mts",
     "fix": "node scripts/fleet/fix.mts",
     "gen": "node scripts/repo/gen/logo.mts",
-    "gen:combomark": "node assets/brand/combomark.mts",
+    "gen:combomark": "node scripts/repo/gen-combomark.mts",
     "gen:logo": "node scripts/repo/gen/logo.mts",
     "gen:svg": "node scripts/repo/gen/optimize-svg.mts",
     "lint": "node scripts/repo/lint.mts",

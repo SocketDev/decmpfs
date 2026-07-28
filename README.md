@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/brand/decmpfs-combomark-dark.svg">
-    <img alt="decmpfs — by socket labs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/brand/decmpfs-combomark-light.svg" width="360">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/brand/decmpfs-combomark-dark.svg">
+    <img alt="decmpfs — by socket labs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/brand/decmpfs-combomark-light.svg" width="360">
   </picture>
 </p>
 
