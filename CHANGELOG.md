@@ -6,6 +6,9 @@
 
 - **`release`** — mint the release and PR App tokens for the cargo bump leg
 - **`release`** — finalize the prerelease hint in the cargo-publish legs via --bump
+
+### Internal
+
 - **`deps`** — take the acorn.rs.wasm catalog pin to 0.1.1
 - **`deps`** — resolve @decmpfs platform packages from the registry
 - **`deps`** — absorb the fleet catalog heal
@@ -16,9 +19,12 @@
 
 - **`release`** — generator re-pins the loader's optionalDependencies to its own version
 - **`release`** — fetch tags in the npm-publish checkout so first-publish bump derivation can anchor
+- **`npm`** — point repository metadata at the real SocketDev owner
+
+### Internal
+
 - **`deps`** — sync -stable catalog aliases to their base versions
 - **`fleet`** — restore fetch-fleet-bundle to the v1.0.14 manifest bytes
-- **`npm`** — point repository metadata at the real SocketDev owner
 - **`deps`** — override js-yaml to 5.2.2 for GHSA-pm4m-ph32-ghv5
 
 ## 0.1.2
