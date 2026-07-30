@@ -1,4 +1,8 @@
-# Fleet Rust style — 2-space indent, matching the fleet JS/TS style so mixed
-# repos read uniformly. Cascaded to cargo-capability repos (CONDITIONAL_FILES
-# `cargo` group); reformat via `node scripts/fleet/fmt-rust.mts`.
-tab_spaces = 2
+# Fleet Rust style — 4-space indent, the rustfmt default and the Rust community
+# standard (std, docs.rs samples, `cargo new` output). Indent width is a
+# per-language convention, not a repo-wide one: the fleet's Go, C++, and
+# TypeScript trees each keep their own, and Rust keeps this one. Stated
+# explicitly rather than left implicit so a future rustfmt style edition cannot
+# move the gate underneath the fleet. Cascaded to cargo-capability repos
+# (CONDITIONAL_FILES `cargo` group); reformat via `node scripts/fleet/fmt-rust.mts`.
+tab_spaces = 4

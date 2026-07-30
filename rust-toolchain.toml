@@ -9,13 +9,13 @@
 #     (scripts/repo/prebake-pins.mts reads this file)
 # rustfmt and clippy are declared because the shared format/check commands
 # depend on them; profile=minimal avoids unrelated documentation components.
-# Pinned to nightly-2026-07-20 so the cargo soak updater (`-Zmin-publish-age`)
+# Pinned to nightly-2026-07-28 so the cargo soak updater (`-Zmin-publish-age`)
 # runs on the SAME toolchain as the build — no separate updater-only nightly.
 # Fuzz (cargo-fuzz) still pins its own nightly per job.
 #
 # TEMPORARY: revert to a stable pin (1.98) once Cargo stabilizes the soak
 # feature — https://github.com/rust-lang/cargo/issues/17009.
 [toolchain]
-channel = "nightly-2026-07-20"
+channel = "nightly-2026-07-28"
 components = ["clippy", "rustfmt"]
 profile = "minimal"
