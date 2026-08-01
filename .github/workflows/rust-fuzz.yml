@@ -1,0 +1,190 @@
+# Fleet-canonical cargo-fuzz workflow. Edit HERE in template/conditional/fuzz
+# and cascade — it reaches every member carrying a `fuzz/Cargo.toml`, which is
+# cargo-fuzz's own marker for "this repo fuzzes".
+#
+# Targets are DISCOVERED from that manifest's `[[bin]]` entries rather than
+# listed here, because each member fuzzes a different set and a hard-coded list
+# would silently skip a newly added target — the failure mode where the
+# workflow stays green precisely because it stopped testing something.
+#
+# Two shapes, one file. On a PR or push that touches fuzzable code, a fast gate:
+# every target compiles, the "no unsafe without a // FUZZ: annotation" lint
+# passes, and a short smoke run over the committed seed corpus is clean. On the
+# nightly schedule, the real coverage-guided campaign — one matrix leg per
+# target over a corpus cached between runs, so coverage accumulates instead of
+# restarting from the seeds every night.
+#
+# Repo contract: `fuzz/run.sh <target> [seconds]` and
+# `fuzz/no-unsafe-without-fuzz.sh` are required; `fuzz/seed-corpus.py` is
+# optional and runs only where it exists.
+name: rust-fuzz
+
+on:
+  schedule:
+    # 07:00 UTC nightly — the standing fuzz cadence.
+    - cron: '0 7 * * *'
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'fuzz/**'
+      - 'crates/**'
+      - '.github/workflows/rust-fuzz.yml'
+  pull_request:
+    paths:
+      - 'fuzz/**'
+      - 'crates/**'
+      - '.github/workflows/rust-fuzz.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-fuzz-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+  # Pinned so a cargo-fuzz release cannot change what CI runs underneath us.
+  # Bump this line to adopt a new one; it is also the cache key, so a bump
+  # rebuilds the binary rather than serving the previous version forever.
+  CARGO_FUZZ_VERSION: '0.13.2'
+
+jobs:
+  # The target list is read from fuzz/Cargo.toml so both jobs below agree on it
+  # without either one hard-coding names.
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.list.outputs.targets }}
+    steps:
+      - uses: ./.github/actions/fleet/checkout
+      - name: Read fuzz targets from fuzz/Cargo.toml
+        id: list
+        run: |
+          set -euo pipefail
+          # Every [[bin]] in a cargo-fuzz manifest is a fuzz target. Take the
+          # `name = "..."` that follows each one.
+          targets="$(python3 -c '
+          import json, re, sys
+          text = open("fuzz/Cargo.toml", encoding="utf-8").read()
+          names = re.findall(r"\[\[bin\]\][^\[]*?name\s*=\s*\"([^\"]+)\"", text, re.S)
+          if not names:
+              sys.exit("no [[bin]] targets found in fuzz/Cargo.toml")
+          print(json.dumps(sorted(set(names))))
+          ')"
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "Discovered targets: $targets"
+
+  # Fast gate on PRs/pushes: targets compile, the no-unsafe lint passes, and a
+  # short smoke run over the seed corpus is clean. Never scheduled.
+  build:
+    if: github.event_name != 'schedule'
+    needs: discover
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/fleet/checkout
+      - name: Rust toolchain
+        uses: ./.github/actions/fleet/setup-rust-toolchain
+        with:
+          channel: nightly
+      - name: Rust cache
+        uses: ./.github/actions/fleet/setup-rust-cache
+        with:
+          prefix-key: rust-fuzz-build
+          workspaces: 'fuzz -> target'
+      - name: Cache the cargo-fuzz binary
+        id: cargo-fuzz-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 (2026-06-26)
+        with:
+          key: cargo-fuzz-${{ runner.os }}-${{ env.CARGO_FUZZ_VERSION }}
+          path: ~/.cargo/bin/cargo-fuzz
+      - name: Install cargo-fuzz
+        if: steps.cargo-fuzz-cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-fuzz --locked --version "$CARGO_FUZZ_VERSION"
+      - name: 'no unsafe without a // FUZZ: annotation'
+        run: bash fuzz/no-unsafe-without-fuzz.sh
+      # Reproducible fuzz builds need a committed fuzz/Cargo.lock that matches
+      # the dependency graph. This fails when a change adds or updates a
+      # dependency without refreshing it; `--locked` errors rather than
+      # rewriting.
+      - name: Verify fuzz/Cargo.lock is up to date
+        run: cargo metadata --manifest-path fuzz/Cargo.toml --locked --format-version 1 > /dev/null
+      - name: Build all fuzz targets
+        run: cargo +nightly fuzz build --target x86_64-unknown-linux-gnu
+      - name: Regenerate the seed corpus
+        if: hashFiles('fuzz/seed-corpus.py') != ''
+        run: python3 fuzz/seed-corpus.py
+      - name: Smoke run, 60s per target over the seed corpus
+        env:
+          TARGETS: ${{ needs.discover.outputs.targets }}
+        run: |
+          set -euo pipefail
+          # The matrix shape is a JSON array; read it back the same way here so
+          # the smoke run covers exactly what the nightly campaign will.
+          while IFS= read -r target; do
+            bash fuzz/run.sh "$target" 60
+          done < <(printf '%s' "$TARGETS" | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)))')
+
+  # Nightly coverage-guided campaign: 10 min/target, corpus cached across runs.
+  fuzz:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.discover.outputs.targets) }}
+    steps:
+      - uses: ./.github/actions/fleet/checkout
+      - name: Rust toolchain
+        uses: ./.github/actions/fleet/setup-rust-toolchain
+        with:
+          channel: nightly
+      - name: Rust cache
+        uses: ./.github/actions/fleet/setup-rust-cache
+        with:
+          prefix-key: rust-fuzz-nightly
+          workspaces: 'fuzz -> target'
+      - name: Cache the cargo-fuzz binary
+        id: cargo-fuzz-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 (2026-06-26)
+        with:
+          key: cargo-fuzz-${{ runner.os }}-${{ env.CARGO_FUZZ_VERSION }}
+          path: ~/.cargo/bin/cargo-fuzz
+      - name: Install cargo-fuzz
+        if: steps.cargo-fuzz-cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-fuzz --locked --version "$CARGO_FUZZ_VERSION"
+      # The corpus grows across nightly runs because the fuzzer is
+      # coverage-guided. Save under a run-unique key and restore the most recent
+      # prior corpus through the shared prefix.
+      - name: Restore the cached corpus
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 (2026-06-26)
+        with:
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          path: fuzz/corpus/${{ matrix.target }}
+          restore-keys: |
+            fuzz-corpus-${{ matrix.target }}-
+      # ADDITIVE: layer the committed seeds on top of the cache-restored corpus
+      # WITHOUT deleting fuzzer-discovered growth. The default reset mode would
+      # rmtree the restored corpus, so coverage could never accumulate across
+      # nights. Seed names never collide with libFuzzer's SHA1-hashed inputs, so
+      # this is a no-op for seeds that are already present.
+      - name: Seed the corpus additively
+        if: hashFiles('fuzz/seed-corpus.py') != ''
+        run: python3 fuzz/seed-corpus.py --additive
+      - name: Fuzz ${{ matrix.target }} for 10 minutes
+        run: bash fuzz/run.sh "${{ matrix.target }}" 600
+      # A crash, timeout, or OOM writes fuzz/artifacts/<target>/. Upload it so
+      # the fix + minimized-regression-commit protocol can proceed.
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (2026-08-01)
+        with:
+          if-no-files-found: ignore
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}/
