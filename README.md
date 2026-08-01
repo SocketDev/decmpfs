@@ -12,8 +12,6 @@ file — smaller on disk, byte-identical on read, decompressed by the kernel at
 near-native speed. macOS APFS (decmpfs/LZVN), Linux btrfs (zstd→lzo→zlib), Windows
 NTFS (LZNT1).
 
-## Why this repo exists
-
 Disk-heavy artifacts (native addons, bundled binaries, package stores) compress
 40–60% with the compression the OS already ships, but every runtime writes them
 uncompressed and no portable API exists to fix that. decmpfs is that API:
