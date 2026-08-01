@@ -4,9 +4,9 @@
 //! every other build is untouched.
 
 fn main() {
-  let exe_feature = std::env::var_os("CARGO_FEATURE_EXE").is_some();
-  let macos = std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos");
-  if exe_feature && macos {
-    println!("cargo::rustc-link-arg-bin=decmpfs-stub=-Wl,-headerpad,0x1000");
-  }
+    let exe_feature = std::env::var_os("CARGO_FEATURE_EXE").is_some();
+    let macos = std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos");
+    if exe_feature && macos {
+        println!("cargo::rustc-link-arg-bin=decmpfs-stub=-Wl,-headerpad,0x1000");
+    }
 }

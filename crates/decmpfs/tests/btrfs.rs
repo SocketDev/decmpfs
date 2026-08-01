@@ -14,52 +14,52 @@ mod common;
 use common::fake_addon;
 
 fn btrfs_dir() -> Option<PathBuf> {
-  std::env::var_os("DECMPFS_BTRFS_DIR").map(PathBuf::from)
+    std::env::var_os("DECMPFS_BTRFS_DIR").map(PathBuf::from)
 }
 
 #[test]
 fn compress_file_applies_flag_round_trips_and_stays_loadable() {
-  let Some(dir) = btrfs_dir() else {
-    eprintln!("skip: DECMPFS_BTRFS_DIR unset");
-    return;
-  };
-  let path = dir.join("raw.node");
-  let raw = fake_addon();
-  fs::write(&path, &raw).unwrap();
+    let Some(dir) = btrfs_dir() else {
+        eprintln!("skip: DECMPFS_BTRFS_DIR unset");
+        return;
+    };
+    let path = dir.join("raw.node");
+    let raw = fake_addon();
+    fs::write(&path, &raw).unwrap();
 
-  assert_eq!(probe(&path).unwrap(), Support::Supported, "btrfs detected");
+    assert_eq!(probe(&path).unwrap(), Support::Supported, "btrfs detected");
 
-  match compress_file(&path).unwrap() {
-    Outcome::Compressed { before, after } => {
-      eprintln!("FIEMAP-confirmed compressed (st_blocks {before} -> {after})");
+    match compress_file(&path).unwrap() {
+        Outcome::Compressed { before, after } => {
+            eprintln!("FIEMAP-confirmed compressed (st_blocks {before} -> {after})");
+        }
+        other => panic!("expected Compressed (FIEMAP ENCODED), got {other:?}"),
     }
-    other => panic!("expected Compressed (FIEMAP ENCODED), got {other:?}"),
-  }
 
-  // Transparent: reading back yields the identical bytes (still loadable).
-  assert_eq!(fs::read(&path).unwrap(), raw);
+    // Transparent: reading back yields the identical bytes (still loadable).
+    assert_eq!(fs::read(&path).unwrap(), raw);
 
-  // Flag round-trip: the first call set FS_COMPR_FL, so a second short-circuits.
-  assert!(
-    matches!(
-      compress_file(&path).unwrap(),
-      Outcome::AlreadyCompressed { .. }
-    ),
-    "second call must detect the compress flag set by the first"
-  );
+    // Flag round-trip: the first call set FS_COMPR_FL, so a second short-circuits.
+    assert!(
+        matches!(
+            compress_file(&path).unwrap(),
+            Outcome::AlreadyCompressed { .. }
+        ),
+        "second call must detect the compress flag set by the first"
+    );
 }
 
 #[test]
 fn read_only_filesystem_is_skipped_not_errored() {
-  let Some(dir) = std::env::var_os("DECMPFS_BTRFS_RO_DIR").map(PathBuf::from) else {
-    eprintln!("skip: DECMPFS_BTRFS_RO_DIR unset");
-    return;
-  };
-  let path = dir.join("ro.node");
-  // Detection still reports Supported (it IS btrfs); the write can't happen on a
-  // read-only mount → fail-soft turns that into Skipped, never an Err.
-  match compress_file(&path).unwrap() {
-    Outcome::Skipped { reason } => eprintln!("read-only -> Skipped({reason:?})"),
-    other => panic!("expected Skipped on a read-only fs, got {other:?}"),
-  }
+    let Some(dir) = std::env::var_os("DECMPFS_BTRFS_RO_DIR").map(PathBuf::from) else {
+        eprintln!("skip: DECMPFS_BTRFS_RO_DIR unset");
+        return;
+    };
+    let path = dir.join("ro.node");
+    // Detection still reports Supported (it IS btrfs); the write can't happen on a
+    // read-only mount → fail-soft turns that into Skipped, never an Err.
+    match compress_file(&path).unwrap() {
+        Outcome::Skipped { reason } => eprintln!("read-only -> Skipped({reason:?})"),
+        other => panic!("expected Skipped on a read-only fs, got {other:?}"),
+    }
 }

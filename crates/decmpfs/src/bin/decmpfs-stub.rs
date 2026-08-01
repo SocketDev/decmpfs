@@ -9,21 +9,21 @@
 //! diagnostic rather than pretend-succeeding.
 
 fn main() {
-  let argv: Vec<String> = std::env::args().collect();
-  match decmpfs::exe::self_replace_and_exec(&argv) {
-    // Unix: exec replaces the process image, so Ok(true) never actually
-    // returns here. Windows spawns the materialized sibling and returns true.
-    Ok(true) => {}
-    Ok(false) => {
-      eprintln!(
-        "decmpfs-stub: no packed payload in this binary — pack one in with \
+    let argv: Vec<String> = std::env::args().collect();
+    match decmpfs::exe::self_replace_and_exec(&argv) {
+        // Unix: exec replaces the process image, so Ok(true) never actually
+        // returns here. Windows spawns the materialized sibling and returns true.
+        Ok(true) => {}
+        Ok(false) => {
+            eprintln!(
+                "decmpfs-stub: no packed payload in this binary — pack one in with \
          decmpfs::exe::pack_executable_with_stub before running it."
-      );
-      std::process::exit(2);
+            );
+            std::process::exit(2);
+        }
+        Err(e) => {
+            eprintln!("decmpfs-stub: {e}");
+            std::process::exit(1);
+        }
     }
-    Err(e) => {
-      eprintln!("decmpfs-stub: {e}");
-      std::process::exit(1);
-    }
-  }
 }
