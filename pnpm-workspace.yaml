@@ -23,8 +23,8 @@ catalog:
   '@sinclair/typebox': 0.34.52
   '@socketregistry/packageurl-js': 1.5.0
   '@socketregistry/packageurl-js-stable': npm:@socketregistry/packageurl-js@1.4.8
-  '@socketsecurity/lib': 6.5.1
-  '@socketsecurity/lib-stable': npm:@socketsecurity/lib@6.5.1
+  '@socketsecurity/lib': 6.5.2
+  '@socketsecurity/lib-stable': npm:@socketsecurity/lib@6.5.2
   '@socketsecurity/registry': 2.0.5
   '@socketsecurity/registry-stable': npm:@socketsecurity/registry@2.0.5
   '@socketsecurity/sdk': 4.1.3
@@ -42,12 +42,13 @@ catalog:
   'compromise': 14.16.0
   'dtu-github-actions': 0.17.1
   'fast-check': 4.9.0
-  'magic-string': 1.0.0
+  'magic-string': 1.1.0
   'markdownlint-cli2': 0.23.1
   'mdast-util-from-markdown': 2.0.3
   'micromark': 4.0.2
   'neosanitize': 0.3.0
   'nock': 14.0.16
+  'npm-high-impact': 1.13.0
   'oxfmt': 0.60.0
   'oxlint': 1.75.0
   # oxlint-tsgolint — the type-aware lint sidecar the fleet lint runner's
@@ -55,7 +56,7 @@ catalog:
   # the wheelhouse catalog; the per-platform binaries are soak-excluded
   # transitives (consumers depend on `oxlint-tsgolint` only).
   'oxlint-tsgolint': 7.0.2001
-  'playwright-core': 1.61.1
+  'playwright-core': 1.62.0
   'portless': 0.15.4
   'regjsparser': 0.13.2
   # rolldown — bundles .claude/hooks/fleet into _dist/bundle.cjs via
@@ -134,14 +135,10 @@ minimumReleaseAgeExclude:
   # runner's whole-tree gate needs. The main package + its per-platform binary
   # family are pinned to the exact version (a scope glob would blanket-bypass a
   # future publish); exact-pinned so a future version re-soaks.
-  # published: 2026-07-24 | removable: 2026-07-31
-  - '@shadscan/cli@0.2.0'
   # js-yaml 5.2.2 — HIGH-severity security bypass: GHSA-pm4m-ph32-ghv5
   # (exponential parse time in flow collections) is fixed in 5.2.2; the
   # scoped override above forces the vulnerable 5.x line onto it ahead of
   # the soak. Exact-pinned so a future version re-soaks.
-  # published: 2026-07-23 | removable: 2026-07-30
-  - 'js-yaml@5.2.2'
   # @decmpfs/<triple> 0.1.3 — this repo's OWN prebuilt-binary platform
   # packages, published by its release pipeline. The loader (napi/decmpfs)
   # declares them as optionalDependencies, so an install resolves them from
