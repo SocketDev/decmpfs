@@ -307,7 +307,11 @@ jobs:
         if: hashFiles('fuzz/seed-corpus.py') != ''
         run: python3 fuzz/seed-corpus.py --additive
       - name: Fuzz ${{ matrix.target }} for 10 minutes
-        run: bash fuzz/run.sh "${{ matrix.target }}" 600
+        env:
+          # Route the matrix leg through env (no ${{ }} in the shell body —
+          # zizmor template-injection), matching every other run block here.
+          FUZZ_TARGET: ${{ matrix.target }}
+        run: bash fuzz/run.sh "$FUZZ_TARGET" 600
       # A crash, timeout, or OOM writes fuzz/artifacts/<target>/. Upload it so
       # the fix + minimized-regression-commit protocol can proceed.
       - name: Upload crash artifacts
