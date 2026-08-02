@@ -308,10 +308,13 @@ jobs:
         run: python3 fuzz/seed-corpus.py --additive
       - name: Fuzz ${{ matrix.target }} for 10 minutes
         env:
-          # Route the matrix leg through env (no ${{ }} in the shell body —
-          # zizmor template-injection), matching every other run block here.
-          FUZZ_TARGET: ${{ matrix.target }}
-        run: bash fuzz/run.sh "$FUZZ_TARGET" 600
+          # Route the matrix value through env. A ${{ }} expansion inside a run
+          # block is substituted before the shell sees it, so a target name
+          # carrying shell metacharacters would execute — zizmor flags this as
+          # template-injection, and the fleet's other workflows carry the same
+          # note.
+          TARGET: ${{ matrix.target }}
+        run: bash fuzz/run.sh "$TARGET" 600
       # A crash, timeout, or OOM writes fuzz/artifacts/<target>/. Upload it so
       # the fix + minimized-regression-commit protocol can proceed.
       - name: Upload crash artifacts
