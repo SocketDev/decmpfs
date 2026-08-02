@@ -50,8 +50,9 @@ defaults:
 env:
   CARGO_TERM_COLOR: always
   # Pinned so a cargo-fuzz release cannot change what CI runs underneath us.
-  # Bump this line to adopt a new one; it is also the cache key, so a bump
-  # rebuilds the binary rather than serving the previous version forever.
+  # Must match the cargo-fuzz `version` in the fleet tool registry
+  # (.github/actions/fleet/_shared/external-tools.json), whose per-platform
+  # SRI hashes are what verify the download.
   CARGO_FUZZ_VERSION: '0.13.2'
 
 jobs:
@@ -62,7 +63,33 @@ jobs:
     outputs:
       targets: ${{ steps.list.outputs.targets }}
     steps:
-      - uses: ./.github/actions/fleet/checkout
+      # First step can't call the local ./.github/actions/fleet/checkout
+      # composite: nothing is checked out yet, so the action.yml it lives in
+      # does not exist for the runner to resolve.
+      - name: Bootstrap checkout
+        shell: bash
+        env:
+          # Route context through env (no ${{ }} in the shell body —
+          # zizmor expression-injection). Token authorizes the fetch inline and
+          # is never persisted to .git/config.
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          FETCH_ARGS=(--no-tags --prune --depth 1 origin "${TRIGGER_REF}")
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            git -c "http.${SERVER_URL}/.extraheader=AUTHORIZATION: basic ${AUTH_B64}" fetch "${FETCH_ARGS[@]}"
+          else
+            git fetch "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
       - name: Read fuzz targets from fuzz/Cargo.toml
         id: list
         run: |
@@ -87,7 +114,33 @@ jobs:
     needs: discover
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/fleet/checkout
+      # First step can't call the local ./.github/actions/fleet/checkout
+      # composite: nothing is checked out yet, so the action.yml it lives in
+      # does not exist for the runner to resolve.
+      - name: Bootstrap checkout
+        shell: bash
+        env:
+          # Route context through env (no ${{ }} in the shell body —
+          # zizmor expression-injection). Token authorizes the fetch inline and
+          # is never persisted to .git/config.
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          FETCH_ARGS=(--no-tags --prune --depth 1 origin "${TRIGGER_REF}")
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            git -c "http.${SERVER_URL}/.extraheader=AUTHORIZATION: basic ${AUTH_B64}" fetch "${FETCH_ARGS[@]}"
+          else
+            git fetch "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
       - name: Rust toolchain
         uses: ./.github/actions/fleet/setup-rust-toolchain
         with:
@@ -97,15 +150,40 @@ jobs:
         with:
           prefix-key: rust-fuzz-build
           workspaces: 'fuzz -> target'
-      - name: Cache the cargo-fuzz binary
-        id: cargo-fuzz-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 (2026-06-26)
-        with:
-          key: cargo-fuzz-${{ runner.os }}-${{ env.CARGO_FUZZ_VERSION }}
-          path: ~/.cargo/bin/cargo-fuzz
       - name: Install cargo-fuzz
-        if: steps.cargo-fuzz-cache.outputs.cache-hit != 'true'
-        run: cargo install cargo-fuzz --locked --version "$CARGO_FUZZ_VERSION"
+        run: |
+          set -euo pipefail
+          # The pinned, SRI-verified release from the fleet tool registry.
+          # `cargo install` would build it from source — minutes on a cold
+          # cache, and it verifies nothing.
+          SHARED=".github/actions/fleet/_shared"
+          # The fleet registry has ONE home. The _shared/ .mjs helpers beside
+          # the composites are code that ships with them; the pins are not.
+          TOOLS_FILE="scripts/fleet/setup/external-tools.json"
+          JQ="$SHARED/jq.mjs"
+          NS="tools"
+          node "$JQ" "$TOOLS_FILE" tools >/dev/null 2>&1 || NS=""
+          PLATFORM="$(node "$SHARED/platform.mjs")"
+          # Upstream ships x86_64 only. On anything else fall back to the
+          # source build rather than failing the run — the fallback is slower
+          # and unverified, so it says so.
+          ASSET=""
+          if TRY="$(node "$JQ" "$TOOLS_FILE" $NS cargo-fuzz platforms "$PLATFORM" asset 2>/dev/null)"; then
+            ASSET="$TRY"
+          fi
+          if [ -z "$ASSET" ]; then
+            echo "cargo-fuzz publishes no asset for ${PLATFORM}; building from source (slower, unverified)."
+            cargo install cargo-fuzz --locked --version "$CARGO_FUZZ_VERSION"
+            exit 0
+          fi
+          INTEGRITY="$(node "$JQ" "$TOOLS_FILE" $NS cargo-fuzz platforms "$PLATFORM" integrity)"
+          DEST="$HOME/.cargo/bin"
+          mkdir -p "$DEST"
+          node "$SHARED/install-tool.mjs" \
+            "https://github.com/rust-fuzz/cargo-fuzz/releases/download/${CARGO_FUZZ_VERSION}/${ASSET}" \
+            "$INTEGRITY" \
+            "$DEST"
+          echo "$DEST" >> "$GITHUB_PATH"
       - name: 'no unsafe without a // FUZZ: annotation'
         run: bash fuzz/no-unsafe-without-fuzz.sh
       # Reproducible fuzz builds need a committed fuzz/Cargo.lock that matches
@@ -140,7 +218,33 @@ jobs:
       matrix:
         target: ${{ fromJson(needs.discover.outputs.targets) }}
     steps:
-      - uses: ./.github/actions/fleet/checkout
+      # First step can't call the local ./.github/actions/fleet/checkout
+      # composite: nothing is checked out yet, so the action.yml it lives in
+      # does not exist for the runner to resolve.
+      - name: Bootstrap checkout
+        shell: bash
+        env:
+          # Route context through env (no ${{ }} in the shell body —
+          # zizmor expression-injection). Token authorizes the fetch inline and
+          # is never persisted to .git/config.
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          FETCH_ARGS=(--no-tags --prune --depth 1 origin "${TRIGGER_REF}")
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            git -c "http.${SERVER_URL}/.extraheader=AUTHORIZATION: basic ${AUTH_B64}" fetch "${FETCH_ARGS[@]}"
+          else
+            git fetch "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
       - name: Rust toolchain
         uses: ./.github/actions/fleet/setup-rust-toolchain
         with:
@@ -150,15 +254,40 @@ jobs:
         with:
           prefix-key: rust-fuzz-nightly
           workspaces: 'fuzz -> target'
-      - name: Cache the cargo-fuzz binary
-        id: cargo-fuzz-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 (2026-06-26)
-        with:
-          key: cargo-fuzz-${{ runner.os }}-${{ env.CARGO_FUZZ_VERSION }}
-          path: ~/.cargo/bin/cargo-fuzz
       - name: Install cargo-fuzz
-        if: steps.cargo-fuzz-cache.outputs.cache-hit != 'true'
-        run: cargo install cargo-fuzz --locked --version "$CARGO_FUZZ_VERSION"
+        run: |
+          set -euo pipefail
+          # The pinned, SRI-verified release from the fleet tool registry.
+          # `cargo install` would build it from source — minutes on a cold
+          # cache, and it verifies nothing.
+          SHARED=".github/actions/fleet/_shared"
+          # The fleet registry has ONE home. The _shared/ .mjs helpers beside
+          # the composites are code that ships with them; the pins are not.
+          TOOLS_FILE="scripts/fleet/setup/external-tools.json"
+          JQ="$SHARED/jq.mjs"
+          NS="tools"
+          node "$JQ" "$TOOLS_FILE" tools >/dev/null 2>&1 || NS=""
+          PLATFORM="$(node "$SHARED/platform.mjs")"
+          # Upstream ships x86_64 only. On anything else fall back to the
+          # source build rather than failing the run — the fallback is slower
+          # and unverified, so it says so.
+          ASSET=""
+          if TRY="$(node "$JQ" "$TOOLS_FILE" $NS cargo-fuzz platforms "$PLATFORM" asset 2>/dev/null)"; then
+            ASSET="$TRY"
+          fi
+          if [ -z "$ASSET" ]; then
+            echo "cargo-fuzz publishes no asset for ${PLATFORM}; building from source (slower, unverified)."
+            cargo install cargo-fuzz --locked --version "$CARGO_FUZZ_VERSION"
+            exit 0
+          fi
+          INTEGRITY="$(node "$JQ" "$TOOLS_FILE" $NS cargo-fuzz platforms "$PLATFORM" integrity)"
+          DEST="$HOME/.cargo/bin"
+          mkdir -p "$DEST"
+          node "$SHARED/install-tool.mjs" \
+            "https://github.com/rust-fuzz/cargo-fuzz/releases/download/${CARGO_FUZZ_VERSION}/${ASSET}" \
+            "$INTEGRITY" \
+            "$DEST"
+          echo "$DEST" >> "$GITHUB_PATH"
       # The corpus grows across nightly runs because the fuzzer is
       # coverage-guided. Save under a run-unique key and restore the most recent
       # prior corpus through the shared prefix.
