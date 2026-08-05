@@ -4,13 +4,13 @@ Brand lockups for decmpfs, a Socket Labs project.
 
 ## Files
 
-| File                             | What                                                                                                            |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `decmpfs-logomark.svg`           | The shield **mark** — hand-authored source of truth (edit here).                                                |
-| `decmpfs-combomark.svg`          | **Combomark** (mark + "by socket labs"), **adaptive**: the tagline flips light/dark via `prefers-color-scheme`. |
-| `decmpfs-combomark-light.svg`    | Forced light-mode combomark (dark tagline) for contexts that can't honor the media query.                       |
-| `decmpfs-combomark-dark.svg`     | Forced dark-mode combomark (light tagline).                                                                     |
-| `scripts/repo/gen-combomark.mts` | Generator — derives the three combomark files from `decmpfs-logomark.svg`.                                      |
+| File                          | What                                            |
+| ----------------------------- | ----------------------------------------------- |
+| `decmpfs-combomark-light.svg` | Combomark for light backgrounds (dark tagline). |
+| `decmpfs-combomark-dark.svg`  | Combomark for dark backgrounds (light tagline). |
+
+The README picks between them with a `<picture>` and `prefers-color-scheme`.
+These are committed artwork, hand-edited — there is no generator.
 
 ## Palette
 
@@ -24,10 +24,9 @@ Grounded in the committed decmpfs brand and the repo's anti-AI-slop guidance
 | Tagline · dark bg      | by `#9A948C` · socket `#C9C3BB` · labs `#F5F2EC`                |
 | Tagline · light bg     | by `#736E67` · socket `#4A453E` · labs `#1A1626`                |
 
-## Regenerate
+## Editing
 
-Edit `decmpfs-logomark.svg`, then:
-
-```sh
-node assets/brand/scripts/repo/gen-combomark.mts   # or: pnpm run gen:combomark
-```
+Edit the two combomark SVGs directly. `gen-combomark.mts` used to derive three
+files from a logomark, but every output was byte-identical to its input, so the
+generator, the logomark, and the unsuffixed combomark were all removed — they
+were filenames, not artwork.
