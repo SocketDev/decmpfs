@@ -42,6 +42,7 @@
     "weekly-update:ci": "gh workflow run weekly-update.lock.yml"
   },
   "devDependencies": {
+    "@actions/cache": "catalog:",
     "@redwoodjs/agent-ci": "catalog:",
     "@resvg/resvg-wasm": "catalog:",
     "@shadscan/cli": "catalog:",

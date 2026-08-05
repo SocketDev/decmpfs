@@ -207,6 +207,14 @@ jobs:
           while IFS= read -r target; do
             bash fuzz/run.sh "$target" 60
           done < <(printf '%s' "$TARGETS" | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)))')
+      # Last step on purpose: the restore-phase "Rust cache" call above
+      # exported the RUST_CACHE_* job env; this saves the populated target
+      # dirs. Runs only when every previous step succeeded — the same
+      # success gate the old cache post step used.
+      - name: Save Rust cache
+        uses: ./.github/actions/fleet/setup-rust-cache
+        with:
+          phase: save
 
   # Nightly coverage-guided campaign: 10 min/target, corpus cached across runs.
   fuzz:
@@ -324,3 +332,12 @@ jobs:
           if-no-files-found: ignore
           name: fuzz-artifacts-${{ matrix.target }}
           path: fuzz/artifacts/${{ matrix.target }}/
+      # Last step on purpose: the restore-phase "Rust cache" call above
+      # exported the RUST_CACHE_* job env; this saves the populated target
+      # dirs. Runs only when the campaign succeeded — the same success gate
+      # the old cache post step used (a crashing target still gets its
+      # artifacts uploaded above).
+      - name: Save Rust cache
+        uses: ./.github/actions/fleet/setup-rust-cache
+        with:
+          phase: save

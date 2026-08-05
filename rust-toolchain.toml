@@ -16,6 +16,6 @@
 # TEMPORARY: revert to a stable pin (1.98) once Cargo stabilizes the soak
 # feature — https://github.com/rust-lang/cargo/issues/17009.
 [toolchain]
-channel = "nightly-2026-07-28"
+channel = "nightly-2026-08-01"
 components = ["clippy", "rustfmt"]
 profile = "minimal"
