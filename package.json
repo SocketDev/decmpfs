@@ -6,7 +6,7 @@
     "coverage": "node scripts/repo/coverage.mts",
     "fix": "node scripts/fleet/fix.mts",
     "lint": "node scripts/repo/lint.mts",
-    "prepare": "node scripts/fleet/install-git-hooks.mts && node scripts/fleet/prepare.mts",
+    "prepare": "node scripts/repo/bootstrap/prepare.mts && node scripts/fleet/install-git-hooks.mts && node scripts/fleet/prepare.mts",
     "release": "node scripts/repo/release.mts",
     "test": "node scripts/repo/test.mts",
     "check:paths": "node scripts/fleet/check/paths-are-canonical.mts",
