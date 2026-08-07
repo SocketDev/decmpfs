@@ -1,3 +1,5 @@
+# decmpfs
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/brand/decmpfs-combomark-dark.svg">
@@ -6,6 +8,9 @@
 </p>
 
 ![coverage score](https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/coverage-score.svg) [![Socket Badge](https://badge.socket.dev/cargo/package/decmpfs)](https://socket.dev/cargo/package/decmpfs)
+
+[![Follow @SocketSecurity](assets/fleet/badge-follow-x.svg)](https://twitter.com/SocketSecurity)
+[![Follow @socket.dev on Bluesky](assets/fleet/badge-follow-bluesky.svg)](https://bsky.app/profile/socket.dev)
 
 Apply the operating system's **transparent per-file filesystem compression** to a
 file - smaller on disk, byte-identical on read, decompressed by the kernel at
