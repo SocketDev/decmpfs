@@ -1,14 +1,10 @@
 name: 📦 npm publish
 
-# decmpfs napi-matrix variant, shipped via the override channel
-# (template/overrides/decmpfs/ — same pattern as stuie's interim matrix and
-# socket-cli's frozen variant). The engine flow is the byte-canonical shell
-# (checkout → setup-and-install → build → scripts/fleet/npm-publish.mts)
-# with ONE addition: a five-leg `build-addons` matrix builds each platform's
-# napi cdylib on its native host and the publish job stages the artifacts
-# into napi/decmpfs/npm/<triple>/ before the engine runs — otherwise the
-# engine's hollow-package gate (correctly) refuses the payload-less platform
-# dirs. Collapses into the shared napi flavor when that lands canonically.
+# Cascade-owned — every npm-publishing repo carries the byte-identical copy
+# (adopt by copying the template once; the sync then keeps it in lock-step;
+# member edits are reverted on the next cascade). The thin dispatch shell:
+# checkout → setup-and-install → build → scripts/fleet/npm-publish.mts, which
+# owns what + how the repo publishes.
 #
 # Default flow: manual dispatch, DRY-RUN unless `publish: true`; publishes the
 # workspace's publishable packages via the fleet staged-publish script with
@@ -29,6 +25,15 @@ name: 📦 npm publish
 # gate is bypassed; hard gap-fill-only guards replace it (never-published
 # version, lower than latest, non-latest dist-tag, content declares its own
 # version) — see scripts/fleet/publish-infra/npm/backfill.mts.
+#
+# NAPI ADDON PATH: not here. A member that declares a `napi` block in
+# .config/repo/socket-wheelhouse.json receives a SEPARATE, conditionally
+# cascaded `.github/workflows/npm-publish-napi.yml` carrying the per-platform
+# `.node` build + platform-package publish. GitHub parses a workflow against
+# the repo's Actions allowlist BEFORE evaluating any job-level `if:`, so addon
+# jobs living in this fleet-wide file would force the Rust toolchain actions
+# onto every member's allowlist — and a strict-allowlist member that lacks them
+# fails the whole file at startup with zero jobs and no logs.
 
 on:
   workflow_dispatch:
@@ -83,68 +88,7 @@ permissions:
   contents: read
 
 jobs:
-  # One leg per shipped platform (napi/decmpfs/scripts/targets.mts is the
-  # name/loader source of truth; this include list mirrors it and pins each
-  # triple to its native runner). Each leg cargo-builds the decmpfs-node
-  # cdylib, stages it into its napi/decmpfs/npm/<triple>/ dir via
-  # make-npm-dirs.mts (host-copy branch), and uploads the .node payload for
-  # the publish job to stage back in.
-  build-addons:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - triple: darwin-arm64
-            runner: macos-14
-          - triple: darwin-x64
-            runner: macos-15-intel
-          - triple: linux-arm64-gnu
-            runner: ubuntu-24.04-arm
-          - triple: linux-x64-gnu
-            runner: ubuntu-latest
-          - triple: win32-x64-msvc
-            runner: windows-latest
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
-    env:
-      SOCKET_API_KEY: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 (2026-05-15)
-        with:
-          # Backfill builds the content ref; empty = the dispatched ref.
-          ref: ${{ inputs.checkout-ref }}
-          fetch-depth: 1
-          persist-credentials: false
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0 (2026-06-29)
-        with:
-          node-version: 24
-      - uses: ./.github/actions/repo/setup-sfw
-      - name: Build addon
-        working-directory: napi/decmpfs
-        run: node scripts/build.mts
-      - name: Stage into the platform package dir
-        shell: bash
-        env:
-          TRIPLE: ${{ matrix.triple }}
-        # make-npm-dirs host-copies target/release/<artifact> into the host
-        # triple's dir; the test asserts the runner↔triple mapping above is
-        # right (a mismapped leg would stage into a DIFFERENT triple's dir
-        # and this leg's upload would be empty).
-        run: |
-          set -euo pipefail
-          node napi/decmpfs/scripts/make-npm-dirs.mts
-          test -s "napi/decmpfs/npm/${TRIPLE}/decmpfs.${TRIPLE}.node" || {
-            echo "× napi/decmpfs/npm/${TRIPLE}/ has no staged .node — runner/triple mismatch?" >&2
-            exit 1
-          }
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2 (2026-07-24)
-        with:
-          if-no-files-found: error
-          name: addon-${{ matrix.triple }}
-          path: napi/decmpfs/npm/${{ matrix.triple }}/*.node
-
   publish:
-    needs: build-addons
     runs-on: ubuntu-latest
     # npm's trusted-publisher config pins this GitHub environment name; the
     # OIDC token exchange 404s if the job runs outside it.
@@ -158,22 +102,85 @@ jobs:
       # sfw and socket-cli read SOCKET_API_KEY from the org-wide secret.
       SOCKET_API_KEY: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
     steps:
-      # First step must be the third-party actions/checkout (GitHub fetches it
-      # independently) to populate the workspace so the LOCAL
-      # ./.github/actions/* composite resolves; setup-and-install re-checks-out
-      # at its own deeper default.
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 (2026-05-15)
-        with:
-          # Backfill checks out the content ref; empty = the dispatched ref.
-          ref: ${{ inputs.checkout-ref }}
-          fetch-depth: 1
-          # The bump derivation anchors on registry-latest + the last v-tag.
-          # On a first-publish repo the registry has nothing, so the tags are
-          # the only anchor — a tagless shallow checkout makes the engine
-          # derive from zero (0.1.0) and trip the half-applied-bump gate on
-          # historical CHANGELOG sections (decmpfs run 30226873755).
-          fetch-tags: true
-          persist-credentials: false
+      # First step can't call the local ./.github/actions/fleet/checkout
+      # composite (nothing checked out yet); bootstrap the workspace with the
+      # inline git-fetch shape so setup-and-install can re-check-out at its own
+      # deeper default. Two npm-publish specifics: a backfill fetches the
+      # checkout-ref content ref (empty = the dispatched ref), and the fetch
+      # carries --tags — the bump derivation anchors on registry-latest + the
+      # last v-tag, and on a first-publish repo the registry has nothing, so
+      # the tags are the only anchor; a tagless shallow fetch makes the engine
+      # derive from zero (0.1.0) and trip the half-applied-bump gate on
+      # historical CHANGELOG sections that describe shipped versions.
+      - name: Bootstrap checkout
+        shell: bash
+        env:
+          # Route context through env (no ${{ }} in the shell body —
+          # zizmor expression-injection). Token authorizes the fetch inline and
+          # is never persisted to .git/config.
+          CHECKOUT_REF: ${{ inputs.checkout-ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          # Backfill's content ref wins; otherwise the dispatched ref.
+          FETCH_REF="${CHECKOUT_REF:-${TRIGGER_REF}}"
+          FETCH_ARGS=(--prune --depth 1 origin "${FETCH_REF}")
+          # --tags stays on the fetch line itself so the
+          # version-derivation-jobs-have-tags gate can see it.
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            git -c "http.${SERVER_URL}/.extraheader=AUTHORIZATION: basic ${AUTH_B64}" fetch --tags "${FETCH_ARGS[@]}"
+          else
+            git fetch --tags "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
+
+      # `latest` is what an untagged install of the package resolves to, so it belongs
+      # to whichever branch carries the line customers actually consume. For
+      # almost every member that IS the default branch, which is the default
+      # here — those repos see no behavior change.
+      #
+      # A member whose consumable line is NOT the default branch declares it as
+      # `release.latestDistTagBranch` in .config/repo/socket-wheelhouse.json —
+      # the shape being a maintenance branch shipping to users while the
+      # default branch carries a prerelease major.
+      #
+      # Read from the manifest rather than hard-coded so one file states the
+      # law for the whole fleet and each member parameterizes it.
+      - name: Guard the latest dist-tag to the consumable release line
+        if: ${{ inputs.publish == true && inputs.dist-tag == 'latest' }}
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REF: ${{ github.ref }}
+        run: |
+          LATEST_BRANCH="$(node -e '
+            const fs = require("node:fs")
+            const p = ".config/repo/socket-wheelhouse.json"
+            let branch = ""
+            try {
+              branch = JSON.parse(fs.readFileSync(p, "utf8"))?.release?.latestDistTagBranch ?? ""
+            } catch {}
+            process.stdout.write(String(branch))
+          ')"
+          if [ -z "$LATEST_BRANCH" ]; then
+            LATEST_BRANCH="$DEFAULT_BRANCH"
+          fi
+          if [ "$REF" != "refs/heads/$LATEST_BRANCH" ]; then
+            echo "::error::Refusing to publish dist-tag 'latest' from $REF." >&2
+            echo "::error::Where: this dispatch, against the '$LATEST_BRANCH' consumable release line." >&2
+            echo "::error::Saw vs wanted: 'latest' requested off refs/heads/$LATEST_BRANCH; 'latest' is what an untagged install resolves to, so only the consumable line may move it." >&2
+            echo "::error::Fix: re-dispatch from $LATEST_BRANCH, or pick a prerelease dist-tag (next, beta, canary, rc). To change which branch owns 'latest', set release.latestDistTagBranch in .config/repo/socket-wheelhouse.json." >&2
+            exit 1
+          fi
+          echo "dist-tag 'latest' is allowed from $REF (consumable line: $LATEST_BRANCH)."
+
       - name: Setup + install
         uses: ./.github/actions/fleet/setup-and-install
         with:
@@ -184,32 +191,20 @@ jobs:
           # version. Empty forwards as unset, so normal dispatches keep the
           # dispatched-ref re-checkout.
           checkout-ref: ${{ inputs.checkout-ref }}
+          # Thin members download the wheelhouse release bundle during
+          # `pnpm install`, and the mint is what authorizes that download.
+          # Both stay EMPTY on a member that has not provisioned the payload
+          # App, which skips the mint and leaves the fetch a no-op — the same
+          # state a non-thin member wants. Wiring them here is inert until the
+          # credentials exist, so a thin member becomes publishable by adding
+          # the var and secret rather than by editing this cascaded workflow.
+          payload-token-client-id: ${{ vars.SOCKET_PAYLOAD_CLIENT_ID }}
+          payload-token-private-key: ${{ secrets.SOCKET_PAYLOAD_APP_PRIVATE_KEY }}
       # Build dist/ before publishing — the staged-publish script imports the
       # package's own built output (`@socketsecurity/lib/stdio/prompts` self-
       # resolves to dist/), and `files` ships dist/, so the tarball needs it.
       - name: Build
         run: pnpm run build
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (2026-07-24)
-        with:
-          path: staged-addons
-      # Every platform's payload lands in its package dir BEFORE the engine
-      # runs, so the hollow-package gate sees six publishable packages. The
-      # bump's own make-npm-dirs pass rewrites manifests but never deletes a
-      # staged .node, so ordering here is safe.
-      - name: Stage platform addons
-        shell: bash
-        run: |
-          set -euo pipefail
-          node napi/decmpfs/scripts/make-npm-dirs.mts
-          for dir in staged-addons/addon-*; do
-            triple="${dir#staged-addons/addon-}"
-            dest="napi/decmpfs/npm/${triple}"
-            test -d "$dest" || {
-              echo "× no generated platform dir for ${triple}." >&2
-              exit 1
-            }
-            cp "$dir"/*.node "$dest/"
-          done
       # The release App signs the bump commit via the GitHub API — the
       # workflow's own GITHUB_TOKEN stays contents: read. A backfill never
       # commits a bump, and a bump=false pipeline dispatch already carries
