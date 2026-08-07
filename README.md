@@ -1,14 +1,14 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/brand/decmpfs-combomark-dark.svg">
-    <img alt="decmpfs — by socket labs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/brand/decmpfs-combomark-light.svg" width="360">
+    <img alt="decmpfs - by socket labs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/brand/decmpfs-combomark-light.svg" width="360">
   </picture>
 </p>
 
 ![coverage score](https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/coverage-score.svg) [![Socket Badge](https://badge.socket.dev/cargo/package/decmpfs)](https://socket.dev/cargo/package/decmpfs)
 
 Apply the operating system's **transparent per-file filesystem compression** to a
-file — smaller on disk, byte-identical on read, decompressed by the kernel at
+file - smaller on disk, byte-identical on read, decompressed by the kernel at
 near-native speed. macOS APFS (decmpfs/LZVN), Linux btrfs (zstd→lzo→zlib), Windows
 NTFS (LZNT1).
 
@@ -16,18 +16,18 @@ Disk-heavy artifacts (native addons, bundled binaries, package stores) compress
 40–60% with the compression the OS already ships, but every runtime writes them
 uncompressed and no portable API exists to fix that. decmpfs is that API:
 
-- **One pass.** `compress_bytes` writes bytes straight to an OS-compressed file —
+- **One pass.** `compress_bytes` writes bytes straight to an OS-compressed file -
   never write-then-recompress.
-- **Outcome, never a surprise error.** Every call returns an `Outcome` —
+- **Outcome, never a surprise error.** Every call returns an `Outcome` -
   `Compressed`, `NoGain` (incompressible / sub-cluster), `AlreadyCompressed`,
   `Unsupported` (ext4, xfs, ZFS, ReFS, FAT, tmpfs, network mounts), or `Skipped`
   (permission, lock, gate). `Err` is reserved for genuine I/O failures.
 - **Compression-preserving copy.** A plain byte copy silently re-inflates a
   compressed file; `copy_file` clones (macOS `clonefile`, Linux `FICLONE`) or
   recompresses so the savings survive the copy. Node's own `fs.copyFile` cannot
-  do this on macOS — libuv has no `clonefile` path (`COPYFILE_FICLONE` falls back
+  do this on macOS - libuv has no `clonefile` path (`COPYFILE_FICLONE` falls back
   to a byte copy, `COPYFILE_FICLONE_FORCE` throws `ENOSYS`).
-- **Speed-first codecs** — a file is written once, read on load: LZVN on macOS,
+- **Speed-first codecs** - a file is written once, read on load: LZVN on macOS,
   zstd→lzo→zlib on btrfs, LZNT1 on NTFS (survives a reinstall's open-for-write,
   unlike WOF).
 
@@ -72,13 +72,13 @@ The `Gate` decides which files to compress by glob and/or size:
 let gate = Gate::new(Some("**/*.node"), Some(">= 1MB"))?;
 ```
 
-Node — an N-API binding in [`napi/`](napi/), async + `Sync` variants of each:
+Node - an N-API binding in [`napi/`](napi/), async + `Sync` variants of each:
 
-- `writeDecmpfsFile(path, data)` — `fs.writeFile`-shaped, atomic by default,
+- `writeDecmpfsFile(path, data)` - `fs.writeFile`-shaped, atomic by default,
   lands the bytes already compressed.
-- `copyDecmpfsFile(src, dest, { force, errorOnExist })` — `fs.cp`-shaped
+- `copyDecmpfsFile(src, dest, { force, errorOnExist })` - `fs.cp`-shaped
   compression-preserving copy.
-- `copyFile(src, dest, mode)` — `fsPromises.copyFile` signature, including
+- `copyFile(src, dest, mode)` - `fsPromises.copyFile` signature, including
   `COPYFILE_EXCL` / `COPYFILE_FICLONE` / `COPYFILE_FICLONE_FORCE`, backed by the
   clone-first copy libuv lacks on macOS.
 

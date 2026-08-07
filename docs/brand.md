@@ -1,4 +1,4 @@
-# decmpfs brand — mark & combomark
+# decmpfs brand - mark & combomark
 
 Brand lockups for decmpfs, a Socket Labs project.
 
@@ -10,12 +10,12 @@ Brand lockups for decmpfs, a Socket Labs project.
 | `decmpfs-combomark-dark.svg`  | Combomark for dark backgrounds (light tagline). |
 
 The README picks between them with a `<picture>` and `prefers-color-scheme`.
-These are committed artwork, hand-edited — there is no generator.
+These are committed artwork, hand-edited - there is no generator.
 
 ## Palette
 
 Grounded in the committed decmpfs brand and the repo's anti-AI-slop guidance
-(`.claude/skills/fleet/designing-interfaces/references/`) — no `#8b5cf6`/`#7c3aed` violet.
+(`.claude/skills/fleet/designing-interfaces/references/`) - no `#8b5cf6`/`#7c3aed` violet.
 
 | Role                   | Color                                                           |
 | ---------------------- | --------------------------------------------------------------- |
@@ -28,5 +28,5 @@ Grounded in the committed decmpfs brand and the repo's anti-AI-slop guidance
 
 Edit the two combomark SVGs directly. `gen-combomark.mts` used to derive three
 files from a logomark, but every output was byte-identical to its input, so the
-generator, the logomark, and the unsuffixed combomark were all removed — they
+generator, the logomark, and the unsuffixed combomark were all removed - they
 were filenames, not artwork.
