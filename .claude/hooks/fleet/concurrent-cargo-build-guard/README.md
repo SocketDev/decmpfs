@@ -8,7 +8,7 @@ cargo / build-prod commands, so a no-op in non-cargo repos.
 
 Cargo release builds spawn 8 LLVM threads each, using 8-22GB RAM per build.
 Two concurrent release builds reliably OOM-kill on typical dev machines.
-Cargo dev builds + cargo check are fast (~1-2s) and parallel-safe — those
+Cargo dev builds + cargo check are fast (~1-2s) and parallel-safe - those
 are exempt.
 
 ## What it blocks
@@ -28,7 +28,7 @@ Type the canonical phrase in a new message:
 
     Allow concurrent-cargo-build bypass
 
-Use sparingly — OOM consequences are real and abrupt.
+Use sparingly - OOM consequences are real and abrupt.
 
 ## Detection
 

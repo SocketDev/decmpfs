@@ -116,8 +116,9 @@ const USAGE = `Usage: node scripts/fleet/release-pipeline.mts [options]
   (stage-publish → verify); its \`--approve\` promotes AND — once the publish
   is live — cuts the tag + immutable GH release in the same invocation.`
 
-// socket-lint: allow no-required-in-options-bag -- not an options bag: the
+// Not an options bag: the.
 // parsed CLI flag set, always passed as the required positional `cli` param.
+// oxlint-disable-next-line socket/no-required-in-options-bag -- not an options
 export interface CliOptions {
   approve: boolean
   ciTimeoutMs: number

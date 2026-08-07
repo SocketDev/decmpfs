@@ -42,9 +42,9 @@ export interface CatalogHold {
  */
 export const FLEET_CATALOG_HOLDS: Readonly<Record<string, CatalogHold>> = {
   nock: {
-    heldAt: '14.0.16',
+    heldAt: '14.0.17',
     reason:
-      'nock 15.0.0 was published accidentally and is deprecated upstream ("released accidentally and is unstable. Please use v14.x"). It ships @mswjs/interceptors 0.39.8, whose fetch bypass path clones an already-consumed request and throws TypeError: unusable on any fetch POST-with-body to an enableNetConnect-allowed host, which reds the Test jobs. 14.0.16 is the same interceptors-based API family and passes the regression repro.',
+      'nock 15.0.0 was published accidentally and is deprecated upstream ("released accidentally and is unstable. Please use v14.x"). It ships @mswjs/interceptors 0.39.8, whose fetch bypass path clones an already-consumed request and throws TypeError: unusable on any fetch POST-with-body to an enableNetConnect-allowed host, which reds the Test jobs. 14.0.17 is the newest of the same interceptors-based API family and carries no deprecation.',
     releaseWhen:
       'a stabilized 15.x ships (not a 15.0.0-beta) AND it passes the fetch POST-with-body repro that 15.0.0 fails',
   },

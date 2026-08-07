@@ -1,7 +1,10 @@
 # THE canonical fleet Rust pin — single source of truth for the toolchain
 # version. Bump here, never in a Dockerfile or a member copy. Cascades to the
-# root of every rust-buildType member (rustup discovers it there); the
-# wheelhouse itself builds no Rust, so no root copy exists here. Derived
+# root of every repo that compiles Rust, where rustup discovers it by walking up
+# from any workspace: `build.type: rust`, or a non-empty `capabilities.cargo` in
+# an otherwise-TypeScript repo (the `hasRust` conditional trigger). The
+# wheelhouse is the second kind — it builds tools/chapter-bundle — so a root copy
+# exists here too. Derived
 # copies kept in lockstep by scripts/fleet/check/rust-toolchain-pins-are-synced.mts:
 #   - RUST_UPDATER_TOOLCHAIN (scripts/fleet/update/cargo.mts) — the cargo soak
 #     updater's nightly
