@@ -45,11 +45,17 @@ jobs:
           persist-credentials: false
       - name: Setup + install
         uses: ./.github/actions/fleet/setup-and-install
+        with:
+          # Thin-distribution CI auth: mint a contents:read-only token so the
+          # bootstrap fetch (fired by `prepare` during install) can download the
+          # fleet release bundle from the private wheelhouse.
+          payload-token-client-id: ${{ vars.SOCKET_PAYLOAD_CLIENT_ID }}
+          payload-token-private-key: ${{ secrets.SOCKET_PAYLOAD_APP_PRIVATE_KEY }}
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@4fd1da8b0805d2d2e936788875a7d65dbd677dc2 # nightly
         with:
           toolchain: nightly
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.4.0 (2026-03-12)
       - name: crates.io auth (OIDC Trusted Publishing)
         id: auth
         if: ${{ inputs.publish == true }}
@@ -89,6 +95,6 @@ jobs:
           node scripts/fleet/cargo-publish.mts ${{ inputs.publish == true && '--direct --bump' || '--staged --dry-run --bump' }}
       - name: Attest build provenance (.crate)
         if: ${{ inputs.publish == true }}
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0 (2025-06-11)
         with:
           subject-path: target/package/*.crate
