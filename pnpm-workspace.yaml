@@ -3,6 +3,8 @@ packages:
   - '.config/fleet/oxlint-plugin'
   - '.config/fleet/oxlint-plugin/fleet/*'
   - '.claude/hooks/fleet/*'
+  - '.claude/hooks/repo/*'
+  - '.config/repo/oxlint-plugin/*'
 trustPolicy: no-downgrade
 
 # Soak time for external-tools updates: minutes a release must have
