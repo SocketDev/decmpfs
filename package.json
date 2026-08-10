@@ -54,7 +54,16 @@
     "preflight": "node scripts/fleet/preflight.mts",
     "npm:auth:browser": "node scripts/fleet/npm-auth-browser.mts",
     "npm:auth:cli": "node scripts/fleet/npm-auth-cli.mts",
-    "prune:gha-caches": "node scripts/fleet/prune-actions-caches.mts"
+    "prune:gha-caches": "node scripts/fleet/prune-actions-caches.mts",
+    "fix:rust": "node scripts/fleet/fix-rust.mts",
+    "fmt:rust": "node scripts/fleet/fmt-rust.mts",
+    "lint:rust": "node scripts/fleet/lint-rust.mts",
+    "check:fleet": "node scripts/fleet/check.mts",
+    "fix:js": "node scripts/fleet/fix.mts --js",
+    "fix:repo": "node scripts/fleet/fix.mts --repo",
+    "fmt:js": "node scripts/fleet/format.mts",
+    "lint:js": "node scripts/fleet/lint.mts",
+    "gh:auth": "node scripts/fleet/gh-auth.mts"
   },
   "devDependencies": {
     "@playwright/mcp": "catalog:",
