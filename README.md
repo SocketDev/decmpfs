@@ -7,7 +7,7 @@
   </picture>
 </p>
 
-![coverage score](https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/coverage-score.svg) [![Socket Badge](https://badge.socket.dev/cargo/package/decmpfs)](https://socket.dev/cargo/package/decmpfs)
+![coverage score](https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/coverage.svg) [![Socket Badge](https://badge.socket.dev/cargo/package/decmpfs)](https://socket.dev/cargo/package/decmpfs)
 
 [![Follow @SocketSecurity](assets/fleet/badge-follow-x.svg)](https://twitter.com/SocketSecurity)
 [![Follow @socket.dev on Bluesky](assets/fleet/badge-follow-bluesky.svg)](https://bsky.app/profile/socket.dev)
@@ -103,7 +103,7 @@ plus the crate tests. The napi addon rebuilds with `pnpm run build` in
 `napi/decmpfs/`. Coverage runs via `pnpm run coverage`, which pins a nightly
 toolchain (the test modules are marked `#[coverage(off)]` so the number reflects
 production code) and fails loud if nightly or its `llvm-tools` are missing; the
-badge (`assets/coverage-score.svg`) is regenerated from that output.
+badge (`assets/repo/coverage.svg`) is regenerated from that output.
 
 ## License
 
