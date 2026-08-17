@@ -28,5 +28,10 @@
   },
   "release": {
     "versionPolicy": "patch-only"
+  },
+  "capabilities": {
+    "cargo": [
+      "."
+    ]
   }
 }
