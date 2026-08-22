@@ -109,12 +109,31 @@ jobs:
     env:
       SOCKET_API_KEY: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 (2026-05-15)
-        with:
-          # Backfill builds the content ref; empty = the dispatched ref.
-          ref: ${{ inputs.checkout-ref }}
-          fetch-depth: 1
-          persist-credentials: false
+      # Inline git fetch, not a local composite: this is the job's first step, so
+      # ./.github/actions/* is not on disk yet. Not actions/checkout either - the
+      # fleet ships no third-party actions. Same shape every other fleet workflow
+      # bootstraps with; the credential is never persisted to .git/config.
+      - name: Bootstrap checkout
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TARGET_REF: ${{ inputs.checkout-ref || github.ref }}
+        run: |
+          set -euo pipefail
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          FETCH_ARGS=(--no-tags --prune --depth 1 origin "${TARGET_REF}")
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            git -c "http.${SERVER_URL}/.extraheader=AUTHORIZATION: basic ${AUTH_B64}" fetch "${FETCH_ARGS[@]}"
+          else
+            git fetch "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0 (2026-06-29)
         with:
           node-version: 24
@@ -137,7 +156,11 @@ jobs:
             echo "× napi/decmpfs/npm/${TRIPLE}/ has no staged .node — runner/triple mismatch?" >&2
             exit 1
           }
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2 (2026-07-24)
+      # The fleet's own uploader, not actions/upload-artifact. Same three
+      # inputs, backed by scripts/fleet/artifact/upload.mts, so there is no
+      # third-party action in the publish path and no pinned sha to keep
+      # chasing when upstream retags.
+      - uses: ./.github/actions/fleet/upload-artifact
         with:
           if-no-files-found: error
           name: addon-${{ matrix.triple }}
@@ -158,22 +181,38 @@ jobs:
       # sfw and socket-cli read SOCKET_API_KEY from the org-wide secret.
       SOCKET_API_KEY: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
     steps:
-      # First step must be the third-party actions/checkout (GitHub fetches it
-      # independently) to populate the workspace so the LOCAL
-      # ./.github/actions/* composite resolves; setup-and-install re-checks-out
-      # at its own deeper default.
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 (2026-05-15)
-        with:
-          # Backfill checks out the content ref; empty = the dispatched ref.
-          ref: ${{ inputs.checkout-ref }}
-          fetch-depth: 1
-          # The bump derivation anchors on registry-latest + the last v-tag.
-          # On a first-publish repo the registry has nothing, so the tags are
-          # the only anchor — a tagless shallow checkout makes the engine
-          # derive from zero (0.1.0) and trip the half-applied-bump gate on
-          # historical CHANGELOG sections (decmpfs run 30226873755).
-          fetch-tags: true
-          persist-credentials: false
+      # Inline git fetch, not a local composite: this is the job's first step,
+      # so ./.github/actions/* is not on disk yet. Not actions/checkout either
+      # - the fleet ships no third-party actions. setup-and-install re-checks
+      # out at its own deeper default below.
+      #
+      # TAGS are fetched, not skipped. The bump derivation anchors on
+      # registry-latest plus the last v-tag, and on a first-publish repo the
+      # registry has nothing, so the tags are the only anchor - a tagless
+      # checkout makes the engine derive from zero (0.1.0) and trip the
+      # half-applied-bump gate on historical CHANGELOG sections (decmpfs run
+      # 30226873755).
+      - name: Bootstrap checkout
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TARGET_REF: ${{ inputs.checkout-ref || github.ref }}
+        run: |
+          set -euo pipefail
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          FETCH_ARGS=(--tags --prune --depth 1 origin "${TARGET_REF}")
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            git -c "http.${SERVER_URL}/.extraheader=AUTHORIZATION: basic ${AUTH_B64}" fetch "${FETCH_ARGS[@]}"
+          else
+            git fetch "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
       - name: Setup + install
         uses: ./.github/actions/fleet/setup-and-install
         with:
@@ -195,7 +234,10 @@ jobs:
       # resolves to dist/), and `files` ships dist/, so the tarball needs it.
       - name: Build
         run: pnpm run build
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0 (2026-07-24)
+      # The fleet's downloader, not actions/download-artifact. No name = every
+      # artifact in the run, each under staged-addons/<name>/ - one per
+      # build-addons leg.
+      - uses: ./.github/actions/fleet/download-artifact
         with:
           path: staged-addons
       # Every platform's payload lands in its package dir BEFORE the engine

@@ -16,8 +16,10 @@
 # runs on the SAME toolchain as the build — no separate updater-only nightly.
 # Fuzz (cargo-fuzz) still pins its own nightly per job.
 #
-# TEMPORARY: revert to a stable pin (1.98) once Cargo stabilizes the soak
-# feature — https://github.com/rust-lang/cargo/issues/17009.
+# TEMPORARY: move to a stable pin once min-publish-age stabilizes —
+# targets Rust 1.100.0 (late September 2026), per
+# https://github.com/rust-lang/cargo/pull/17335 (open) and
+# https://github.com/rust-lang/cargo/issues/17009.
 [toolchain]
 channel = "nightly-2026-08-08"
 components = ["clippy", "rustfmt"]
