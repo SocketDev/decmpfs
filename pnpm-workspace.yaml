@@ -187,6 +187,7 @@ catalog:
   #    pinned npm version instead of a sibling working tree.
   '@resvg/resvg-wasm': 2.6.2
 
+  'yaml': 2.9.0
 # pnpm `overrides` block — two purposes:
 #
 # 1. Force every transitive `vite` resolution to the catalog'd 8.0.13.
