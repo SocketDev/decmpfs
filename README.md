@@ -40,7 +40,7 @@ cargo add decmpfs
 ```
 
 ```sh
-npm install decmpfs
+pnpm install decmpfs
 ```
 
 The core crate is dependency-light (`libc` / `windows-sys` only). The optional

@@ -18,7 +18,7 @@ prebuilt native binary ships as an optional dependency per platform
 ## Install
 
 ```sh
-npm install decmpfs
+pnpm install decmpfs
 ```
 
 ## Usage
