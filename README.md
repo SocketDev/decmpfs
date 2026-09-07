@@ -4,9 +4,6 @@
   <img width="160" height="160" alt="decmpfs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/HEAD/assets/repo/logomark.svg">
 </div>
 
-<p align="center">
-  </p>
-
 ![coverage score](https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/coverage.svg) [![Socket Badge](https://badge.socket.dev/cargo/package/decmpfs)](https://socket.dev/cargo/package/decmpfs)
 
 [![Follow @SocketSecurity](assets/fleet/badge-follow-x.svg)](https://twitter.com/SocketSecurity)
