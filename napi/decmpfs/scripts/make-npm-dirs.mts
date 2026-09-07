@@ -34,7 +34,7 @@ function hostTriple(): string {
   if (platform === 'linux') {
     const report = process.report?.getReport()
     const glibc =
-      report && typeof report === 'object'
+      typeof report === 'object' && report !== null
         ? report.header?.glibcVersionRuntime
         : undefined
     return `${platform}-${arch}${glibc ? '-gnu' : '-musl'}`

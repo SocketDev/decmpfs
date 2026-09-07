@@ -44,7 +44,7 @@ function gitLines(gitArgs: string[]): string[] {
     return []
   }
   return (result.stdout ?? '')
-    .split('\n')
+    .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean)
 }

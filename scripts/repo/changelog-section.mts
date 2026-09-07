@@ -21,7 +21,7 @@ function main(): void {
   }
 
   const changelog = readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8')
-  const lines = changelog.split('\n')
+  const lines = changelog.split(/\r?\n/)
   // A section runs from its `## <version>` heading to the next `## ` heading.
   const start = lines.findIndex(l => l.trim() === `## ${version}`)
   if (start === -1) {

@@ -1,6 +1,5 @@
-// No-network, no-fs unit tests for the pure release resolver. Run: node --test.
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 
 import {
   changelogEntries,
@@ -8,7 +7,7 @@ import {
   resolveRelease,
 } from '../../scripts/repo/release-lib.mts'
 
-void test('resolveRelease: prerelease hint finalizes, arg bumps, else as-committed', () => {
+test('resolveRelease: prerelease hint finalizes, arg bumps, else as-committed', () => {
   assert.deepEqual(resolveRelease('0.1.1-prerelease', ''), {
     version: '0.1.1',
     mode: 'finalize',
@@ -33,7 +32,7 @@ void test('resolveRelease: prerelease hint finalizes, arg bumps, else as-committ
   })
 })
 
-void test('changelogEntries: keeps feat/fix/perf sections, drops plumbing', () => {
+test('changelogEntries: keeps feat/fix/perf sections, drops plumbing', () => {
   const subjects = [
     'feat(node): copyDecmpfsFile gains errorOnExist',
     'fix(remove): allow current_dir at the Io-seam cwd + its guard test',
@@ -64,7 +63,7 @@ void test('changelogEntries: keeps feat/fix/perf sections, drops plumbing', () =
   ])
 })
 
-void test('changelogEntries: dedupes repeats, skips non-conventional subjects', () => {
+test('changelogEntries: dedupes repeats, skips non-conventional subjects', () => {
   const subjects = [
     'fix(node): surface fs-shaped errors',
     'fix(node): surface fs-shaped errors',
@@ -78,7 +77,7 @@ void test('changelogEntries: dedupes repeats, skips non-conventional subjects', 
   ])
 })
 
-void test('changelogSection: renders conventionalcommits-shaped sections', () => {
+test('changelogSection: renders conventionalcommits-shaped sections', () => {
   assert.equal(
     changelogSection('0.2.0', [
       'feat: pack executables',
@@ -88,7 +87,7 @@ void test('changelogSection: renders conventionalcommits-shaped sections', () =>
   )
 })
 
-void test('changelogSection: falls back to a plain maintenance line', () => {
+test('changelogSection: falls back to a plain maintenance line', () => {
   assert.equal(
     changelogSection('0.1.2', ['chore(deps): bump something']),
     '## 0.1.2\n\n- Maintenance release; no user-facing changes.\n',

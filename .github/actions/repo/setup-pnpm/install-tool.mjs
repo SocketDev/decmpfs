@@ -24,7 +24,7 @@
  *     vs actual + the path)
  */
 
-// oxlint-disable-next-line socket/prefer-async-spawn -- composite-action helper runs on the raw runner before setup-node; node_modules is unavailable and the download / extract pipeline is naturally sync.
+// oxlint-disable-next-line socket/prefer-async-spawn -- bootstrap action
 import { spawnSync } from 'node:child_process'
 import crypto from 'node:crypto'
 import {
@@ -53,7 +53,7 @@ const [, , url, integrityArg, destDir, binName] = process.argv
 
 if (!url || !integrityArg || !destDir) {
   logger.fail(
-    '× usage: install-tool.mjs <url> <integrity> <dest-dir> [<bin-name>]',
+    'usage: install-tool.mjs <url> <integrity> <dest-dir> [<bin-name>]',
   )
   process.exit(1)
 }
@@ -61,9 +61,8 @@ if (!url || !integrityArg || !destDir) {
 // Parse SRI string `<algo>-<base64>`. Bare 64-char hex is treated as
 // sha256 for backward compat — deprecated, will be removed once all
 // call sites pass SRI directly.
-// oxlint-disable-next-line socket/export-top-level-functions -- composite-action helper runs on the raw runner before setup-node; no node_modules, no module boundary worth exporting across.
-// oxlint-disable-next-line typescript/consistent-return -- every non-returning arm ends in process.exit(1); the analyzer cannot see the never.
-function parseIntegrity(s) {
+// oxlint-disable-next-line typescript/consistent-return -- exits on failure
+export function parseIntegrity(s) {
   // Parse an SRI string: (1) the algorithm (sha256/384/512), (2) the base64
   // digest after the dash.
   const m = /^(sha(?:256|384|512))-(.+)$/.exec(s)
@@ -103,7 +102,6 @@ if (process.env.GITHUB_TOKEN) {
 // Composite-action helper runs as a standalone node script on the raw runner;
 // the CJS bundle target rejects top-level await, so the download / verify /
 // extract pipeline runs inside an async IIFE.
-// oxlint-disable-next-line socket/export-top-level-functions -- composite-action helper runs on the raw runner before setup-node; no node_modules, no module boundary worth exporting across.
 async function main() {
   // oxlint-disable-next-line socket/no-fetch-prefer-http-request -- pre-setup-node action; @socketsecurity/lib-stable not installed yet, only built-in fetch is available.
   const res = await fetch(url, { redirect: 'follow', headers })
@@ -163,7 +161,7 @@ async function main() {
       console.error(`× extraction failed: ${extractCmd} exited ${r.status}`)
       process.exit(1)
     }
-    // oxlint-disable-next-line socket/prefer-safe-delete -- pre-setup-node action; @socketsecurity/lib-stable not installed yet, and the path is this script's own tmp archive.
+    // oxlint-disable-next-line socket/prefer-safe-delete -- bootstrap archive
     rmSync(archivePath, { force: true })
   } else if (binName) {
     // Bare-binary asset — no archive to extract. Rename to bin-name and chmod.

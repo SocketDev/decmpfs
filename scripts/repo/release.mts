@@ -124,7 +124,7 @@ if (dryRun) {
 
 if (bump) {
   edit('crates/decmpfs/Cargo.toml', src =>
-    src.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`),
+    src.replace(/^version\s*=\s*"[^"]+"/m, () => `version = "${version}"`),
   )
   edit('napi/decmpfs/package.json', src => {
     const pkg: {
@@ -198,10 +198,10 @@ if (bump) {
         encoding: 'utf8',
       }).stdout ?? ''
     )
-      .split('\n')
+      .split(/\r?\n/)
       .filter(Boolean)
     const section = changelogSection(version, subjects)
-    edit('CHANGELOG.md', src => src.replace(/\n## /, `\n${section}\n## `))
+    edit('CHANGELOG.md', src => src.replace(/\n## /, () => `\n${section}\n## `))
   }
 }
 

@@ -30,8 +30,6 @@
     "versionPolicy": "patch-only"
   },
   "capabilities": {
-    "cargo": [
-      "."
-    ]
+    "cargo": ["."]
   }
 }
