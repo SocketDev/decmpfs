@@ -67,7 +67,8 @@
     "backup": "node scripts/fleet/backup-work.mts",
     "offload:model": "node scripts/fleet/offload-model.mts",
     "setup:fireconnect": "node scripts/fleet/setup/fireconnect.mts",
-    "setup:offload-providers": "node scripts/fleet/setup/offload-providers.mts"
+    "setup:offload-providers": "node scripts/fleet/setup/offload-providers.mts",
+    "gen:glyph": "node scripts/fleet/gen/glyph.mts"
   },
   "devDependencies": {
     "@mdn/browser-compat-data": "catalog:",
