@@ -37,7 +37,7 @@ jobs:
       # required — setup-and-install does its own git auth, and a token persisted
       # here conflicts with it and 400s the fetch.
       - name: Checkout (bootstrap)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 (2026-05-15)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           # The --bump leg anchors CHANGELOG derivation on the last reachable
           # v-tag; a tagless depth-1 clone would mis-derive from zero history.
@@ -55,11 +55,11 @@ jobs:
         uses: dtolnay/rust-toolchain@4fd1da8b0805d2d2e936788875a7d65dbd677dc2 # nightly
         with:
           toolchain: nightly
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.4.0 (2026-03-12)
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: crates.io auth (OIDC Trusted Publishing)
         id: auth
         if: ${{ inputs.publish == true }}
-        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1 (2026-07-28)
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
       # The --bump leg finalizes the committed X.Y.Z-prerelease hint and
       # commits via the release App (verified, signed) on a throwaway release
       # branch; the promote PR that lands the bump on main needs
