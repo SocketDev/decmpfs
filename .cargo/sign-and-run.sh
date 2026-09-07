@@ -2,6 +2,11 @@
 # Give locally built macOS executables an ad-hoc signature before Cargo runs
 # them. Some managed Macs quarantine a fresh unsigned test or coverage binary.
 # This is local execution signing, not the identity-based release signature.
+#
+# STAYS .sh, NOT .mts. Cargo invokes this as its `runner`, execing it directly
+# with the target binary as argv — it wants a plain executable, and a Rust
+# toolchain has no reason to carry node. Routing a cargo test through a
+# TypeScript wrapper would make every `cargo test` depend on the JS runtime.
 set -eu
 
 if [ "$#" -lt 1 ]; then

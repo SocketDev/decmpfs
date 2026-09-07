@@ -1,12 +1,20 @@
 name: 📦 cargo publish
 
-# Manual dispatch, DRY-RUN unless `publish: true`; publishes decmpfs via the fleet
-# cargo-publish engine using crates.io Trusted Publishing (OIDC — id-token: write,
-# no long-lived token) with build provenance. The `cargo-publish` CI environment
-# gates the real, PERMANENT publish (crates.io is yank-only) — configure required
-# reviewers + the crates.io trusted-publisher (repo + this workflow + environment)
-# on it. workflow_dispatch-only: the `inputs` context is valid here (a `release`
-# trigger doesn't populate it — that mismatch startup-failed the old version).
+# PRESET — seeded once from template/presets/ (onboarding or first cascade),
+# then repo-owned: customize what + how THIS crate publishes. The cargo analog
+# of npm-publish.yml.
+#
+# Default flow: manual dispatch, DRY-RUN unless `publish: true`; publishes the
+# workspace's publishable crate via the fleet cargo-publish engine using
+# crates.io Trusted Publishing (OIDC — id-token: write, no long-lived token)
+# with build provenance. The `cargo-publish` CI environment gates the real,
+# PERMANENT publish (crates.io is yank-only) — configure required reviewers +
+# the crates.io trusted-publisher (repo + this workflow + environment) on it.
+#
+# ORDER RULE: the engine publishes FIRST, then gates the git tag + immutable
+# GH release on the version being resolvable in the crates.io index
+# (requireRegistryLive) — the release is the FINAL marker and never precedes
+# the registry publish.
 
 on:
   workflow_dispatch:
@@ -32,58 +40,33 @@ jobs:
     env:
       SOCKET_API_KEY: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
     steps:
-      # Bootstrap checkout ONLY to put ./.github/actions/* on disk so the local
-      # setup-and-install composite resolves. persist-credentials: false is
-      # required — setup-and-install does its own git auth, and a token persisted
-      # here conflicts with it and 400s the fetch.
-      - name: Checkout (bootstrap)
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          # The --bump leg anchors CHANGELOG derivation on the last reachable
-          # v-tag; a tagless depth-1 clone would mis-derive from zero history.
-          fetch-tags: true
-          persist-credentials: false
       - name: Setup + install
         uses: ./.github/actions/fleet/setup-and-install
-        with:
-          # Thin-distribution CI auth: mint a contents:read-only token so the
-          # bootstrap fetch (fired by `prepare` during install) can download the
-          # fleet release bundle from the private wheelhouse.
-          payload-token-client-id: ${{ vars.SOCKET_PAYLOAD_CLIENT_ID }}
-          payload-token-private-key: ${{ secrets.SOCKET_PAYLOAD_APP_PRIVATE_KEY }}
+      # Fleet composites, not the third-party actions they replace: a raw
+      # `uses:` here would force dtolnay/rust-toolchain and Swatinem/rust-cache
+      # onto the Actions allowlist of every repo seeded from this preset, and a
+      # strict-allowlist repo plan-fails with 0 jobs when one is missing.
       - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@4fd1da8b0805d2d2e936788875a7d65dbd677dc2 # nightly
+        uses: ./.github/actions/fleet/setup-rust-toolchain
         with:
-          toolchain: nightly
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+          channel: nightly
+      - name: Rust cache
+        uses: ./.github/actions/fleet/setup-rust-cache
+        with:
+          prefix-key: cargo-publish
+          workspaces: .
+      # The fleet's own OIDC exchange, not rust-lang/crates-io-auth-action.
+      # Same protocol, no third-party action in the publish path, and nothing
+      # to re-pin when upstream retags: that action's floating `v1` tag was
+      # deleted out from under our pin.
       - name: crates.io auth (OIDC Trusted Publishing)
         id: auth
         if: ${{ inputs.publish == true }}
-        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
-      # The --bump leg finalizes the committed X.Y.Z-prerelease hint and
-      # commits via the release App (verified, signed) on a throwaway release
-      # branch; the promote PR that lands the bump on main needs
-      # pull_requests:write, which only the PR App carries. Both minted here,
-      # BEFORE the publish, so a missing/ungranted App refuses while nothing
-      # is published — mirrors npm-publish.yml's mint pair.
-      - name: Mint release App token
-        id: release-app
-        uses: ./.github/actions/fleet/github-release-app-token
-        with:
-          client-id: ${{ vars.SOCKET_RELEASE_CLIENT_ID }}
-          private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
-      - name: Mint PR App token
-        id: pr-app
-        uses: ./.github/actions/fleet/github-pr-app-token
-        with:
-          client-id: ${{ vars.SOCKET_PR_CLIENT_ID }}
-          private-key: ${{ secrets.SOCKET_PR_APP_PRIVATE_KEY }}
+        uses: ./.github/actions/fleet/crates-io-auth
       - name: Publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
           GH_TOKEN: ${{ github.token }}
-          PR_APP_TOKEN: ${{ steps.pr-app.outputs.token }}
-          RELEASE_APP_TOKEN: ${{ steps.release-app.outputs.token }}
         # The rustup cargo goes AHEAD of the SFW shim for the publish leg:
         # the shim's proxy interposes the crates.io publish PUT (uploads are
         # outside its registry-read bypass), and cargo then fails TLS
@@ -92,9 +75,17 @@ jobs:
         # publish traffic with an OIDC token — no supply-chain read surface.
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
-          node scripts/fleet/cargo-publish.mts ${{ inputs.publish == true && '--direct --bump' || '--staged --dry-run --bump' }}
+          node scripts/fleet/cargo-publish.mts ${{ inputs.publish == true && '--direct' || '--staged --dry-run' }}
+      # A composite action cannot declare a `post` hook, so the revoke is an
+      # explicit step. `always()` on purpose: a failed publish still minted a
+      # token, and leaving it live until it expires is the worse outcome.
+      - name: Revoke the crates.io token
+        if: ${{ always() && steps.auth.outputs.token != '' }}
+        env:
+          CRATES_IO_TOKEN: ${{ steps.auth.outputs.token }}
+        run: node scripts/fleet/registry-infra/crates-io-trusted-token.mts --revoke
       - name: Attest build provenance (.crate)
         if: ${{ inputs.publish == true }}
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0 (2025-06-11)
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2 (2025-06-11)
         with:
           subject-path: target/package/*.crate
