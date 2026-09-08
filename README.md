@@ -1,10 +1,6 @@
-# decmpfs
+# <picture><img width="32" height="32" alt="decmpfs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/HEAD/assets/repo/logomark.svg"></picture> decmpfs
 
-<div align="center">
-  <img width="160" height="160" alt="decmpfs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/HEAD/assets/repo/logomark.svg">
-</div>
-
-![coverage score](https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/coverage.svg) [![Socket Badge](https://badge.socket.dev/cargo/package/decmpfs)](https://socket.dev/cargo/package/decmpfs)
+<picture><img src="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/coverage.svg" height="20" alt="Coverage" /></picture> [![Socket Badge](https://badge.socket.dev/cargo/package/decmpfs)](https://socket.dev/cargo/package/decmpfs)
 
 [![Follow @SocketSecurity](assets/fleet/badge-follow-x.svg)](https://twitter.com/SocketSecurity)
 [![Follow @socket.dev on Bluesky](assets/fleet/badge-follow-bluesky.svg)](https://bsky.app/profile/socket.dev)
