@@ -1,4 +1,4 @@
-name: 📦 cargo publish
+name: 📦 Cargo Publish
 
 # PRESET — seeded once from template/presets/ (onboarding or first cascade),
 # then repo-owned: customize what + how THIS crate publishes. The cargo analog
