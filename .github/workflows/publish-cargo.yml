@@ -1,8 +1,9 @@
-name: 📦 Cargo Publish
+name: 📦 Publish Cargo
+run-name: Publish Cargo
 
 # PRESET — seeded once from template/presets/ (onboarding or first cascade),
 # then repo-owned: customize what + how THIS crate publishes. The cargo analog
-# of npm-publish.yml.
+# of publish-npm.yml.
 #
 # Default flow: manual dispatch, DRY-RUN unless `publish: true`; publishes the
 # workspace's publishable crate via the fleet cargo-publish engine using
@@ -29,6 +30,7 @@ permissions:
 
 jobs:
   publish:
+    name: Publish Cargo
     runs-on: ubuntu-latest
     # Same-named CI environment: the human-approval + OIDC gate for the
     # PERMANENT publish; a dry-run is ungated.
@@ -40,7 +42,29 @@ jobs:
     env:
       SOCKET_API_KEY: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
     steps:
-      - name: Setup + install
+      - name: Bootstrap checkout
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          FETCH_ARGS=(--no-tags --prune --depth 1 origin "${TRIGGER_REF}")
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            git -c "http.${SERVER_URL}/.extraheader=AUTHORIZATION: basic ${AUTH_B64}" fetch "${FETCH_ARGS[@]}"
+          else
+            git fetch "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
+
+      - name: Set up and install
         uses: ./.github/actions/fleet/setup-and-install
       # Fleet composites, not the third-party actions they replace: a raw
       # `uses:` here would force dtolnay/rust-toolchain and Swatinem/rust-cache
@@ -59,7 +83,7 @@ jobs:
       # Same protocol, no third-party action in the publish path, and nothing
       # to re-pin when upstream retags: that action's floating `v1` tag was
       # deleted out from under our pin.
-      - name: crates.io auth (OIDC Trusted Publishing)
+      - name: 'Authenticate to crates.io'
         id: auth
         if: ${{ inputs.publish == true }}
         uses: ./.github/actions/fleet/crates-io-auth
