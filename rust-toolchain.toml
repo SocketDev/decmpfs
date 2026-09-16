@@ -1,26 +1,7 @@
-# THE canonical fleet Rust pin — single source of truth for the toolchain
-# version. Bump here, never in a Dockerfile or a member copy. Cascades to the
-# root of every repo that compiles Rust, where rustup discovers it by walking up
-# from any workspace: `build.type: rust`, or a non-empty `capabilities.cargo` in
-# an otherwise-TypeScript repo (the `hasRust` conditional trigger). The
-# wheelhouse is the second kind — it builds tools/chapter-bundle — so a root copy
-# exists here too. Derived
-# copies kept in lockstep by scripts/fleet/check/rust-toolchain-pins-are-synced.mts:
-#   - RUST_UPDATER_TOOLCHAIN (scripts/fleet/update/cargo.mts) — the cargo soak
-#     updater's nightly
-#   - RUST_VERSION build-arg for docker/fleet/{rust,acorn}-base
-#     (scripts/repo/prebake-pins.mts reads this file)
-# rustfmt and clippy are declared because the shared format/check commands
-# depend on them; profile=minimal avoids unrelated documentation components.
-# Pinned to nightly-2026-09-01 so the cargo soak updater (`-Zmin-publish-age`)
-# runs on the SAME toolchain as the build — no separate updater-only nightly.
-# Fuzz (cargo-fuzz) still pins its own nightly per job.
-#
-# TEMPORARY: move to a stable pin once min-publish-age stabilizes —
-# targets Rust 1.100.0 (late September 2026), per
-# https://github.com/rust-lang/cargo/pull/17335 (open) and
-# https://github.com/rust-lang/cargo/issues/17009.
+# Canonical fleet Rust toolchain. Derived updater and build pins follow this file.
+# Includes incremental-cache cleanup from https://github.com/rust-lang/rust/pull/162240.
+# Immediate adoption of this exact channel is user-authorized; Cargo dependency soak remains mandatory.
 [toolchain]
-channel = "nightly-2026-09-01"
+channel = "nightly-2026-09-15"
 components = ["clippy", "rustfmt"]
 profile = "minimal"
