@@ -74,22 +74,31 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
-      - uses: ./.github/actions/repo/setup-sfw
-      - name: Check (fmt + clippy + version parity)
-        run: node scripts/repo/check.mts --rust-only
-      - name: Test crate
-        shell: bash
-        run: '"$SFW_BIN" cargo test --workspace --locked'
-      # The addon tests use workspace devDependencies (@socketsecurity/lib-stable
-      # for guarded tmp-dir cleanup), so install them the same way the typecheck
-      # job does: platform manifests first (the lockfile links napi/decmpfs/npm/*),
-      # then a frozen install. The .d.cts type-check is platform-independent and
-      # lives in its own `typecheck` job below.
       - uses: ./.github/actions/repo/setup-pnpm
       - name: Generate platform workspace manifests
         run: node napi/decmpfs/scripts/make-npm-dirs.mts
       - name: Install workspace devDependencies
         run: pnpm install --frozen-lockfile
+      - name: Read Rust toolchain pin
+        id: rust-pin
+        shell: bash
+        run: |
+          node --input-type=module <<'JS' >> "$GITHUB_OUTPUT"
+          import { readFileSync } from 'node:fs'
+          import { parseRustToolchainPin } from './scripts/fleet/setup/rust.mts'
+          const channel = parseRustToolchainPin(readFileSync('rust-toolchain.toml', 'utf8'))
+          if (!channel) throw new Error('Missing Rust toolchain channel')
+          console.log(`channel=${channel}`)
+          JS
+      - uses: ./.github/actions/fleet/setup-rust-toolchain
+        with:
+          channel: ${{ steps.rust-pin.outputs.channel }}
+          components: clippy,rustfmt
+      - name: Check (fmt + clippy + version parity)
+        run: node scripts/repo/check.mts --rust-only
+      - name: Test crate
+        shell: bash
+        run: '"$SFW_BIN" cargo test --workspace --locked'
       - name: Build addon
         working-directory: napi/decmpfs
         run: node scripts/build.mts

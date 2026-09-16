@@ -4,4 +4,7 @@ description: Install pnpm through the canonical fleet setup.
 runs:
   using: composite
   steps:
+    - name: Hydrate fleet tools
+      shell: bash
+      run: node scripts/repo/bootstrap/fleet.mjs --preserve-tracked
     - uses: ./.github/actions/fleet/setup
