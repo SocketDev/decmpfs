@@ -1,5 +1,5 @@
-name: 📦 Publish npm
-run-name: Publish npm
+name: 'publish: npm'
+run-name: 'publish: npm'
 
 # decmpfs napi-matrix variant, shipped via the override channel
 # (template/overrides/decmpfs/ — same pattern as stuie's interim matrix and
@@ -87,7 +87,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     env:
-      SOCKET_API_KEY: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
+      SOCKET_API_KEY: ${{ inputs.checkout-ref == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW || '' }}
     steps:
       # Inline git fetch, not a local composite: this is the job's first step, so
       # ./.github/actions/* is not on disk yet. Not actions/checkout either - the
@@ -153,12 +153,13 @@ jobs:
           path: napi/decmpfs/npm/${{ matrix.triple }}/*.node
 
   publish:
+    cache-mode: read
     name: Publish npm
     needs: build-addons
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.ODAI_RUNNER || 'ubuntu-latest' }}
     # npm's trusted-publisher config pins this GitHub environment name; the
     # OIDC token exchange 404s if the job runs outside it.
-    environment: npm-publish
+    environment: publish-npm
     permissions:
       contents: read
       # npm provenance / trusted publishing mints its OIDC token here.
@@ -166,7 +167,7 @@ jobs:
     env:
       # Socket Firewall + CLI auth for the sfw-wrapped setup + pnpm install —
       # sfw and socket-cli read SOCKET_API_KEY from the org-wide secret.
-      SOCKET_API_KEY: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
+      SOCKET_API_KEY: ${{ inputs.checkout-ref == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW || '' }}
     steps:
       # Inline git fetch, not a local composite: this is the job's first step,
       # so ./.github/actions/* is not on disk yet. Not actions/checkout either
@@ -192,7 +193,7 @@ jobs:
           git config --local advice.detachedHead false
           git remote remove origin 2>/dev/null || true
           git remote add origin "${SERVER_URL}/${REPOSITORY}"
-          FETCH_ARGS=(--prune --depth 1 origin "${TARGET_REF}")
+          FETCH_ARGS=(--prune origin "${TARGET_REF}")
           if [ -n "${GITHUB_TOKEN}" ]; then
             AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
             export GIT_CONFIG_COUNT=1
@@ -206,6 +207,7 @@ jobs:
       - name: Set up and install
         uses: ./.github/actions/fleet/setup-and-install
         with:
+          socket-api-token: ${{ steps.content-trust.outputs.trusted == 'true' && secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW || '' }}
           # Forward the backfill content ref — setup-and-install re-checks-out
           # internally (fleet checkout falls back to the TRIGGERING ref when
           # unset), which would silently swap the backfill content back to
@@ -213,11 +215,17 @@ jobs:
           # version. Empty forwards as unset, so normal dispatches keep the
           # dispatched-ref re-checkout.
           checkout-ref: ${{ inputs.checkout-ref }}
-          # Reuse the PR App for a contents:read token scoped to wheelhouse.
+          # Reuse the Release App for a contents:read token scoped to wheelhouse.
           # Both credentials enable the private release fallback. Without the
           # key, hydration still pulls public GHCR anonymously.
-          payload-token-client-id: ${{ secrets.SOCKET_PR_CLIENT_ID }}
-          payload-token-private-key: ${{ secrets.SOCKET_PR_APP_PRIVATE_KEY }}
+          payload-token-client-id: ${{ inputs.checkout-ref == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID) || '' }}
+          payload-token-private-key: ${{ inputs.checkout-ref == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && secrets.SOCKET_RELEASE_APP_PRIVATE_KEY || '' }}
+      - name: Set up odai
+        if: ${{ inputs.backfill-version == '' }}
+        uses: ./.github/actions/fleet/setup-odai
+        with:
+          allow-fill: 'true'
+          require-ready: 'true'
       # Build dist/ before publishing — the staged-publish script imports the
       # package's own built output (`@socketsecurity/lib/stdio/prompts` self-
       # resolves to dist/), and `files` ships dist/, so the tarball needs it.
@@ -250,12 +258,14 @@ jobs:
           done
       # The release App reserves the signed bump before staging.
       - name: 'Mint release token'
-        if: ${{ inputs.backfill-version == '' }}
+        if: ${{ inputs.backfill-version == '' && inputs.checkout-ref == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
         id: release-app
         uses: ./.github/actions/fleet/github-release-app-token
+        env:
+          PERMISSIONS: '{"contents":"write"}'
         with:
-          client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID }}
-          private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+          client-id: ${{ inputs.checkout-ref == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID) || '' }}
+          private-key: ${{ inputs.checkout-ref == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && secrets.SOCKET_RELEASE_APP_PRIVATE_KEY || '' }}
           repositories: ${{ github.event.repository.name }}
       # Rejected staging consumes the reserved version.
       - name: Publish
