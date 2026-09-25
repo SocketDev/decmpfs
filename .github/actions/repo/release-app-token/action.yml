@@ -21,7 +21,8 @@ outputs:
 runs:
   using: composite
   steps:
-    - id: app-token
+    - name: Mint release app token
+      id: app-token
       shell: bash
       env:
         APP_PRIVATE_KEY: ${{ inputs.private-key }}

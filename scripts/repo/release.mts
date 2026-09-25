@@ -26,14 +26,18 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { fileURLToPath } from 'node:url'
 import { getDefaultLogger } from '@socketsecurity/lib-stable/logger/default'
 import { spawnSync } from '@socketsecurity/lib-stable/process/spawn/child'
 import { changelogSection, resolveRelease } from './release-lib.mts'
+import {
+  CHECK_VERSIONS_SCRIPT_PATH,
+  CRATE_MANIFEST_PATH,
+  REPO_ROOT,
+} from './_shared/paths.mts'
 
 const logger = getDefaultLogger()
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
+const root = REPO_ROOT
 const argv = process.argv.slice(2).filter(a => !a.startsWith('--'))
 const arg = (argv[0] ?? '').replace(/^v/, '')
 const push = process.argv.includes('--push')
@@ -61,10 +65,7 @@ function git(args: string[], options: GitOptions = {}): string {
 }
 
 function currentVersion(): string {
-  const cargo = readFileSync(
-    path.join(root, 'crates', 'decmpfs', 'Cargo.toml'),
-    'utf8',
-  )
+  const cargo = readFileSync(CRATE_MANIFEST_PATH, 'utf8')
   const captured = cargo.match(/^version\s*=\s*"(?<version>[^"]+)"/m)?.[1]
   if (captured === undefined) {
     die('no [package] version in crates/decmpfs/Cargo.toml.')
@@ -123,7 +124,7 @@ if (dryRun) {
 }
 
 if (bump) {
-  edit('crates/decmpfs/Cargo.toml', src =>
+  edit(path.relative(root, CRATE_MANIFEST_PATH), src =>
     src.replace(/^version\s*=\s*"[^"]+"/m, () => `version = "${version}"`),
   )
   edit('napi/decmpfs/package.json', src => {
@@ -206,14 +207,10 @@ if (bump) {
 }
 
 // Every release path runs the lockstep gate + requires a real CHANGELOG section.
-const gateResult = spawnSync(
-  process.execPath,
-  [path.join(root, 'scripts', 'repo', 'check-versions.mts')],
-  {
-    cwd: root,
-    stdio: 'inherit',
-  },
-)
+const gateResult = spawnSync(process.execPath, [CHECK_VERSIONS_SCRIPT_PATH], {
+  cwd: root,
+  stdio: 'inherit',
+})
 if (gateResult.status !== 0) {
   die(`version parity gate exited ${gateResult.status ?? 'on a signal'}.`)
 }
@@ -233,7 +230,7 @@ if (!notes || /TODO: describe the user-visible changes/.test(notes)) {
 
 if (bump) {
   const files = [
-    'crates/decmpfs/Cargo.toml',
+    path.relative(root, CRATE_MANIFEST_PATH),
     'napi/decmpfs/package.json',
     'Cargo.lock',
     'CHANGELOG.md',

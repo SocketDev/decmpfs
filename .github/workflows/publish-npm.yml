@@ -1,5 +1,5 @@
 name: 'publish: npm'
-run-name: 'publish: npm'
+run-name: 'publish: npm (${{ inputs.task-name }})'
 
 # decmpfs napi-matrix variant, shipped via the override channel
 # (template/overrides/decmpfs/ — same pattern as stuie's interim matrix and
@@ -30,6 +30,10 @@ run-name: 'publish: npm'
 on:
   workflow_dispatch:
     inputs:
+      task-name:
+        description: 'The package release task.'
+        type: string
+        required: true
       publish:
         description: 'Publish for real (false = dry-run, the default).'
         type: boolean
@@ -220,6 +224,10 @@ jobs:
           # key, hydration still pulls public GHCR anonymously.
           payload-token-client-id: ${{ inputs.checkout-ref == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID) || '' }}
           payload-token-private-key: ${{ inputs.checkout-ref == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && secrets.SOCKET_RELEASE_APP_PRIVATE_KEY || '' }}
+      - name: Validate publish task
+        env:
+          PUBLISH_TASK_NAME: ${{ inputs.task-name }}
+        run: node scripts/fleet/registry-infra/npm/publish-dispatch-context.mts --name "$PUBLISH_TASK_NAME"
       - name: Set up odai
         if: ${{ inputs.backfill-version == '' }}
         uses: ./.github/actions/fleet/setup-odai

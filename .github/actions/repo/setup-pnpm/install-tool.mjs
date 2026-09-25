@@ -67,11 +67,12 @@ export function parseIntegrity(s) {
   // digest after the dash.
   const m = /^(sha(?:256|384|512))-(.+)$/.exec(s)
   if (m) {
-    return { algo: m[1], expected: m[2] }
+    return { __proto__: null, algo: m[1], expected: m[2] }
   }
   if (/^[0-9a-f]{64}$/i.test(s)) {
     // Bare sha256 hex — convert to SRI base64 for the comparison.
     return {
+      __proto__: null,
       algo: 'sha256',
       expected: Buffer.from(s, 'hex').toString('base64'),
     }

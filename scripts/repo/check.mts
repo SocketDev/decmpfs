@@ -6,13 +6,13 @@
 
 import path from 'node:path'
 import process from 'node:process'
-import { fileURLToPath } from 'node:url'
+import { CHECK_VERSIONS_SCRIPT_PATH, REPO_ROOT } from './_shared/paths.mts'
 // prefer-async-spawn: sync-required — this is a dep-0 CI gate (the ci.yml test
 // job runs it with no install), so it cannot import the lib spawn; the flow is a
 // sequence of synchronous gates.
 import { spawnSync } from 'node:child_process'
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
+const root = REPO_ROOT
 const nodeOnly = process.argv.includes('--node-only')
 const rustOnly = process.argv.includes('--rust-only')
 
@@ -69,9 +69,7 @@ if (!nodeOnly) {
   run('cargo test (addon)', 'cargo', ['test', '--features', 'addon'])
   run('cargo test (exe)', 'cargo', ['test', '--features', 'exe'])
 }
-run('version parity', process.execPath, [
-  path.join(root, 'scripts', 'repo', 'check-versions.mts'),
-])
+run('version parity', process.execPath, [CHECK_VERSIONS_SCRIPT_PATH])
 if (!rustOnly) {
   // Type-check the hand-maintained napi declarations with the pinned
   // TypeScript compiler.

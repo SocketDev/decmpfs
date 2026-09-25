@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 import { TARGETS } from './targets.mts'
 
 const nodeRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
-// This package is a member of the cargo workspace rooted at the repo, so cargo
+// This package is a member of the `cargo workspace` rooted at the repo, so cargo
 // writes the cdylib to the WORKSPACE-ROOT target/, not this package's dir.
 const repoRoot = path.join(nodeRoot, '..', '..')
 const mainManifest = JSON.parse(
@@ -70,6 +70,7 @@ for (const target of TARGETS) {
   }
   writeFileSync(
     path.join(dir, 'package.json'),
+    // oxlint-disable-next-line socket/prefer-socket-lib-json-format -- this runs before workspace dependencies are installed.
     `${JSON.stringify(manifest, undefined, 2)}\n`,
   )
 

@@ -7,4 +7,5 @@ runs:
     - name: Hydrate fleet tools
       shell: bash
       run: node scripts/repo/bootstrap/fleet.mjs --preserve-tracked
-    - uses: ./.github/actions/fleet/setup
+    - name: Set up pnpm
+      uses: ./.github/actions/fleet/setup

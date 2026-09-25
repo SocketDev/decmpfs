@@ -7,13 +7,13 @@
 // abi is explicit: glibc Linux is `-gnu`, musl Linux is `-musl`, Windows is `-msvc`.
 // The abi must be in the name because an addon built against one C library cannot
 // load on another, and glibc/musl hosts genuinely coexist. `libc` is also set as the
-// npm install gate.
+// `npm install` gate.
 
 export interface Target {
   triple: string
   os: string
   cpu: string
-  // The npm install gate: Linux glibc vs musl.
+  // The `npm install` gate: Linux glibc vs musl.
   libc?: string | undefined
   // The cdylib basename cargo emits on this target's native host.
   artifact: string

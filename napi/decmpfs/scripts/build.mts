@@ -4,7 +4,7 @@
 
 // prefer-async-spawn: sync-required — this is a dep-0 napi build script (CI runs
 // it with no node_modules), so it cannot import the lib spawn; the whole flow is
-// a single synchronous cargo build.
+// a single synchronous `cargo build`.
 import { spawnSync } from 'node:child_process'
 import { copyFileSync } from 'node:fs'
 import * as path from 'node:path'
@@ -27,7 +27,7 @@ if (!artifact) {
   )
 }
 
-// This package is a member of the cargo workspace rooted at the repo, so cargo
+// This package is a member of the `cargo workspace` rooted at the repo, so cargo
 // writes the cdylib to the WORKSPACE-ROOT target/, not this package's dir.
 const nodeRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const repoRoot = path.join(nodeRoot, '..', '..')

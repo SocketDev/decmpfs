@@ -34,6 +34,7 @@ const nodeRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const placeholders: Placeholder[] = [
   { name: 'decmpfs', slug: 'decmpfs' },
   ...TARGETS.map(target => ({
+    __proto__: null,
     cpu: target.cpu,
     libc: target.libc,
     name: `@decmpfs/${target.triple}`,
@@ -61,6 +62,7 @@ for (let i = 0, { length } = placeholders; i < length; i += 1) {
   }
   writeFileSync(
     path.join(dir, 'package.json'),
+    // oxlint-disable-next-line socket/prefer-socket-lib-json-format -- placeholder generation is dependency-free.
     `${JSON.stringify(manifest, undefined, 2)}\n`,
   )
   writeFileSync(

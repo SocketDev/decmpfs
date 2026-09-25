@@ -11,13 +11,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { fileURLToPath } from 'node:url'
-
-const repoRoot = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-)
+import { CRATE_MANIFEST_PATH, REPO_ROOT } from './_shared/paths.mts'
 
 // Dep-0 output helpers: process streams (never `console`, never the lib logger)
 // so both publish workflows can run this gate with only Node on PATH. The stream
@@ -46,7 +40,7 @@ function out(message: string): void {
   process.stdout.write(`${message}\n`)
 }
 
-const cargoPath = path.join(repoRoot, 'crates', 'decmpfs', 'Cargo.toml')
+const cargoPath = CRATE_MANIFEST_PATH
 const cargo = readFileSync(cargoPath, 'utf8')
 // The top-level `version = "…"` is the [package] version; dependency pins are
 // nested inline tables (`zstd = { version = "…" }`), never at line-start.
@@ -61,7 +55,7 @@ if (crateVersion === undefined) {
   )
 }
 
-const pkgPath = path.join(repoRoot, 'napi', 'decmpfs', 'package.json')
+const pkgPath = path.join(REPO_ROOT, 'napi', 'decmpfs', 'package.json')
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
 
 if (pkg.version !== crateVersion) {

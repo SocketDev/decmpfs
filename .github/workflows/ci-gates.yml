@@ -1,4 +1,5 @@
-name: "ci: gates"
+name: 'ci: gates'
+run-name: 'ci: gates'
 
 # Dependencies: none — self-contained.
 #
@@ -31,11 +32,12 @@ env:
 
 jobs:
   audit:
-    name: 🛡️ Audit workflows (zizmor)
+    name: Audit workflows (zizmor)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
         with:
           persist-credentials: false
       - name: Install zizmor (pinned, integrity-verified)
@@ -56,11 +58,11 @@ jobs:
           fi
           tar -xzf /tmp/zizmor.tar.gz -C /tmp
           install -m 0755 "$(find /tmp -maxdepth 2 -name zizmor -type f | head -1)" /usr/local/bin/zizmor
-      - name: Audit .github
+      - name: Audit .GitHub
         run: zizmor --min-severity medium .github/
 
   test:
-    name: 🧪 Test (${{ matrix.os }})
+    name: Test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -68,16 +70,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
         with:
           persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0 (2026-07-14)
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0 (2026-07-14)
         with:
           node-version: 24
-      - uses: ./.github/actions/repo/setup-pnpm
+      - name: Set up pnpm
+        uses: ./.github/actions/repo/setup-pnpm
       - name: Generate platform workspace manifests
         run: node napi/decmpfs/scripts/make-npm-dirs.mts
-      - name: Install workspace devDependencies
+      - name: Install workspace devdependencies
         run: pnpm install --frozen-lockfile
       - name: Read Rust toolchain pin
         id: rust-pin
@@ -90,7 +95,8 @@ jobs:
           if (!channel) throw new Error('Missing Rust toolchain channel')
           console.log(`channel=${channel}`)
           JS
-      - uses: ./.github/actions/fleet/setup-rust-toolchain
+      - name: Set up Rust toolchain
+        uses: ./.github/actions/fleet/setup-rust-toolchain
         with:
           channel: ${{ steps.rust-pin.outputs.channel }}
           components: clippy,rustfmt
@@ -107,20 +113,23 @@ jobs:
         run: node --test
 
   typecheck:
-    name: 🧷 Typecheck (.d.cts)
+    name: Typecheck (.d.cts)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
         with:
           persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0 (2026-07-14)
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0 (2026-07-14)
         with:
           node-version: 24
-      - uses: ./.github/actions/repo/setup-pnpm
+      - name: Set up pnpm
+        uses: ./.github/actions/repo/setup-pnpm
       - name: Generate platform workspace manifests
         run: node napi/decmpfs/scripts/make-npm-dirs.mts
-      - name: Install workspace devDependencies
+      - name: Install workspace devdependencies
         run: pnpm install --frozen-lockfile
       - name: Check declarations and assets
         run: node scripts/repo/check.mts --node-only
