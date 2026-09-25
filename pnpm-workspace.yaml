@@ -166,7 +166,7 @@ catalog:
   # platform-binary optionalDependencies, despite the monorepo's internal
   # workspace layout. dtu-github-actions is its GitHub-Actions parser, pinned
   # explicitly (not left transitive) so its version is uniform fleet-wide.
-  '@anthropic-ai/claude-code': 2.1.251
+  '@anthropic-ai/claude-code': 2.1.276
   # comptime 0.1.0 — Zig-inspired build-time evaluation for Rolldown/Vite.
   # Wraps comptime(() => expr) calls; the Rolldown plugin evaluates them at
   # build time and replaces the call site with the serialized literal result.
@@ -197,7 +197,7 @@ catalog:
   #    pinned npm version instead of a sibling working tree.
   '@resvg/resvg-wasm': 2.6.2
 
-  'yaml': 2.9.0
+  'yaml': 2.9.1
 
 # pnpm `overrides` block — two purposes:
 #
@@ -303,7 +303,7 @@ overrides:
   'is-unicode-supported': 'npm:@socketregistry/is-unicode-supported@1.0.5'
   'json-stable-stringify': 'npm:@socketregistry/json-stable-stringify@1.0.14'
   # Dependabot transitive-advisory pin (soaked, semver-compatible).
-  'markdown-it': '14.3.1'
+  'markdown-it': '14.3.2'
   # Dedup: picomatch 2 (micromatch, via fast-glob -> globby ->
   # markdownlint-cli2) vs 4 (fdir/tinyglobby, via vite/vitest). micromatch's
   # `picomatch(glob, options, returnState)` call and its
