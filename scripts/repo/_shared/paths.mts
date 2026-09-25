@@ -1,12 +1,7 @@
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { REPO_ROOT } from '../../fleet/paths.mts'
 
-export const REPO_ROOT = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  '..',
-)
+export * from '../../fleet/paths.mts'
 export const CRATE_MANIFEST_PATH = path.join(
   REPO_ROOT,
   'crates',
