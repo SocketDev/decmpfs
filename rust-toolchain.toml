@@ -2,6 +2,6 @@
 # Includes incremental-cache cleanup from https://github.com/rust-lang/rust/pull/162240.
 # Immediate adoption of this exact channel is user-authorized; Cargo dependency soak remains mandatory.
 [toolchain]
-channel = "nightly-2026-09-15"
+channel = "nightly-2026-09-24"
 components = ["clippy", "rustfmt"]
 profile = "minimal"

@@ -5,8 +5,8 @@ run-name: 'publish: cargo'
 # then repo-owned: customize what + how THIS crate publishes. The cargo analog
 # of publish-npm.yml.
 #
-# Default flow: manual dispatch, DRY-RUN unless `publish: true`; publishes the
-# workspace's publishable crate via the fleet cargo-publish engine using
+# Default flow: manual dispatch; packages and verifies the workspace crate,
+# then publishes it via the fleet cargo-publish engine using
 # crates.io Trusted Publishing (OIDC — id-token: write, no long-lived token)
 # with build provenance. The `cargo-publish` CI environment gates the real,
 # PERMANENT publish (crates.io is yank-only) — configure required reviewers +
@@ -19,11 +19,6 @@ run-name: 'publish: cargo'
 
 on:
   workflow_dispatch:
-    inputs:
-      publish:
-        description: 'Publish for real (false = dry-run, the default).'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -31,10 +26,9 @@ permissions:
 jobs:
   publish:
     name: Publish Cargo
-    runs-on: ubuntu-latest
-    # Same-named CI environment: the human-approval + OIDC gate for the
-    # PERMANENT publish; a dry-run is ungated.
-    environment: ${{ inputs.publish == true && 'cargo-publish' || '' }}
+    runs-on: ubuntu-26.04
+    # Human approval + OIDC gate for the permanent publish.
+    environment: cargo-publish
     permissions:
       contents: write # cargo-publish.mts tags + cuts the GitHub release
       id-token: write # crates.io Trusted Publishing (OIDC) + provenance
@@ -69,9 +63,6 @@ jobs:
 
       - name: Set up and install
         uses: ./.github/actions/fleet/setup-and-install
-        with:
-          payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
-          payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
       # Fleet composites, not the third-party actions they replace: a raw
       # `uses:` here would force dtolnay/rust-toolchain and Swatinem/rust-cache
       # onto the Actions allowlist of every repo seeded from this preset, and a
@@ -91,12 +82,10 @@ jobs:
       # deleted out from under our pin.
       - name: 'Authenticate to crates.io'
         id: auth
-        if: ${{ inputs.publish == true }}
         uses: ./.github/actions/fleet/crates-io-auth
       - name: Stage and digest crate
-        run: node scripts/fleet/cargo-publish.mts --staged ${{ inputs.publish != true && '--dry-run' || '' }}
+        run: node scripts/fleet/cargo-publish.mts --staged
       - name: Approve verified crate
-        if: ${{ inputs.publish == true }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
           GH_TOKEN: ${{ github.token }}
@@ -118,7 +107,6 @@ jobs:
           CRATES_IO_TOKEN: ${{ steps.auth.outputs.token }}
         run: node scripts/fleet/registry-infra/crates-io-trusted-token.mts --revoke
       - name: Attest build provenance (.crate)
-        if: ${{ inputs.publish == true }}
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2 (2025-06-11)
         with:
           subject-path: target/package/*.crate
