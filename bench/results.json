@@ -1,0 +1,26 @@
+[
+  {
+    "size": 524288,
+    "async_write_copy_compress_ms": 3.692,
+    "sync_write_copy_compress_ms": 3.622,
+    "compress_file_in_place_ms": 4.413,
+    "raw_write_floor_ms": 1.607,
+    "plain_write_floor_ms": 1.744
+  },
+  {
+    "size": 4194304,
+    "async_write_copy_compress_ms": 10.241,
+    "sync_write_copy_compress_ms": 10.673,
+    "compress_file_in_place_ms": 10.311,
+    "raw_write_floor_ms": 3.702,
+    "plain_write_floor_ms": 5.253
+  },
+  {
+    "size": 33554432,
+    "async_write_copy_compress_ms": 68.238,
+    "sync_write_copy_compress_ms": 48.832,
+    "compress_file_in_place_ms": 40.144,
+    "raw_write_floor_ms": 14.365,
+    "plain_write_floor_ms": 41.007
+  }
+]
