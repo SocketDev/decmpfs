@@ -130,9 +130,6 @@ jobs:
       - name: Generate platform workspace manifests
         run: node napi/decmpfs/scripts/make-npm-dirs.mts
       - name: Install workspace devdependencies
-        env:
-          npm_config_loglevel: debug
-          npm_config_resolution_mode: highest
-        run: pnpm install --frozen-lockfile --reporter=append-only
+        run: pnpm install --frozen-lockfile
       - name: Check declarations and assets
         run: node scripts/repo/check.mts --node-only
