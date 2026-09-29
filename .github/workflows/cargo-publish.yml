@@ -97,6 +97,7 @@ jobs:
       - name: Stage and digest crate
         env:
           GH_TOKEN: ${{ steps.release-app.outputs.token }}
+          GH_APP_GRANT_VERIFIED: ${{ steps.release-app.outputs.contents-write }}
           RELEASE_APP_TOKEN: ${{ steps.release-app.outputs.token }}
           NIGHTLY_VERSION: ${{ inputs.nightly-version }}
         run: |
