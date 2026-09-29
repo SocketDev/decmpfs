@@ -149,6 +149,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
         with:
           persist-credentials: false
+      - name: Hydrate the fleet pack
+        run: node scripts/repo/bootstrap/fleet.mjs --preserve-tracked
       - name: Set up Rust toolchain
         uses: ./.github/actions/fleet/setup-rust-toolchain
         with:
