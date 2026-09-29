@@ -1,0 +1,186 @@
+name: 'build: native packages'
+run-name: 'build: native packages ${{ github.ref_name }}'
+
+# Per-target native builds of the decmpfs node addon: the tier-1 subset on every
+# push/PR (native runners, no cross C toolchain) and the FULL 8-target release
+# set via the all-targets dispatch. The matrix is DERIVED from the single source
+# of truth (napi/decmpfs/scripts/targets.mts) — adding a target there changes
+# the matrix with no edit here.
+#
+# The windows legs download node.lib (the node.exe import library) for the napi
+# build; musl legs install the musl toolchain.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/**'
+      - 'napi/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - '.github/workflows/build-native-packages.yml'
+  pull_request:
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/**'
+      - 'napi/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - '.github/workflows/build-native-packages.yml'
+  workflow_dispatch:
+    inputs:
+      all-targets:
+        description: 'Build every target in targets.mts (release set), not just tier-1.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1@ # v7.0.1 (2026-07-20)
+        with:
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: ./.github/actions/repo/setup-pnpm
+      - name: Generate platform workspace manifests
+        run: node napi/decmpfs/scripts/make-npm-dirs.mts
+      - name: Install workspace devdependencies
+        run: pnpm install --frozen-lockfile
+      - name: Test the addon build script
+        run: node scripts/fleet/test.mts test/repo/unit
+
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1@ # v7.0.1 (2026-07-20)
+        with:
+          persist-credentials: false
+      - name: Derive the build matrix from targets.mts
+        id: gen
+        env:
+          ALL_TARGETS: ${{ github.event.inputs.all-targets }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS' >> "$GITHUB_OUTPUT"
+          import { readFileSync } from 'node:fs'
+          // The TARGETS file is the single source of truth; the tier-1 set =
+          // the native-runner targets. Emit the GitHub Actions matrix JSON.
+          const src = readFileSync('napi/decmpfs/scripts/targets.mts', 'utf8')
+          const all = process.env.ALL_TARGETS === 'true'
+          const entries = [
+            ...src.matchAll(
+              /\{\s*triple: '([^']+)',\s*\n\s*os: '([^']+)',\s*\n\s*cpu: '([^']+)',\s*\n\s*(?:libc: '([^']+)',\s*\n\s*)?artifact: '([^']+)',\s*\n\s*\}/g,
+            ),
+          ].map(e => ({
+            triple: e[1]!,
+            os: e[2]!,
+            cpu: e[3]!,
+            libc: e[4],
+            artifact: e[5]!,
+          }))
+          const tier1 = new Set([
+            'darwin-arm64',
+            'darwin-x64',
+            'linux-arm64-gnu',
+            'linux-x64-gnu',
+            'win32-x64-msvc',
+          ])
+          const matrix = entries
+            .filter(t => all || tier1.has(t.triple))
+            .map(t => ({
+              ...t,
+              runner:
+                t.os === 'darwin'
+                  ? t.cpu === 'arm64'
+                    ? 'macos-14'
+                    : 'macos-15'
+                  : t.os === 'win32'
+                    ? t.cpu === 'arm64'
+                      ? 'windows-11-arm'
+                      : 'windows-latest'
+                    : 'ubuntu-26.04',
+            }))
+          if (!matrix.length) throw new Error('no targets resolved')
+          console.log(`matrix=${JSON.stringify({ include: matrix })}`)
+          JS
+  build:
+    name: Build (${{ matrix.triple }})
+    needs: [check, prepare]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1@ # v7.0.1 (2026-07-20)
+        with:
+          persist-credentials: false
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@@ # master (2026-09-12)
+        with:
+          toolchain: nightly-2026-09-24
+          targets: ${{ matrix.triple }}
+      - name: Rust cache
+        uses: Swatinem/rust-cache@@ # v2 (2026-03-12)
+        with:
+          key: ${{ matrix.triple }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install the musl toolchain (musl targets only)
+        if: ${{ matrix.libc == 'musl' }}
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Download node.lib (Windows targets only)
+        if: ${{ runner.os == 'Windows' }}
+        env:
+          TARGET_CPU: ${{ matrix.cpu }}
+          WORKSPACE: ${{ github.workspace }}
+        shell: pwsh
+        run: |
+          $v = (node -p process.version)
+          $arch = if ($env:TARGET_CPU -eq "arm64") { "arm64" } else { "x64" }
+          $dir = "$env:WORKSPACE/.cache/node-lib"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Invoke-WebRequest -Uri "https://nodejs.org/dist/$v/win-$arch/node.lib" -OutFile "$dir/node.lib"
+          "NODE_LIB_DIR=$dir" | Add-Content $env:GITHUB_ENV
+      - name: Build the addon
+        run: |
+          set -euo pipefail
+          cd napi/decmpfs
+          PATH="$HOME/.cargo/bin:$PATH" node scripts/build.mts --target "${{ matrix.triple }}"
+          mkdir -p "../../npm-out/${{ matrix.triple }}"
+          cp decmpfs.node "../../npm-out/${{ matrix.triple }}/decmpfs.node"
+      - name: Upload the built addon
+        uses: actions/upload-artifact@@ # v7.0.1 (2026-04-10)
+        with:
+          name: decmpfs-node-${{ matrix.triple }}
+          path: npm-out/${{ matrix.triple }}
