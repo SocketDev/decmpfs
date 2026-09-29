@@ -132,7 +132,9 @@ jobs:
                     ? t.cpu === 'arm64'
                       ? 'windows-11-arm'
                       : 'windows-latest'
-                    : 'ubuntu-26.04',
+                    : t.cpu === 'arm64'
+                      ? 'ubuntu-26.04-arm'
+                      : 'ubuntu-26.04',
             }))
           if (!matrix.length) throw new Error('no targets resolved')
           console.log(`matrix=${JSON.stringify({ include: matrix })}`)
