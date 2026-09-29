@@ -86,7 +86,10 @@ jobs:
         env:
           npm_config_loglevel: debug
           npm_config_resolution_mode: highest
-        run: pnpm install --frozen-lockfile --reporter=append-only
+        run: n          which pnpm
+          pnpm --version
+          grep -m1 -A3 packageManagerDependencies pnpm-lock.yaml
+          pnpm install --frozen-lockfile --reporter=append-only
       - name: Read Rust toolchain pin
         id: rust-pin
         shell: bash
