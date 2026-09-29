@@ -291,7 +291,12 @@ pub(crate) fn clone_file(src: &Path, dest: &Path) -> Result<bool, Error> {
         Ok(file) => file,
         Err(_) => return Ok(false),
     };
-    // FICLONE = _IOW(0x94, 9, int) — stable since Linux 4.5.
+    // FICLONE = _IOW(0x94, 9, int) — stable since Linux 4.5. musl's ioctl takes
+    // the request as i32; glibc's takes c_ulong — same 31-bit-safe constant.
+    #[cfg(target_env = "musl")]
+    const FICLONE: libc::c_int = 0x4004_9409 as libc::c_int;
+    #[cfg(not(target_env = "musl"))]
+    const FICLONE: libc::c_ulong = 0x4004_9409;
     const FICLONE: libc::c_ulong = 0x4004_9409;
     let cloned = unsafe { libc::ioctl(dest_file.as_raw_fd(), FICLONE, src_file.as_raw_fd()) } == 0;
     if !cloned {
