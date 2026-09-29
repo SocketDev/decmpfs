@@ -86,7 +86,8 @@ jobs:
         env:
           npm_config_loglevel: debug
           npm_config_resolution_mode: highest
-        run: n          which pnpm
+        run: |
+          which pnpm
           pnpm --version
           grep -m1 -A3 packageManagerDependencies pnpm-lock.yaml
           pnpm install --frozen-lockfile --reporter=append-only
