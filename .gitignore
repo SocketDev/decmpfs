@@ -191,12 +191,21 @@ pnpm-debug.log
 !/.git-hooks/_shared/push-commit-messages.mts
 !/.git-hooks/_shared/push-durable-ref.mts
 !/.git-hooks/_shared/push-file-scan.mts
-!/.git-hooks/_shared/push-pr-commit-count.mts
 !/.git-hooks/_shared/push-range.mts
 !/.git-hooks/_shared/push-release-tags.mts
 !/.git-hooks/_shared/push-repo-gates.mts
 !/.git-hooks/_shared/push-signatures.mts
 !/.git-hooks/_shared/push-squash-history.mts
+!/.git-hooks/_shared/push/
+!/.git-hooks/_shared/push/commit-messages.mts
+!/.git-hooks/_shared/push/durable-ref.mts
+!/.git-hooks/_shared/push/file-scan.mts
+!/.git-hooks/_shared/push/pr-commit-count.mts
+!/.git-hooks/_shared/push/range.mts
+!/.git-hooks/_shared/push/release-tags.mts
+!/.git-hooks/_shared/push/repo-gates.mts
+!/.git-hooks/_shared/push/signatures.mts
+!/.git-hooks/_shared/push/squash-history.mts
 !/.git-hooks/_shared/repo-containment.mts
 !/.git-hooks/_shared/repository-source-root.mts
 !/.git-hooks/_shared/resolve-node.sh
@@ -300,6 +309,8 @@ pnpm-debug.log
 !/.github/workflows/cron-weekly-fuzz.yml
 !/.github/workflows/cron-weekly-odai-cache.yml
 !/.github/workflows/cron-weekly-update.yml
+!/.github/workflows/nightly-cargo.yml
+!/.github/workflows/nightly-npm.yml
 !/.github/workflows/publish-cargo.yml
 !/.github/workflows/publish-npm.yml
 !/.github/workflows/release-github.yml
@@ -3316,8 +3327,6 @@ scripts/fleet/browser/bridge/extension/map/navigator-map.png
 scripts/fleet/browser/bridge/extension/map/parchment.jpg
 scripts/fleet/browser/bridge/extension/markers.mts
 scripts/fleet/browser/bridge/extension/mcp.mts
-scripts/fleet/browser/bridge/extension/navigator-diagnostics.mts
-scripts/fleet/browser/bridge/extension/navigator-lifecycle.mts
 scripts/fleet/browser/bridge/extension/navigator-map.css
 scripts/fleet/browser/bridge/extension/navigator-view.css
 scripts/fleet/browser/bridge/extension/navigator.mts
@@ -3329,7 +3338,6 @@ scripts/fleet/browser/bridge/extension/npm/trusted-publisher-dom.mts
 scripts/fleet/browser/bridge/extension/npm/trusted-publisher-form-dom.mts
 scripts/fleet/browser/bridge/extension/otp.mts
 scripts/fleet/browser/bridge/extension/readiness.mts
-scripts/fleet/browser/bridge/extension/session-markers.mts
 scripts/fleet/browser/bridge/extension/socket.mts
 scripts/fleet/browser/bridge/extension/state.mts
 scripts/fleet/browser/bridge/extension/types.mts
@@ -3347,8 +3355,6 @@ scripts/fleet/browser/bridge/native-helper/launcher-policy.h
 scripts/fleet/browser/bridge/native-helper/launcher.cc
 scripts/fleet/browser/bridge/native-helper/process-attestation.cc
 scripts/fleet/browser/bridge/native-helper/process-attestation.h
-scripts/fleet/browser/bridge/native-host-entry.mts
-scripts/fleet/browser/bridge/native-host-types.mts
 scripts/fleet/browser/bridge/native-host.mts
 scripts/fleet/browser/bridge/observe.mts
 scripts/fleet/browser/bridge/ownership.mts
@@ -4570,7 +4576,6 @@ scripts/fleet/release/github/reconcile.mts
 scripts/fleet/release/github/remote.mts
 scripts/fleet/release/hint.mts
 scripts/fleet/release/member-probe.mts
-scripts/fleet/release/nightly/decision.mts
 scripts/fleet/release/npm-only-provenance.mts
 scripts/fleet/release/pipeline/deps.mts
 scripts/fleet/release/pipeline/gate-runners.mts
@@ -4628,7 +4633,6 @@ scripts/fleet/scanning-vulns/lib/collate.mts
 scripts/fleet/security.mts
 scripts/fleet/security/codeql-posture.mts
 scripts/fleet/security/codeql-workflow.mts
-scripts/fleet/security/posture-gh-read.mts
 scripts/fleet/security/posture-probe.mts
 scripts/fleet/serve-reports.mts
 scripts/fleet/setup/activate-node.mts
