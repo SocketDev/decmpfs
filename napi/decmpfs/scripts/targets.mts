@@ -15,6 +15,8 @@ export interface Target {
   cpu: string
   // The npm install gate: Linux glibc vs musl.
   libc?: string | undefined
+  // The full Rust target triple the toolchain + cross builds take.
+  rust: string
   // The cdylib basename cargo emits on this target's native host.
   artifact: string
 }
@@ -24,12 +26,14 @@ export const TARGETS: Target[] = [
     triple: 'darwin-arm64',
     os: 'darwin',
     cpu: 'arm64',
+    rust: 'aarch64-apple-darwin',
     artifact: 'libdecmpfs_node.dylib',
   },
   {
     triple: 'darwin-x64',
     os: 'darwin',
     cpu: 'x64',
+    rust: 'x86_64-apple-darwin',
     artifact: 'libdecmpfs_node.dylib',
   },
   {
@@ -37,6 +41,7 @@ export const TARGETS: Target[] = [
     os: 'linux',
     cpu: 'arm64',
     libc: 'glibc',
+    rust: 'aarch64-unknown-linux-gnu',
     artifact: 'libdecmpfs_node.so',
   },
   {
@@ -44,12 +49,14 @@ export const TARGETS: Target[] = [
     os: 'linux',
     cpu: 'x64',
     libc: 'glibc',
+    rust: 'x86_64-unknown-linux-gnu',
     artifact: 'libdecmpfs_node.so',
   },
   {
     triple: 'win32-x64-msvc',
     os: 'win32',
     cpu: 'x64',
+    rust: 'x86_64-pc-windows-msvc',
     artifact: 'decmpfs_node.dll',
   },
   {
@@ -57,6 +64,7 @@ export const TARGETS: Target[] = [
     os: 'linux',
     cpu: 'arm64',
     libc: 'musl',
+    rust: 'aarch64-unknown-linux-musl',
     artifact: 'libdecmpfs_node.so',
   },
   {
@@ -64,12 +72,14 @@ export const TARGETS: Target[] = [
     os: 'linux',
     cpu: 'x64',
     libc: 'musl',
+    rust: 'x86_64-unknown-linux-musl',
     artifact: 'libdecmpfs_node.so',
   },
   {
     triple: 'win32-arm64-msvc',
     os: 'win32',
     cpu: 'arm64',
+    rust: 'aarch64-pc-windows-msvc',
     artifact: 'decmpfs_node.dll',
   },
 ]
