@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1@ # v7.0.1 (2026-07-20)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
         with:
           persist-credentials: false
       - name: Set up pnpm
@@ -83,7 +83,7 @@ jobs:
       matrix: ${{ steps.gen.outputs.matrix }}
     steps:
       - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1@ # v7.0.1 (2026-07-20)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
         with:
           persist-credentials: false
       - name: Derive the build matrix from targets.mts
@@ -143,16 +143,16 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1@ # v7.0.1 (2026-07-20)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
         with:
           persist-credentials: false
       - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@@ # master (2026-09-12)
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master (2026-09-12)
         with:
           toolchain: nightly-2026-09-24
           targets: ${{ matrix.triple }}
       - name: Rust cache
-        uses: Swatinem/rust-cache@@ # v2 (2026-03-12)
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2 (2026-03-12)
         with:
           key: ${{ matrix.triple }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -180,7 +180,7 @@ jobs:
           mkdir -p "../../npm-out/${{ matrix.triple }}"
           cp decmpfs.node "../../npm-out/${{ matrix.triple }}/decmpfs.node"
       - name: Upload the built addon
-        uses: actions/upload-artifact@@ # v7.0.1 (2026-04-10)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (2026-04-10)
         with:
           name: decmpfs-node-${{ matrix.triple }}
           path: npm-out/${{ matrix.triple }}
