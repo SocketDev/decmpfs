@@ -52,4 +52,24 @@ export const TARGETS: Target[] = [
     cpu: 'x64',
     artifact: 'decmpfs_node.dll',
   },
+  {
+    triple: 'linux-arm64-musl',
+    os: 'linux',
+    cpu: 'arm64',
+    libc: 'musl',
+    artifact: 'libdecmpfs_node.so',
+  },
+  {
+    triple: 'linux-x64-musl',
+    os: 'linux',
+    cpu: 'x64',
+    libc: 'musl',
+    artifact: 'libdecmpfs_node.so',
+  },
+  {
+    triple: 'win32-arm64-msvc',
+    os: 'win32',
+    cpu: 'arm64',
+    artifact: 'decmpfs_node.dll',
+  },
 ]

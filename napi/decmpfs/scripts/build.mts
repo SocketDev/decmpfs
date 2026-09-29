@@ -32,7 +32,17 @@ if (!artifact) {
 const nodeRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const repoRoot = path.join(nodeRoot, '..', '..')
 
-const build = spawnSync('cargo', ['build', '-p', 'decmpfs-node', '--release'], {
+// A cross build (--target <triple>) lands the cdylib under target/<triple>/release;
+// a native build lands it in target/release directly.
+const targetIndex = process.argv.indexOf('--target')
+const target = targetIndex === -1 ? undefined : process.argv[targetIndex + 1]
+if (targetIndex !== -1 && !target) {
+  throw new Error('decmpfs build: --target needs a triple value.')
+}
+
+const cargoArgs = ['build', '-p', 'decmpfs-node', '--release']
+if (target) cargoArgs.push('--target', target)
+const build = spawnSync('cargo', cargoArgs, {
   cwd: repoRoot,
   stdio: 'inherit',
 })
@@ -41,7 +51,10 @@ if (build.status !== 0) {
     `decmpfs build: cargo build exited ${build.status ?? 'on a signal'}.`,
   )
 }
+const builtDir = target
+  ? path.join(repoRoot, 'target', target, 'release')
+  : path.join(repoRoot, 'target', 'release')
 copyFileSync(
-  path.join(repoRoot, 'target', 'release', artifact),
+  path.join(builtDir, artifact),
   path.join(nodeRoot, 'decmpfs.node'),
 )
