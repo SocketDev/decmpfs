@@ -98,18 +98,20 @@ jobs:
           // the native-runner targets. Emit the GitHub Actions matrix JSON.
           const src = readFileSync('napi/decmpfs/scripts/targets.mts', 'utf8')
           const all = process.env.ALL_TARGETS === 'true'
-          const entries = [
-            ...src.matchAll(
-              /\{\s*triple: '([^']+)',\s*\n\s*os: '([^']+)',\s*\n\s*cpu: '([^']+)',\s*\n\s*(?:libc: '([^']+)',\s*\n\s*)?artifact: '([^']+)',\s*\n\s*\}/g,
-            ),
-          ].map(e => ({
-            triple: e[1],
-            os: e[2],
-            cpu: e[3],
-            libc: e[4],
-            rust: e[6],
-            artifact: e[5],
-          }))
+          // Parse each target block field-independently: the field order in
+          // the manifest must not couple to this parser.
+          const entries = src
+            .split("triple: '")
+            .slice(1)
+            .map(block => ({
+              triple: /^([^']+)'/.exec(block)?.[1],
+              os: /os: '([^']+)'/.exec(block)?.[1],
+              cpu: /cpu: '([^']+)'/.exec(block)?.[1],
+              libc: /libc: '([^']+)'/.exec(block)?.[1],
+              rust: /rust: '([^']+)'/.exec(block)?.[1],
+              artifact: /artifact: '([^']+)'/.exec(block)?.[1],
+            }))
+            .filter(t => t.triple && t.os && t.cpu && t.rust && t.artifact)
           const tier1 = new Set([
             'darwin-arm64',
             'darwin-x64',
