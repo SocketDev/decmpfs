@@ -81,14 +81,12 @@ jobs:
         with:
           prefix-key: cargo-publish
           workspaces: .
-      - name: Mint release token for nightly bump
-        if: ${{ inputs.nightly-version != '' }}
+      - name: Mint the release app token
         id: release-app
-        uses: ./.github/actions/fleet/github-release-app-token
+        uses: ./.github/actions/repo/release-app-token
         with:
-          client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
-          private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       # The fleet's own OIDC exchange, not rust-lang/crates-io-auth-action.
       # Same protocol, no third-party action in the publish path, and nothing
       # to re-pin when upstream retags: that action's floating `v1` tag was
@@ -98,7 +96,7 @@ jobs:
         uses: ./.github/actions/fleet/crates-io-auth
       - name: Stage and digest crate
         env:
-          GH_TOKEN: ${{ inputs.nightly-version != '' && steps.release-app.outputs.token || github.token }}
+          GH_TOKEN: ${{ steps.release-app.outputs.token }}
           RELEASE_APP_TOKEN: ${{ steps.release-app.outputs.token }}
           NIGHTLY_VERSION: ${{ inputs.nightly-version }}
         run: |
@@ -108,7 +106,7 @@ jobs:
       - name: Approve verified crate
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-          GH_TOKEN: ${{ inputs.nightly-version != '' && steps.release-app.outputs.token || github.token }}
+          GH_TOKEN: ${{ steps.release-app.outputs.token }}
         # The rustup cargo goes AHEAD of the SFW shim for the publish leg:
         # the shim's proxy interposes the crates.io publish PUT (uploads are
         # outside its registry-read bypass), and cargo then fails TLS
