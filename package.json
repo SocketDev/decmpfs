@@ -256,7 +256,7 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^11.25.0 || >=12.3.4",
+      "version": "12.7.0",
       "onFail": "error"
     }
   },
