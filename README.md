@@ -101,3 +101,30 @@ badge (`assets/repo/coverage.svg`) is regenerated from that output.
 ## License
 
 MIT
+
+<!-- perf-table:start -->
+## Measured write performance (32 MiB-class payloads, APFS decmpfs/LZVN)
+
+The compressed write beats the plain write at large sizes — fewer bytes reach
+the disk:
+
+| Payload | writeDecmpfsFile | plain fs write |
+| --- | --- | --- |
+| 512 KiB | 3.692 ms | 1.744 ms | -112% faster |
+| 4 MiB | 10.241 ms | 5.253 ms | -95% faster |
+| 32 MiB | 68.238 ms | 41.007 ms | -66% faster |
+
+The stream path is the fastest way in for large payloads, and per-chunk native
+forwarding costs nothing from 64 KiB chunks up:
+
+| Path | 32 MiB | Throughput |
+| --- | --- | --- |
+| stream 16 KiB chunks | 26.89 ms | 1190 MB/s |
+| stream 64 KiB chunks | 24.58 ms | 1302 MB/s |
+| stream 512 KiB chunks | 23.41 ms | 1367 MB/s |
+| stream 2048 KiB chunks | 23.54 ms | 1359 MB/s |
+| single-shot writeDecmpfsFile | 33.91 ms | 944 MB/s |
+| raw fs write stream | 24.29 ms | 1317 MB/s |
+
+Regenerate: `node bench/write-overhead.mjs && node bench/stream-throughput.mjs && node bench/render-readme-table.mjs`
+<!-- perf-table:end -->
