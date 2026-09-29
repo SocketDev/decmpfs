@@ -1,0 +1,132 @@
+name: 'publish: cargo'
+run-name: 'publish: cargo'
+
+# PRESET — seeded once from template/presets/ (onboarding or first cascade),
+# then repo-owned: customize what + how THIS crate publishes. The cargo analog
+# of publish-npm.yml.
+#
+# Default flow: manual dispatch; packages and verifies the workspace crate,
+# then publishes it via the fleet cargo-publish engine using
+# crates.io Trusted Publishing (OIDC — id-token: write, no long-lived token)
+# with build provenance. The `cargo-publish` CI environment gates the real,
+# PERMANENT publish (crates.io is yank-only) — configure required reviewers +
+# the crates.io trusted-publisher (repo + this workflow + environment) on it.
+#
+# ORDER RULE: the engine publishes FIRST, then gates the git tag + immutable
+# GH release on the version being resolvable in the crates.io index
+# (requireRegistryLive) — the release is the FINAL marker and never precedes
+# the registry publish.
+
+on:
+  workflow_dispatch:
+    inputs:
+      nightly-version:
+        description: 'Planned single-crate X.Y.Z-nightly.YYYYMMDD.N target.'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish Cargo
+    runs-on: ubuntu-26.04
+    # Human approval + OIDC gate for the permanent publish.
+    environment: cargo-publish
+    permissions:
+      contents: write # cargo-publish.mts tags + cuts the GitHub release
+      id-token: write # crates.io Trusted Publishing (OIDC) + provenance
+      attestations: write # build provenance for the .crate
+    env:
+      SOCKET_API_TOKEN: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
+    steps:
+      - name: Bootstrap checkout
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          FETCH_ARGS=(--prune origin "${TRIGGER_REF}")
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            export GIT_CONFIG_COUNT=1
+            export GIT_CONFIG_KEY_0="http.${SERVER_URL}/.extraheader"
+            export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${AUTH_B64}"
+            git fetch --tags "${FETCH_ARGS[@]}"
+          else
+            git fetch --tags "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
+
+      - name: Set up and install
+        uses: ./.github/actions/fleet/setup-and-install
+      # Fleet composites, not the third-party actions they replace: a raw
+      # `uses:` here would force dtolnay/rust-toolchain and Swatinem/rust-cache
+      # onto the Actions allowlist of every repo seeded from this preset, and a
+      # strict-allowlist repo plan-fails with 0 jobs when one is missing.
+      - name: Rust toolchain
+        uses: ./.github/actions/fleet/setup-rust-toolchain
+        with:
+          channel: nightly
+      - name: Rust cache
+        uses: ./.github/actions/fleet/setup-rust-cache
+        with:
+          prefix-key: cargo-publish
+          workspaces: .
+      - name: Mint release token for nightly bump
+        if: ${{ inputs.nightly-version != '' }}
+        id: release-app
+        uses: ./.github/actions/fleet/github-release-app-token
+        with:
+          client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
+          private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      # The fleet's own OIDC exchange, not rust-lang/crates-io-auth-action.
+      # Same protocol, no third-party action in the publish path, and nothing
+      # to re-pin when upstream retags: that action's floating `v1` tag was
+      # deleted out from under our pin.
+      - name: 'Authenticate to crates.io'
+        id: auth
+        uses: ./.github/actions/fleet/crates-io-auth
+      - name: Stage and digest crate
+        env:
+          GH_TOKEN: ${{ inputs.nightly-version != '' && steps.release-app.outputs.token || github.token }}
+          RELEASE_APP_TOKEN: ${{ steps.release-app.outputs.token }}
+          NIGHTLY_VERSION: ${{ inputs.nightly-version }}
+        run: |
+          args=(--staged)
+          if [ -n "$NIGHTLY_VERSION" ]; then args+=(--bump --nightly-version "$NIGHTLY_VERSION"); fi
+          node scripts/fleet/cargo-publish.mts "${args[@]}"
+      - name: Approve verified crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+          GH_TOKEN: ${{ inputs.nightly-version != '' && steps.release-app.outputs.token || github.token }}
+        # The rustup cargo goes AHEAD of the SFW shim for the publish leg:
+        # the shim's proxy interposes the crates.io publish PUT (uploads are
+        # outside its registry-read bypass), and cargo then fails TLS
+        # verification with curl error 60. Reads (index, downloads) already
+        # happened in earlier steps under the shim; the upload is outbound
+        # publish traffic with an OIDC token — no supply-chain read surface.
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          node scripts/fleet/cargo-publish.mts --approve --yes
+      # A composite action cannot declare a `post` hook, so the revoke is an
+      # explicit step. `always()` on purpose: a failed publish still minted a
+      # token, and leaving it live until it expires is the worse outcome.
+      - name: Revoke the crates.io token
+        if: ${{ always() && steps.auth.outputs.token != '' }}
+        env:
+          CRATES_IO_TOKEN: ${{ steps.auth.outputs.token }}
+        run: node scripts/fleet/registry-infra/crates-io-trusted-token.mts --revoke
+      - name: Attest build provenance (.crate)
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2 (2025-06-11)
+        with:
+          subject-path: target/package/*.crate
