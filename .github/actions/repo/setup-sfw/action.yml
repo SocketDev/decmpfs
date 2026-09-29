@@ -1,4 +1,4 @@
-name: Setup socket firewall
+name: Set up socket firewall
 description: >
   Download the pinned sfw-free binary (integrity-verified) and export SFW_BIN.
   Package-manager invocations that fetch from a registry should run through it:

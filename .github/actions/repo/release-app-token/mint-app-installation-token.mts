@@ -26,8 +26,7 @@ import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
 function die(message: string): never {
-  // oxlint-disable-next-line socket/no-console-prefer-logger -- this action runs before dependency installation.
-  console.error(`[mint-app-token] ${message}`)
+  process.stderr.write(`[mint-app-token] ${message}\n`)
   process.exit(1)
 }
 
@@ -179,8 +178,7 @@ async function main(): Promise<void> {
     die(`token mint returned no token. Saw: ${minted.body}.`)
   }
 
-  // oxlint-disable-next-line socket/no-console-prefer-logger -- GitHub Actions requires this workflow command on stdout.
-  console.log(`::add-mask::${token}`)
+  process.stdout.write(`::add-mask::${token}\n`)
   appendFileSync(env('GITHUB_OUTPUT'), `token=${token}\n`)
 }
 
@@ -194,7 +192,7 @@ if (
     try {
       await main()
     } catch (e) {
-      // oxlint-disable-next-line socket/prefer-error-message-helper, socket/prefer-error-message, socket/prefer-socket-lib-error-message -- this action runs without an install step.
+      // oxlint-disable-next-line socket/prefer-socket-lib-error-message, socket/prefer-error-message-helper, socket/prefer-error-message -- this action is dep-0 (action.yml runs `node …mts` with no install step), so it cannot import `errorMessage` from @socketsecurity/lib.
       die(e instanceof Error ? e.message : String(e))
     }
   })()
