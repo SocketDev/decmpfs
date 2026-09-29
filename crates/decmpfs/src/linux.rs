@@ -297,7 +297,6 @@ pub(crate) fn clone_file(src: &Path, dest: &Path) -> Result<bool, Error> {
     const FICLONE: libc::c_int = 0x4004_9409 as libc::c_int;
     #[cfg(not(target_env = "musl"))]
     const FICLONE: libc::c_ulong = 0x4004_9409;
-    const FICLONE: libc::c_ulong = 0x4004_9409;
     let cloned = unsafe { libc::ioctl(dest_file.as_raw_fd(), FICLONE, src_file.as_raw_fd()) } == 0;
     if !cloned {
         drop(dest_file);
