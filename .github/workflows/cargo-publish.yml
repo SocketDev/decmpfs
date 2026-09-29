@@ -83,10 +83,11 @@ jobs:
           workspaces: .
       - name: Mint the release app token
         id: release-app
-        uses: ./.github/actions/repo/release-app-token
+        uses: ./.github/actions/fleet/github-release-app-token
         with:
-          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
+          private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
       # The fleet's own OIDC exchange, not rust-lang/crates-io-auth-action.
       # Same protocol, no third-party action in the publish path, and nothing
       # to re-pin when upstream retags: that action's floating `v1` tag was
