@@ -103,11 +103,11 @@ jobs:
               /\{\s*triple: '([^']+)',\s*\n\s*os: '([^']+)',\s*\n\s*cpu: '([^']+)',\s*\n\s*(?:libc: '([^']+)',\s*\n\s*)?artifact: '([^']+)',\s*\n\s*\}/g,
             ),
           ].map(e => ({
-            triple: e[1]!,
-            os: e[2]!,
-            cpu: e[3]!,
+            triple: e[1],
+            os: e[2],
+            cpu: e[3],
             libc: e[4],
-            artifact: e[5]!,
+            artifact: e[5],
           }))
           const tier1 = new Set([
             'darwin-arm64',
