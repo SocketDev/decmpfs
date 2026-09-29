@@ -9,12 +9,20 @@
 # apple-m1 covers every arm64 Mac. aarch64 Linux stays at the armv8-a default
 # (already has NEON); a global `[build] rustflags` is deliberately avoided so a
 # flag never leaks to an unintended target.
+#
+# The musl targets build the addon cdylib DYNAMICALLY (-crt-static): a fully
+# static-CRT musl target cannot produce a cdylib ("does not support these
+# crate types"); the dynamic musl .node is what Alpine's musl-linked Node
+# dlopens. Only the musl targets get this; gnu/darwin/msvc are unaffected.
 
 [target.x86_64-unknown-linux-gnu]
 rustflags = ["-C", "target-cpu=x86-64-v2"]
 
 [target.x86_64-unknown-linux-musl]
-rustflags = ["-C", "target-cpu=x86-64-v2"]
+rustflags = ["-C", "target-feature=-crt-static"]
+
+[target.aarch64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=-crt-static"]
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-cpu=x86-64-v2"]
