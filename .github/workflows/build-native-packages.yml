@@ -182,7 +182,7 @@ jobs:
         run: |
           set -euo pipefail
           cd napi/decmpfs
-          PATH="$HOME/.cargo/bin:$PATH" node scripts/build.mts --target "${{ matrix.triple }}"
+          PATH="$HOME/.cargo/bin:$PATH" node scripts/build.mts --target "${{ matrix.rust }}"
           mkdir -p "../../npm-out/${{ matrix.triple }}"
           cp decmpfs.node "../../npm-out/${{ matrix.triple }}/decmpfs.node"
       - name: Upload the built addon
