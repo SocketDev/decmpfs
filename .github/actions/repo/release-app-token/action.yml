@@ -17,12 +17,14 @@ outputs:
   token:
     description: 'The minted installation token (pass as GH_TOKEN / checkout token).'
     value: ${{ steps.app-token.outputs.token }}
+  contents-write:
+    description: '"'"'The literal string true — the mint preflighted the installation grant and it covers the requested permissions.'"'"'
+    value: '"'"'true'"'"'
 
 runs:
   using: composite
   steps:
-    - name: Mint release app token
-      id: app-token
+    - id: app-token
       shell: bash
       env:
         APP_PRIVATE_KEY: ${{ inputs.private-key }}
