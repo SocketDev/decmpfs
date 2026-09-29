@@ -4031,22 +4031,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 7.1.0-dev.20260921.1
-    optionalDependencies:
-      '@decmpfs/darwin-arm64':
-        specifier: 0.1.3
-        version: 0.1.3
-      '@decmpfs/darwin-x64':
-        specifier: 0.1.3
-        version: 0.1.3
-      '@decmpfs/linux-arm64-gnu':
-        specifier: 0.1.3
-        version: 0.1.3
-      '@decmpfs/linux-x64-gnu':
-        specifier: 0.1.3
-        version: 0.1.3
-      '@decmpfs/win32-x64-msvc':
-        specifier: 0.1.3
-        version: 0.1.3
 
 packages:
 
@@ -4129,38 +4113,6 @@ packages:
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
-
-  '@decmpfs/darwin-arm64@0.1.3':
-    resolution: {integrity: sha512-69rJUuqxPYl0oXlOiuq3B9BQdJ2+PJ0Ab4SWHN5lG6rljp26qT+yF9Eyn5e3hMG6HF2ScsKgDbqqF0g6vQDB0Q==}
-    engines: {node: '>=18'}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@decmpfs/darwin-x64@0.1.3':
-    resolution: {integrity: sha512-/FcwODsncInhreiOejfIDUex+0W2AbEO2M4IZsnyWeskZYvGpsUrQ5hWDDGTRs2iRqD7FTugjtdIw30y2vTwLg==}
-    engines: {node: '>=18'}
-    cpu: [x64]
-    os: [darwin]
-
-  '@decmpfs/linux-arm64-gnu@0.1.3':
-    resolution: {integrity: sha512-flVeNf/no5eqIyojOUuyVwaV3J6sOuSrsYH3ibbVP/FyZaOmSbByrPNs3YCJcpLK7LHOlj7Kfx+eF7aZJyRREA==}
-    engines: {node: '>=18'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
-
-  '@decmpfs/linux-x64-gnu@0.1.3':
-    resolution: {integrity: sha512-UDBN+X3R4ABwKGTWeqwiz4jPg84Vzdq0kBGMirV47gk7B87W1mhfikNuPhsFfeddB1xOqI5zjPYjRo1ztwg2FA==}
-    engines: {node: '>=18'}
-    cpu: [x64]
-    os: [linux]
-    libc: [glibc]
-
-  '@decmpfs/win32-x64-msvc@0.1.3':
-    resolution: {integrity: sha512-cBf3IjhXyffOA6WjuMplVAIsJLzlHE5RBpq2aEqApE+KNb3ycgeGz0Diof4Em0qHcUION2/Sm7UwA2dEPUK3Pg==}
-    engines: {node: '>=18'}
-    cpu: [x64]
-    os: [win32]
 
   '@fallow-cli/darwin-arm64@3.27.0':
     resolution: {integrity: sha512-e8Tn+GxeYONnfWecFO8YrW1sHRaS4wTU23Oq8xsp6myFTTguRBOHiLxANHVpibG7evrnZniJTJ1l6DacP/z9RA==}
@@ -6562,21 +6514,6 @@ snapshots:
   '@balena/dockerignore@1.0.2': {}
 
   '@bcoe/v8-coverage@1.0.2': {}
-
-  '@decmpfs/darwin-arm64@0.1.3':
-    optional: true
-
-  '@decmpfs/darwin-x64@0.1.3':
-    optional: true
-
-  '@decmpfs/linux-arm64-gnu@0.1.3':
-    optional: true
-
-  '@decmpfs/linux-x64-gnu@0.1.3':
-    optional: true
-
-  '@decmpfs/win32-x64-msvc@0.1.3':
-    optional: true
 
   '@fallow-cli/darwin-arm64@3.27.0':
     optional: true
