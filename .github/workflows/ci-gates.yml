@@ -83,14 +83,7 @@ jobs:
       - name: Generate platform workspace manifests
         run: node napi/decmpfs/scripts/make-npm-dirs.mts
       - name: Install workspace devdependencies
-        env:
-          npm_config_loglevel: debug
-          npm_config_resolution_mode: highest
-        run: |
-          which pnpm
-          pnpm --version
-          grep -m1 -A3 packageManagerDependencies pnpm-lock.yaml
-          pnpm install --frozen-lockfile --reporter=append-only
+        run: pnpm install --frozen-lockfile
       - name: Read Rust toolchain pin
         id: rust-pin
         shell: bash
