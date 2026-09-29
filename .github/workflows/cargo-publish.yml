@@ -108,6 +108,7 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
           GH_TOKEN: ${{ steps.release-app.outputs.token }}
+          GH_APP_GRANT_VERIFIED: ${{ steps.release-app.outputs.contents-write }}
         # The rustup cargo goes AHEAD of the SFW shim for the publish leg:
         # the shim's proxy interposes the crates.io publish PUT (uploads are
         # outside its registry-read bypass), and cargo then fails TLS
