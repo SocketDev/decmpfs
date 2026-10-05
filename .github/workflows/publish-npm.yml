@@ -117,7 +117,7 @@ jobs:
         uses: ./.github/actions/repo/setup-sfw
       - name: Build addon
         working-directory: napi/decmpfs
-        run: node scripts/build.mts
+        run: node scripts/build.mts --prod
       - name: Stage into the platform package dir
         shell: bash
         env:
@@ -224,7 +224,7 @@ jobs:
           require-ready: 'true'
       # Build the package output before the fleet publisher packs its tarball.
       - name: Build
-        run: pnpm run build
+        run: pnpm run build:prod
       # The fleet's downloader, not actions/download-artifact. No name = every
       # artifact in the run, each under staged-addons/<name>/ - one per
       # build-addons leg.

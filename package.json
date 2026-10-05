@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "build": "node napi/decmpfs/scripts/build.mts",
+    "build:prod": "node napi/decmpfs/scripts/build.mts --prod",
+    "git:commit-paths": "node scripts/fleet/git/commit/named-paths.mts",
     "check": "node scripts/fleet/check.mts",
     "coverage": "node scripts/repo/coverage.mts",
     "fix": "node scripts/fleet/fix.mts",

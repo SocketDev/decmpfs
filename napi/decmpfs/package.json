@@ -24,6 +24,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mts",
+    "build:prod": "node scripts/build.mts --prod",
     "test": "node --test",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
