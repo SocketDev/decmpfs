@@ -31,6 +31,12 @@ const XATTR_NOFOLLOW: libc::c_int = 0x0001;
 const COMPRESSION_LZVN: i32 = 0x900;
 const COMPRESSION_LZFSE: i32 = 0x801;
 
+struct ApplyBytesConfig {
+    mode: Option<std::fs::Permissions>,
+    streaming_threshold: usize,
+    timestamps: Option<[libc::timespec; 2]>,
+}
+
 // 2026-07-16 — The data supports keeping a 64 MiB in-memory fast path for now.
 // The sampled Darwin ARM64 Vite ecosystem topped out at SWC 36.563 MiB, followed
 // by Rolldown 15.6–17.9 MiB, Oxlint 14.4 MiB, Lightning CSS 8.1 MiB, and Oxc
@@ -524,16 +530,36 @@ pub(crate) fn apply_bytes(
     content: &[u8],
     mode: Option<std::fs::Permissions>,
 ) -> Result<(), Error> {
-    apply_bytes_with_streaming_threshold(path, content, mode, STREAMING_THRESHOLD)
+    use std::os::unix::fs::MetadataExt;
+    let times = std::fs::metadata(path).ok().map(|metadata| {
+        [
+            libc::timespec {
+                tv_sec: metadata.atime(),
+                tv_nsec: metadata.atime_nsec(),
+            },
+            libc::timespec {
+                tv_sec: metadata.mtime(),
+                tv_nsec: metadata.mtime_nsec(),
+            },
+        ]
+    });
+    apply_bytes_with_streaming_threshold(
+        path,
+        content,
+        ApplyBytesConfig {
+            mode,
+            streaming_threshold: STREAMING_THRESHOLD,
+            timestamps: times,
+        },
+    )
 }
 
 fn apply_bytes_with_streaming_threshold(
     path: &Path,
     content: &[u8],
-    mode: Option<std::fs::Permissions>,
-    streaming_threshold: usize,
+    config: ApplyBytesConfig,
 ) -> Result<(), Error> {
-    let stream = should_stream_resource_fork(content.len(), streaming_threshold);
+    let stream = should_stream_resource_fork(content.len(), config.streaming_threshold);
     let in_memory_resource_fork = if stream {
         None
     } else {
@@ -624,7 +650,7 @@ fn apply_bytes_with_streaming_threshold(
         let _ = std::fs::remove_file(&tmp);
         return Err(e);
     }
-    if let Some(perm) = mode {
+    if let Some(perm) = config.mode {
         let _ = std::fs::set_permissions(&tmp, perm);
     }
     // Preserve ownership across the rewrite. Running as root (a global npm install,
@@ -636,6 +662,23 @@ fn apply_bytes_with_streaming_threshold(
     if let Ok(meta) = std::fs::metadata(path) {
         use std::os::unix::fs::MetadataExt;
         let _ = std::os::unix::fs::chown(&tmp, Some(meta.uid()), Some(meta.gid()));
+    }
+    if let Some(times) = config.timestamps {
+        // Keep build outputs fresh in Cargo's eyes after replacing their inode.
+        // Transparent compression changes storage, not the file's logical content
+        // or modification time.
+        let ctmp = match cstring(&tmp) {
+            Ok(path) => path,
+            Err(error) => {
+                let _ = std::fs::remove_file(&tmp);
+                return Err(error);
+            }
+        };
+        if unsafe { libc::utimensat(libc::AT_FDCWD, ctmp.as_ptr(), times.as_ptr(), 0) } != 0 {
+            let error = io("preserve timestamps");
+            let _ = std::fs::remove_file(&tmp);
+            return Err(error);
+        }
     }
     std::fs::rename(&tmp, path).map_err(|source| {
         let _ = std::fs::remove_file(&tmp);

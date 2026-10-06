@@ -16,11 +16,32 @@ fn kernel_roundtrips_decmpfs() {
     }
     std::fs::write(&path, &raw).unwrap();
 
+    // Build tools use output mtimes to decide whether to reuse an artifact.
+    // Compression replaces the inode but must leave that logical timestamp alone.
+    let cpath = cstring(&path).unwrap();
+    let fixed_mtime = 1_600_000_000;
+    let times = [
+        libc::timespec {
+            tv_sec: fixed_mtime,
+            tv_nsec: 0,
+        },
+        libc::timespec {
+            tv_sec: fixed_mtime,
+            tv_nsec: 123_000_000,
+        },
+    ];
+    assert_eq!(
+        unsafe { libc::utimensat(libc::AT_FDCWD, cpath.as_ptr(), times.as_ptr(), 0) },
+        0
+    );
+
     assert!(
         matches!(detect(&path).unwrap(), Support::Supported),
         "temp dir is local APFS/HFS+"
     );
     apply_inplace(&path, &raw).unwrap();
+    use std::os::unix::fs::MetadataExt;
+    assert_eq!(std::fs::metadata(&path).unwrap().mtime(), fixed_mtime);
     assert!(is_already_compressed(&path).unwrap(), "UF_COMPRESSED set");
     assert_eq!(
         compressed_on_disk(&path).unwrap(),
@@ -214,7 +235,16 @@ fn kernel_roundtrips_forced_streaming_lzfse() {
     std::fs::write(&path, &raw).unwrap();
 
     if matches!(detect(&path).unwrap(), Support::Supported) {
-        apply_bytes_with_streaming_threshold(&path, &raw, None, 0).unwrap();
+        apply_bytes_with_streaming_threshold(
+            &path,
+            &raw,
+            ApplyBytesConfig {
+                mode: None,
+                streaming_threshold: 0,
+                timestamps: None,
+            },
+        )
+        .unwrap();
         assert!(is_already_compressed(&path).unwrap(), "UF_COMPRESSED set");
         assert_eq!(
             std::fs::read(&path).unwrap(),
