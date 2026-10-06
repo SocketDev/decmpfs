@@ -1,6 +1,6 @@
-# <picture><img width="32" height="32" alt="decmpfs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/HEAD/assets/repo/logomark.svg"></picture> decmpfs
+# <picture><img width="48" height="48" alt="decmpfs" src="https://raw.githubusercontent.com/SocketDev/decmpfs/HEAD/assets/repo/logomark.svg"></picture> decmpfs
 
-<picture><img src="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/coverage.svg" height="20" alt="Coverage" /></picture> [![Socket Badge | cargo](https://badge.socket.dev/cargo/package/decmpfs)](https://socket.dev/cargo/package/decmpfs) [![Socket Badge | npm](https://badge.socket.dev/npm/package/decmpfs)](https://socket.dev/npm/package/decmpfs)
+<picture><img src="https://raw.githubusercontent.com/SocketDev/decmpfs/main/assets/repo/coverage.svg" height="20" alt="Coverage" /></picture> [![Socket Badge | cargo](https://badge.socket.dev/cargo/package/decmpfs)](https://socket.dev/cargo/package/decmpfs)
 
 [![Follow @SocketSecurity](https://raw.githubusercontent.com/SocketDev/decmpfs/HEAD/assets/fleet/badge-follow-x.svg)](https://twitter.com/SocketSecurity)
 [![Follow @socket.dev on Bluesky](https://raw.githubusercontent.com/SocketDev/decmpfs/HEAD/assets/fleet/badge-follow-bluesky.svg)](https://bsky.app/profile/socket.dev)
