@@ -14,6 +14,10 @@ categories = ["filesystem"]
 name = "decmpfs-stub"
 required-features = ["exe"]
 
+[[bin]]
+name = "decmpfs"
+path = "src/bin/decmpfs.rs"
+
 [features]
 # Off by default — the FS-compression core has no codec dep. The `addon` feature
 # pulls zstd + sha2 to unwrap a napi `--compress` hybrid back to the raw .node.
