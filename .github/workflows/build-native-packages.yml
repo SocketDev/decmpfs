@@ -181,12 +181,15 @@ jobs:
           Invoke-WebRequest -Uri "https://nodejs.org/dist/$v/win-$arch/node.lib" -OutFile "$dir/node.lib"
           "NODE_LIB_DIR=$dir" | Add-Content $env:GITHUB_ENV
       - name: Build the addon
+        env:
+          RUST_TARGET: ${{ matrix.rust }}
+          PACKAGE_TRIPLE: ${{ matrix.triple }}
         run: |
           set -euo pipefail
           cd napi/decmpfs
-          PATH="$HOME/.cargo/bin:$PATH" node scripts/build.mts --target "${{ matrix.rust }}"
-          mkdir -p "../../npm-out/${{ matrix.triple }}"
-          cp decmpfs.node "../../npm-out/${{ matrix.triple }}/decmpfs.node"
+          PATH="$HOME/.cargo/bin:$PATH" node scripts/build.mts --target "$RUST_TARGET"
+          mkdir -p "../../npm-out/$PACKAGE_TRIPLE"
+          cp decmpfs.node "../../npm-out/$PACKAGE_TRIPLE/decmpfs.node"
       - name: Upload the built addon
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (2026-04-10)
         with:

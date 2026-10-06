@@ -80,6 +80,25 @@ Node - an N-API binding in [`napi/`](napi/), async + `Sync` variants of each:
   `COPYFILE_EXCL` / `COPYFILE_FICLONE` / `COPYFILE_FICLONE_FORCE`, backed by the
   clone-first copy libuv lacks on macOS.
 
+## Compressing build output on APFS
+
+The `decmpfs` command can compress eligible files in a completed build tree.
+Run it after the build has finished so it never rewrites files while Cargo or
+another build tool is using them:
+
+```sh
+cargo install decmpfs --bin decmpfs
+decmpfs target -g '**/*.rlib' -s '>=1MiB' -n  # preview
+decmpfs target -g '**/*.rlib' -s '>=1MiB'     # compress
+```
+
+The command only visits regular files, does not follow symlinks, and uses the
+existing verified per-file backend. Unsupported filesystems fail before the
+walk. The report counts actual verified allocation changes; `--dry-run` reports
+eligible files without guessing the savings. Compression is per-file and does
+not change APFS file modification times, add a volume quota, or replace ZFS
+dataset placement and quota controls.
+
 ## Development
 
 ```sh
