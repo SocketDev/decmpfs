@@ -126,7 +126,7 @@ jobs:
               runner:
                 t.os === 'darwin'
                   ? t.cpu === 'arm64'
-                    ? 'macos-14'
+                    ? 'macos-26'
                     : 'macos-15'
                   : t.os === 'win32'
                     ? t.cpu === 'arm64'
