@@ -6,7 +6,7 @@ run-name: 'publish: cargo'
 # of publish-npm.yml.
 #
 # Default flow: manual dispatch; packages and verifies the workspace crate,
-# then publishes it via the fleet cargo-publish engine using
+# then publishes it via the fleet registry/cargo/publish engine using
 # crates.io Trusted Publishing (OIDC — id-token: write, no long-lived token)
 # with build provenance. The `cargo-publish` CI environment gates the real,
 # PERMANENT publish (crates.io is yank-only) — configure required reviewers +
@@ -33,9 +33,9 @@ jobs:
     name: Publish Cargo
     runs-on: ubuntu-26.04
     # Human approval + OIDC gate for the permanent publish.
-    environment: cargo-publish
+    environment: publish-cargo
     permissions:
-      contents: write # cargo-publish.mts tags + cuts the GitHub release
+      contents: write # registry/cargo/publish/run.mts tags + cuts the GitHub release
       id-token: write # crates.io Trusted Publishing (OIDC) + provenance
       attestations: write # build provenance for the .crate
     env:
@@ -68,6 +68,9 @@ jobs:
 
       - name: Set up and install
         uses: ./.github/actions/fleet/setup-and-install
+        with:
+          payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
+          payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
       # Fleet composites, not the third-party actions they replace: a raw
       # `uses:` here would force dtolnay/rust-toolchain and Swatinem/rust-cache
       # onto the Actions allowlist of every repo seeded from this preset, and a
@@ -81,6 +84,14 @@ jobs:
         with:
           prefix-key: cargo-publish
           workspaces: .
+      - name: Mint PR branch token for nightly bump
+        if: ${{ inputs.nightly-version != '' }}
+        id: pr-branch-app
+        uses: ./.github/actions/fleet/github-pr-branch-app-token
+        with:
+          client-id: ${{ secrets.SOCKET_PR_CLIENT_ID || vars.SOCKET_PR_CLIENT_ID }}
+          private-key: ${{ secrets.SOCKET_PR_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
       - name: Mint release token for nightly bump
         if: ${{ inputs.nightly-version != '' }}
         id: release-app
@@ -95,16 +106,17 @@ jobs:
       # deleted out from under our pin.
       - name: 'Authenticate to crates.io'
         id: auth
-        uses: ./.github/actions/fleet/crates-io-auth
+        uses: ./.github/actions/fleet/cargo/auth
       - name: Stage and digest crate
         env:
           GH_TOKEN: ${{ inputs.nightly-version != '' && steps.release-app.outputs.token || github.token }}
+          PR_APP_TOKEN: ${{ steps.pr-branch-app.outputs.token }}
           RELEASE_APP_TOKEN: ${{ steps.release-app.outputs.token }}
           NIGHTLY_VERSION: ${{ inputs.nightly-version }}
         run: |
           args=(--staged)
           if [ -n "$NIGHTLY_VERSION" ]; then args+=(--bump --nightly-version "$NIGHTLY_VERSION"); fi
-          node scripts/fleet/cargo-publish.mts "${args[@]}"
+          node scripts/fleet/registry/cargo/publish/run.mts "${args[@]}"
       - name: Approve verified crate
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
@@ -117,7 +129,32 @@ jobs:
         # publish traffic with an OIDC token — no supply-chain read surface.
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
-          node scripts/fleet/cargo-publish.mts --approve --yes
+          node scripts/fleet/registry/cargo/publish/run.mts --approve --yes
+      # The publish must leave the crate owned by the fleet team, not one
+      # person's account. The owners read is public, so this needs no
+      # credential; failing loud sends the fix to the humans who can do it.
+      - name: Ensure the fleet team owns the crate
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          crates=$(cargo metadata --no-deps --format-version 1 \
+            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{for(const p of JSON.parse(d).packages)console.log(p.name)})")
+          for crate in $crates; do
+            node scripts/fleet/registry/cargo/trusted-token.mts --ensure-owner "$crate"
+          done
+      # An unconfigured trusted publisher fails at the NEXT publish's OIDC
+      # exchange, far from the cause. This read-only dry-run names every crate
+      # whose github_configs row is missing or does not match this repo's
+      # publish workflow + environment, in this run's output.
+      - name: Report unconfigured trusted publishers
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          crates=$(cargo metadata --no-deps --format-version 1 \
+            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{for(const p of JSON.parse(d).packages)console.log(p.name)})")
+          for crate in $crates; do
+            node scripts/fleet/registry/cargo/trusted-publisher.mts "$crate" || true
+          done
       # A composite action cannot declare a `post` hook, so the revoke is an
       # explicit step. `always()` on purpose: a failed publish still minted a
       # token, and leaving it live until it expires is the worse outcome.
@@ -125,7 +162,7 @@ jobs:
         if: ${{ always() && steps.auth.outputs.token != '' }}
         env:
           CRATES_IO_TOKEN: ${{ steps.auth.outputs.token }}
-        run: node scripts/fleet/registry-infra/crates-io-trusted-token.mts --revoke
+        run: node scripts/fleet/registry/cargo/trusted-token.mts --revoke
       - name: Attest build provenance (.crate)
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2 (2025-06-11)
         with:

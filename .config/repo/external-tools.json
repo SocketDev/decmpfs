@@ -26,54 +26,54 @@
     },
     "pnpm": {
       "notes": [
-        "Eight supported platforms use native binaries from the pnpm v12.7.0 GitHub release, including darwin-x64.",
+        "Eight supported platforms use native binaries from the pnpm v12.10.1 GitHub release, including darwin-x64.",
         "Linux glibc and musl platforms use distinct assets and integrity values.",
         "Each platform asset has a verified SHA-512 integrity value.",
-        "The dated soak exception expires on 2026-10-02."
+        "The dated soak exception expires on 2026-10-13."
       ],
       "description": "Fast, disk space efficient package manager",
       "repository": "github:pnpm/pnpm",
-      "version": "12.7.0",
-      "tag": "v12.7.0",
+      "version": "12.10.1",
+      "tag": "v12.10.1",
       "platforms": {
         "darwin-arm64": {
           "asset": "pnpm-darwin-arm64.tar.gz",
-          "integrity": "sha512-ADJmeFWGKets1fRLhPFo9alu79jvtqiKf24Vq68pVmcbDLMkGUJAVa9nVz2/4IjcdxkHo4twV0FiG0D+RkJCwg=="
+          "integrity": "sha512-5SvbhcEv699H17dZ7u0Ab3DF1P//qJGri9IJ3hF+Wmw3bDDX3k6igPG7itAHoytAVIAt5/wo3x/kPaFnXktOFg=="
         },
         "darwin-x64": {
           "asset": "pnpm-darwin-x64.tar.gz",
-          "integrity": "sha512-oooRttqm2f8/2zIFpT9/HMcjzj5gV54n2/Mspsk7Fmt871VKHRaOSQS+6bY0lXCzyDP5L7xfELFsF39hd5/eDg=="
+          "integrity": "sha512-25OcWYI3scMDKSS35wwh1RfmpwsyWr+f1GJmJhl3UGLgc2aM08WFLXZqbwnIloTqFaLBf36AtHrdiKj3/1n5yQ=="
         },
         "linux-arm64": {
           "asset": "pnpm-linux-arm64.tar.gz",
-          "integrity": "sha512-3iwwsAjkEOZvaa7CT3UTDpPDUPrGcv/y1r5CQe7lo4VChPUR8vABQ4emEBBl/yJClsBGhvYAWcycTf+ZZFkR9w=="
+          "integrity": "sha512-248GmCrXat/zoxnIIiDP2rfV0iPxP456eI4U/Yq3a0VdQRPmh/WLL3juSFVAyrQWgUOFRbTqIgBBHCX3il5Pfw=="
         },
         "linux-arm64-musl": {
           "asset": "pnpm-linux-arm64-musl.tar.gz",
-          "integrity": "sha512-yei2zp+lRQe8SMOGr4U+Pq2l49bo0hRhAuaW4zo77ot9EY/gKBlXTkjxLSdxu21/D3n53DcTyUHzYXAx+pdB1g=="
+          "integrity": "sha512-JAL5hrzKHe2ZXQPLSe5NQg30vtPGb5wEbhJVEGCQgWBpHS6ubA5famQunPQ716xJeWcyGeGzRdFdaMlz9wZZqQ=="
         },
         "linux-x64": {
           "asset": "pnpm-linux-x64.tar.gz",
-          "integrity": "sha512-Lm8h2XCvj+lqsY9hGdEFT2H6O9b0hcRCa/Z8nteQJmz//KD78SHw3JTX3AF36wfH9gzkX/6QU9gYjAfpGRng/g=="
+          "integrity": "sha512-vvgv2+2omqOZKWdj06GVnC+huCGnoi1B8gYoLiGJSmpmJCbtSbzG8PXh+K/l8+E2poCBCFG5jjfAt/rslpGhGA=="
         },
         "linux-x64-musl": {
           "asset": "pnpm-linux-x64-musl.tar.gz",
-          "integrity": "sha512-TPfNfSO6mrvwiOoWGmxTa/5cSInrWZ5lOC8ZggvrgYOa0I5j8iagdnetcavWhhoWR09MAR//UK5Md2eJv06rZg=="
+          "integrity": "sha512-PQpjyJgG+unKNVelOKAFGgHZoBgF4nYKveCMUqjPM68vyq94VHrw/nKPedRrPSAnu+6p+I4gfweaGIJfWpyedw=="
         },
         "win32-arm64": {
           "asset": "pnpm-win32-arm64.zip",
-          "integrity": "sha512-qeOv6f1FRoykUhM66pcvOoW5olELNisw6n4eOZ/EhnfQS6m5BpFgm/xG4tIjuXnflc3IFMVrV4D35NNRZIIuWw=="
+          "integrity": "sha512-fE+4VjTu1g9DP6akXA7LwudU9AgGvqsBEFbAZFjQi5bY7sGxIU9Rp7xfEHrAGp/b7XnBzdRVgnEsk8une5oIvw=="
         },
         "win32-x64": {
           "asset": "pnpm-win32-x64.zip",
-          "integrity": "sha512-crCg/+9uSP5vev/Q1ymk8HnLNnWRUkZPX4PBS5NGMxLeV5Qe+HiE1D1LTBTfqnNa3ArnvdzKYciHmhpjkVmB8w=="
+          "integrity": "sha512-+EAJeSq0IHPqO2LuMa12eqBDt04tmYB60lFNPpc3Z6n9O2T5YR+AhcDsUe6CFfxaYIZ74ccWz01UGeNfPmyFbQ=="
         }
       },
       "origin": "gh-asset",
       "soakBypass": {
-        "published": "2026-09-25",
-        "removable": "2026-10-02",
-        "version": "12.7.0"
+        "version": "12.10.1",
+        "published": "2026-10-06",
+        "removable": "2026-10-13"
       }
     },
     "gh": {
@@ -107,41 +107,41 @@
       ],
       "description": "uv — Astral Python package/project manager (pinned, SRI-verified)",
       "repository": "github:astral-sh/uv",
-      "version": "0.12.19",
-      "tag": "0.12.19",
-      "versionDate": "2026-09-25",
+      "version": "0.12.23",
+      "tag": "0.12.23",
+      "versionDate": "2026-10-03",
       "binaryName": "uv",
       "platforms": {
         "darwin-arm64": {
           "asset": "uv-aarch64-apple-darwin.tar.gz",
-          "integrity": "sha512-4fKJsTlLYc4KJzWiRKAkrIO+mYEdH9yX9/RCYR80XcesIl+AETskPvnGyKE0WhbDWV84qYIqmFS/0HgFiOAbIA=="
+          "integrity": "sha512-gfcAJYNFwKXKBwMYW/JKTLGO4O8YJ7bQAUhktvAG7nBRWwWhCBdLvFsFOL5qonUgZguve0oENxa2/o/ElT3E2A=="
         },
         "darwin-x64": {
           "asset": "uv-x86_64-apple-darwin.tar.gz",
-          "integrity": "sha512-JvL0S/RAUH7k6Xzxeum2A96vo4kSztL38GTQIawVnMfdBGVFaxWh+BiicUNSnq/3jnbitMZ40EwpvOslqOCQrA=="
+          "integrity": "sha512-T1F7q5xWEOkUPLGeekoWOwz8Cdkkc9akMfwLU2QO8i824WdfOipJ4/zddpkG/Xr9NWA+/LuyHFGwPdwtVv/grg=="
         },
         "linux-arm64": {
           "asset": "uv-aarch64-unknown-linux-gnu.tar.gz",
-          "integrity": "sha512-Nj0QMhyqbAV8ljAELmd99zLxhuqyb0WcSKeD6Gv8gVAzAw9PB2rKFYqAjyJCKbTDxbQJ9o02+V/dG+yi3OShfA=="
+          "integrity": "sha512-ebIJu9Gjeq5JoMPzMgW3F8ZF87IiQRjGV48JaEriium+Qy1dYsEP720173ekwSwrKRvE0FdhPyRb8QUEsbxuBg=="
         },
         "linux-x64": {
           "asset": "uv-x86_64-unknown-linux-gnu.tar.gz",
-          "integrity": "sha512-9z3246v1aZdXHRgdncpBYOPcfPuSFvausSdqvrzTVNIsuyc+axSmZSg4OSPWTMEevXmMW1liFwf0UsjlRAGpBw=="
+          "integrity": "sha512-SYTJBAowVTXLInaa6v0NuBgzOOIC+CoupwDRwwcKHEHgYZOLUGOMUDgBEt2bX2n+Jc6Jz9PQfcvA7D+3Id+Gpg=="
         },
         "win32-arm64": {
           "asset": "uv-aarch64-pc-windows-msvc.zip",
-          "integrity": "sha512-frg6mhaS6xFJaCDG5tgn4jBwDPxmHwCSw2h+r5Q+aV9Z8w65z/WC9kotOhpkx+xTTHHhaeyr+8kxvIsv69CH0A=="
+          "integrity": "sha512-RTNfWHH9F1k5oG1i4y8TACMbjh3PSyoR7bkoAKiaX0mNwZedokm4JXq3UpOZ/SwQZL6DpI1BRfuRsEwq2KtazQ=="
         },
         "win32-x64": {
           "asset": "uv-x86_64-pc-windows-msvc.zip",
-          "integrity": "sha512-9NCSWi5rIsMT+aJeXwcXImam7aR0IMr/a7qdOEgqHvt0MSXLfPIQP2oSXPmmBFNSfI7Y4zHJbW77DXinScau+w=="
+          "integrity": "sha512-8vtkGZbm5WXtEcuwkrgp50tNdxZpHah9tcwR/F9uMeNgw1yYTyVf6RYHhvliPnPUpMY3JEdzgUbID4LOhLflsw=="
         }
       },
       "origin": "gh-asset",
       "soakBypass": {
-        "published": "2026-09-25",
-        "removable": "2026-10-02",
-        "version": "0.12.19"
+        "version": "0.12.23",
+        "published": "2026-10-03",
+        "removable": "2026-10-10"
       }
     },
     "zizmor": {
@@ -183,41 +183,46 @@
         "Installed when neither SOCKET_API_KEY nor SOCKET_API_TOKEN is set; the enterprise flavor (sfw-enterprise) is selected when one of those is present. The two flavors share a version and install to the same `sfw` binary name."
       ],
       "description": "Socket Firewall (free tier) — package manager command wrapper",
-      "version": "1.15.2",
+      "version": "1.15.4",
       "repository": "github:SocketDev/sfw-free",
-      "tag": "v1.15.2",
+      "tag": "v1.15.4",
       "binaryName": "sfw",
       "platforms": {
         "darwin-arm64": {
           "asset": "sfw-free-macos-arm64",
-          "integrity": "sha512-pimnuYldUXHrc4j6ZO501ibgo8oIyEsgHDHeQhih8huJEttEB29HPCO7Lk/+2MAF7Sv37mOkiQjYI3OU91Db6Q=="
+          "integrity": "sha512-r+J3NSFkpqzlXVCPohISrPoDU33y0eTWcSNmvPQRyQTV2D05eF6H/LzJRS4b7ONuKQIpu/t5KgXyoPkyGiAEgg=="
         },
         "darwin-x64": {
           "asset": "sfw-free-macos-x86_64",
-          "integrity": "sha512-EjBRxWgrdITmVg5ZLvjjnZ5vDCKSBNqTLPOuDjYeHdjXf+BkYs+SGfH/z6lsMUumiDqj/kTtvbRMXoKDMY4x+w=="
+          "integrity": "sha512-Owc7IfGNh+ZQfDKhuUa7TtBWpnPQJWYbTzALDFsss+s3d8g9rISTcsdx4rhjM18e3TLG6QM3bHLYw2G3bYJTng=="
         },
         "linux-arm64": {
           "asset": "sfw-free-linux-arm64",
-          "integrity": "sha512-PttVwERdz6OGIhBKbpKklnZC8/cdfpeFxrcDETS1G38+taDqpWYV8Hg12Gh9LDdHsJfrksrdjnPa/tfHaTE5lw=="
+          "integrity": "sha512-6jIeFfwMO3RRM0t8Fdpj2BBAREgSWwdaj1dAjTE+9rAYP1PyWDT+ZxJWoDHKCqePYrhvGANVs9GlQdLptLN3OQ=="
         },
         "linux-arm64-musl": {
           "asset": "sfw-free-musl-linux-arm64",
-          "integrity": "sha512-motTFDIZGBRcTomoeIbpcFsy2DFknnzZxTaHDZrRQcF42UoUjeXiJieH1mALF7H/zCsc0hFajohmLlvxsUO1sQ=="
+          "integrity": "sha512-kMO5ZgMG9Xq+dbnwTueQ/kO/sx6+CGdGd+Lo0zTMoyvUtbeeO4xk5UKg9N3k7lG7KoBtcf5f4yQV4w1tNlSNxA=="
         },
         "linux-x64": {
           "asset": "sfw-free-linux-x86_64",
-          "integrity": "sha512-oHiRTl9O8kdHINEGWjqocj/gz70fPVzVVeS35PwraK7lzHSO4I3++CtUni0NsRvLhIxSZqD3A/xmKzvkgYXDJQ=="
+          "integrity": "sha512-mOxJNA9c3jsOzxXE2grwWYGv/3BN8cj4t9Kfiu7z6Q0Z4p2UcEuR5ldHoZkMReD08F3hV13+c/YuHFtR9K5Bfw=="
         },
         "linux-x64-musl": {
           "asset": "sfw-free-musl-linux-x86_64",
-          "integrity": "sha512-CLmE1J6q1BCHu1QKge+zJda3iXkKuFE8+3ITW7++iUJxVTbcMRCxdB2EqYnUpLQG1MM4pbQxgQ7Dq7OozBQjAw=="
+          "integrity": "sha512-Z1kyV0D0WP6P2N9FCmpITviITiGSE7vcdvBBJXUGNghtfZRVhhanwGf5FkS0UNDAXHziqE+rISs4Ve++sZj8tg=="
         },
         "win32-x64": {
           "asset": "sfw-free-windows-x86_64.exe",
-          "integrity": "sha512-vPOL88R3H75j0rHg6lRv53rwtRxFxDo7rzjXU0rWWPDY1U1e3hQzAmvsloS19uo6noWeCXIBJ8ZAbZxQf7EFxA=="
+          "integrity": "sha512-kh7yWn5TzLGI+rpujGwzX+HIaVa1/BHTVpJ58cBAYnwPSuYRhgUciX0vqKKoK3P3nYYMGrN7IvhZ4L91krsYLw=="
         }
       },
-      "origin": "gh-asset"
+      "origin": "gh-asset",
+      "soakBypass": {
+        "published": "2026-10-01",
+        "removable": "2026-10-08",
+        "version": "1.15.4"
+      }
     },
     "sfw-enterprise": {
       "notes": [
@@ -225,41 +230,46 @@
         "Installed when SOCKET_API_KEY (or SOCKET_API_TOKEN) is set; otherwise the free flavor (sfw-free) is used. The two flavors share a version and install to the same `sfw` binary name."
       ],
       "description": "Socket Firewall (enterprise tier) — package manager command wrapper",
-      "version": "1.15.2",
+      "version": "1.15.4",
       "repository": "github:SocketDev/firewall-release",
-      "tag": "v1.15.2",
+      "tag": "v1.15.4",
       "binaryName": "sfw",
       "platforms": {
         "darwin-arm64": {
           "asset": "sfw-macos-arm64",
-          "integrity": "sha512-dkETkXxmdVqA/NhV2Pp+754e8t65WHx2x+LE+D4dbX11QhNRAV4pfH2NxKCV3J9YXgzg8MwdLTB9pu6gxfX/7g=="
+          "integrity": "sha512-rhW6U8/3w7eciriH9mLCE3krMAQuS1xl0CXayw26Xn1kWLh6PwIbpRDjF4QvKFNSpYQKdfEhh9dsBabUxza6sw=="
         },
         "darwin-x64": {
           "asset": "sfw-macos-x86_64",
-          "integrity": "sha512-SCDBU28Eq/1plsmUBhzdf1GLtaYlwHvgMe3ytawP0TkZNi1TcaiUQvZR8mOypej6Q10b/yjeUSAyCUUujrK/fg=="
+          "integrity": "sha512-J+xy3DdHah837x0bIlByCQ2pABtPPu5zkKdthIDpsdwNxLWmeFbPyaZQCwrWV4bzkFQz6p0aqGK0SdvqYXR8lw=="
         },
         "linux-arm64": {
           "asset": "sfw-linux-arm64",
-          "integrity": "sha512-voSGk2iyayKn5MtfjJzipZSj2EBIQNaHRj2GyShpTbPtNYb4KCfXU9Xjk3h7ySN8buUNdGWkwbbF6bewuOr+vg=="
+          "integrity": "sha512-+cOHb1eZOGSEnHMNUsrGOk7hUSEMqTNSBQBEX9zOk9bapFe6bFAz41286L5Od3VxOrlPk6+szHP4d+J7XM604A=="
         },
         "linux-arm64-musl": {
           "asset": "sfw-musl-linux-arm64",
-          "integrity": "sha512-XwqBwq3VFRLASFWu6gVHZTnI23uPAig9bFVCS7rXQe5ykog8a0aLnQG834P+owIR7T8YgSsTTFZh4d6joyWZJg=="
+          "integrity": "sha512-wtPmCCSxNIhcTdyIb6eiUN1rK2fCxrH39QAuYgcyxwtPSAS1dEHYb7yHPNJlOQfZm+WnQ3j7VQL4sCrswSIzbQ=="
         },
         "linux-x64": {
           "asset": "sfw-linux-x86_64",
-          "integrity": "sha512-p+hVx3A51RdMjkUsNlE6Hor6fnwBBEczorwL2ee6xGWfu0Q7Ok8POIIhX+kFPGnSDmytpNaTYkioLVFP+Hn9Og=="
+          "integrity": "sha512-Kxuztnz5CkV/Jt5hMZnyjkwrUwlnzjnxt9oBQMAnUdfoPebDJ64s6PSa/WF3xxM9mIIt0k462+oC+ykzMTdzag=="
         },
         "linux-x64-musl": {
           "asset": "sfw-musl-linux-x86_64",
-          "integrity": "sha512-6Ylukj7jrw6zGxpiqMJRH8Q9n6RDjd84DCXArd9ZahaPoSVvWnJ56nZOzPM3G8uwG5Htn/0s+hj1J6K3FKKNQg=="
+          "integrity": "sha512-pz7rsn/WAAwEXzhFEcULpB8jfFANGN6g8AQNuTrl9ildDKrb/JTS9MbXylzCIc3GUWL1mE1olekPnBAkb8/A+w=="
         },
         "win32-x64": {
           "asset": "sfw-windows-x86_64.exe",
-          "integrity": "sha512-xXhch+OLtqYjatxThlqOv+HY2ooSoyA0B/hujjjSLyQ7xz8LLcJtc+Db0iBB/2mOKYc4KqQT4ukeTtxz3g0+xQ=="
+          "integrity": "sha512-zi2isECucghnSVLVDjTaABKr/2nsmiUHVGEELcj1/7DRLbFIYLq+m3zpcfRJTLstElWbht2PjIJQuHWtnrzLrw=="
         }
       },
-      "origin": "gh-asset"
+      "origin": "gh-asset",
+      "soakBypass": {
+        "published": "2026-10-01",
+        "removable": "2026-10-08",
+        "version": "1.15.4"
+      }
     }
   }
 }
