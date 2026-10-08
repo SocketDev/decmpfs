@@ -2,10 +2,6 @@
   "$schema": "../socket-wheelhouse-schema.json",
   "schemaVersion": 1,
   "repoName": "decmpfs",
-  "bundle": {
-    "ref": "fleet-pack-011e1c67ce8860fdf7dca52a45e1a8d6620379e6",
-    "cascadeSha": "011e1c67ce8860fdf7dca52a45e1a8d6620379e6"
-  },
   "repo": {
     "type": "solo"
   },
