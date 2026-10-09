@@ -1,9 +1,9 @@
 # Managed by socket-wheelhouse. Don't edit locally — edit upstream
 # in scripts/repo/commit-cascade/checks/gitignore-fleet-block.mts and
-# re-cascade via `pnpm run sync`. Project-specific ignores stay
-# OUTSIDE this block; the fixer preserves them.
+# re-cascade via `pnpm run sync`. Project-specific ignores stay in the
+# <repo> cutouts; the fixer preserves them.
 # Per-machine Claude Code permission config + log dirs stay ignored;
-# the cascaded subdirs (agents, commands, hooks, output-styles,
+# the cascaded subdirs (agents, commands, hooks, output-styles, plugins,
 # settings.json, skills, workflows) are explicitly re-included so the
 # wheelhouse cascade can ship them.
 /.claude/*
@@ -11,6 +11,7 @@
 !/.claude/commands/
 !/.claude/hooks/
 !/.claude/output-styles/
+!/.claude/plugins/
 !/.claude/rules/
 !/.claude/settings.json
 !/.claude/skills/
@@ -2105,6 +2106,7 @@ opencode.json
 .claude/skills/fleet/guarding-paths/references/install.md
 .claude/skills/fleet/guarding-paths/templates/check-paths.mts.tmpl
 .claude/skills/fleet/handing-off/SKILL.md
+.claude/skills/fleet/html-report/SKILL.md
 .claude/skills/fleet/improve/SKILL.md
 .claude/skills/fleet/improve/references/audit-playbook.md
 .claude/skills/fleet/improve/references/closing-the-loop.md
@@ -3169,6 +3171,7 @@ scripts/fleet/ai/model-target-ids.mts
 scripts/fleet/ai/model-targets.mts
 scripts/fleet/ai/model-training-policy.mts
 scripts/fleet/ai/odai.mts
+scripts/fleet/ai/odai/ci.mts
 scripts/fleet/ai/odai/diagnostics.mts
 scripts/fleet/ai/odai/run.mts
 scripts/fleet/ai/opencode-auth-store.mts
@@ -4142,6 +4145,12 @@ scripts/fleet/git/admin/push/lock.mts
 scripts/fleet/git/admin/push/tracking-transaction.mts
 scripts/fleet/git/admin/push/transaction.mts
 scripts/fleet/git/commit/named-paths.mts
+scripts/fleet/git/deliver/candidate.mts
+scripts/fleet/git/deliver/cli.mts
+scripts/fleet/git/deliver/pr.mts
+scripts/fleet/git/deliver/publish.mts
+scripts/fleet/git/deliver/run.mts
+scripts/fleet/git/deliver/state.mts
 scripts/fleet/git/exec.mts
 scripts/fleet/git/fast-forward.mts
 scripts/fleet/git/lock-retry.mts
@@ -4149,6 +4158,7 @@ scripts/fleet/git/merge-json.mts
 scripts/fleet/git/modules-pin-contract.mts
 scripts/fleet/git/modules.mts
 scripts/fleet/git/mutex.mts
+scripts/fleet/git/object-id.mts
 scripts/fleet/git/porcelain.mts
 scripts/fleet/git/quiescence.mts
 scripts/fleet/git/staged-commit.mts
@@ -4393,10 +4403,14 @@ scripts/fleet/npm/auth-token.mts
 scripts/fleet/npm/native-artifacts.mts
 scripts/fleet/npm/publish-npm.mts
 scripts/fleet/npm/publish/coordinator.mts
+scripts/fleet/npm/publish/finalize-retry.mts
 scripts/fleet/npm/publish/journal.mts
 scripts/fleet/npm/publish/release-reservation.mts
+scripts/fleet/npm/publish/retry-state.mts
+scripts/fleet/npm/publish/retry.mts
 scripts/fleet/npm/publish/run-cli.mts
 scripts/fleet/npm/publish/run.mts
+scripts/fleet/npm/publish/scan-retry.mts
 scripts/fleet/npm/scan.mts
 scripts/fleet/npm/staged.mts
 scripts/fleet/npm/trusted-publisher/migrate.mts
@@ -4700,6 +4714,7 @@ scripts/fleet/registry/npm/account-inventory/collect.mts
 scripts/fleet/registry/npm/account-inventory/projection.mts
 scripts/fleet/registry/npm/account-inventory/redaction.mts
 scripts/fleet/registry/npm/account-inventory/types.mts
+scripts/fleet/registry/npm/approval-scan.mts
 scripts/fleet/registry/npm/approve.mts
 scripts/fleet/registry/npm/auth-identity.mts
 scripts/fleet/registry/npm/auth-posture.mts
@@ -4726,6 +4741,7 @@ scripts/fleet/registry/npm/publish-failure.mts
 scripts/fleet/registry/npm/region-comments.mts
 scripts/fleet/registry/npm/registry.mts
 scripts/fleet/registry/npm/release-assets.mts
+scripts/fleet/registry/npm/remote-scan-artifact.mts
 scripts/fleet/registry/npm/remote-scan-receipt.mts
 scripts/fleet/registry/npm/reserve-release.mts
 scripts/fleet/registry/npm/settings/migrations.mts

@@ -1,7 +1,8 @@
 # Canonical fleet Rust toolchain. Derived updater and build pins follow this file.
 # Includes incremental-cache cleanup from https://github.com/rust-lang/rust/pull/162240.
-# Immediate adoption of this exact channel is user-authorized; Cargo dependency soak remains mandatory.
+# User-authorized toolchain soak exception: published 2026-10-04; removable 2026-10-11.
+# Cargo dependency soak remains mandatory.
 [toolchain]
-channel = "nightly-2026-09-24"
+channel = "nightly-2026-10-04"
 components = ["clippy", "rustfmt"]
 profile = "minimal"

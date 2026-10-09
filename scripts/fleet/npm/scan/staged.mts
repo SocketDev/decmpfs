@@ -9,30 +9,27 @@ import process from 'node:process'
 
 import { safeDelete } from '@socketsecurity/lib-stable/fs/safe'
 
-import { isMainModule } from '../process/is-main-module.mts'
-import { runMain } from '../process/main/run.mts'
-import type { ScriptMeta } from '../process/main/run.mts'
-import type { ScriptResult } from '../process/script-result.mts'
-import { resolveReleaseSubject } from '../release/subject.mts'
-import { scanStagedEntryDetailed } from '../registry-infra/npm/scan.mts'
-import type { StagedScanVerdict } from '../registry-infra/npm/scan.mts'
+import { isMainModule } from '../../process/is-main-module.mts'
+import { runMain } from '../../process/main/run.mts'
+import type { ScriptMeta } from '../../process/main/run.mts'
+import type { ScriptResult } from '../../process/script-result.mts'
+import { resolveReleaseSubject } from '../../release/subject.mts'
+import { scanStagedEntryDetailed } from '../../registry/npm/scan/run.mts'
+import type { StagedScanVerdict } from '../../registry/npm/scan/run.mts'
 import {
   defaultDownloadStagedTarball,
   defaultPackTarball,
-} from '../registry-infra/npm/staged.mts'
-import { resolveNpmWorkspaceLayout } from '../registry-infra/npm/workspace.mts'
-import { rootPath, runCapture } from '../registry-infra/shared.mts'
-import {
-  NPM_SCAN_RECEIPT_FILE,
-  parseNpmRemoteScanReceipt,
-} from './scan-receipt.mts'
-import type { NpmRemoteScanReceipt } from './scan-receipt.mts'
+} from '../../registry/npm/staged.mts'
+import { resolveNpmWorkspaceLayout } from '../../registry/npm/workspace.mts'
+import { rootPath, runCapture } from '../../registry/shared.mts'
+import { NPM_SCAN_RECEIPT_FILE, parseNpmRemoteScanReceipt } from './receipt.mts'
+import type { NpmRemoteScanReceipt } from './receipt.mts'
 
 const SHA_RE = /^[0-9a-f]{40}$/u
 const STAGE_ID_RE = /^[0-9a-f-]{36}$/u
 const RECEIPT_PATH = path.join(
   rootPath,
-  '.cache/fleet/npm-scan-ci',
+  '.cache/fleet/npm-scan-staged',
   NPM_SCAN_RECEIPT_FILE,
 )
 
@@ -138,7 +135,10 @@ function receiptFrom(
     packageName: config.packageName,
     packageVersion: config.packageVersion,
     policy: {
+      gate: 'malware',
+      blockingAlerts: verdict.blockingAlerts,
       errorAlerts: verdict.errorAlerts.length,
+      totalAlerts: verdict.totalAlerts,
       warnAlerts: verdict.warnAlerts.length,
     },
     publishRunId: config.originalPublishRunId,
@@ -146,7 +146,7 @@ function receiptFrom(
     runAttempt: config.currentRunAttempt,
     runId: config.currentRunId,
     scanId: verdict.scanId,
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceSha: config.sourceSha,
     stageId: config.stageId,
     stageSha1: config.stageSha1,
@@ -155,11 +155,29 @@ function receiptFrom(
   })
 }
 
+async function buildAndPackScanTarball(
+  packageName: string,
+  packageVersion: string,
+): Promise<string | undefined> {
+  for (const [command, ...args] of [
+    [process.execPath, 'scripts/fleet/build/production.mts'],
+    ['pnpm', 'run', '--if-present', 'build:publish'],
+  ] as const) {
+    const result = await runCapture(command, args, rootPath)
+    if (result.code !== 0) {
+      throw new Error(
+        `Scan artifact build failed. Where: ${command} ${args.join(' ')}. Saw: exit ${result.code}; wanted 0. Fix: repair the signed release build before scanning staged bytes.`,
+      )
+    }
+  }
+  return await defaultPackTarball(packageName, packageVersion)
+}
+
 function runtimeDeps(packageName: string): ScanCiDeps {
   return {
     headSha: currentHeadSha,
     download: defaultDownloadStagedTarball,
-    pack: defaultPackTarball,
+    pack: buildAndPackScanTarball,
     scan: scanStagedEntryDetailed,
     subject(root) {
       const layout = resolveNpmWorkspaceLayout(root)
@@ -240,5 +258,5 @@ const SCRIPT_META: ScriptMeta = {
 }
 
 if (isMainModule(import.meta.url)) {
-  runMain(main, SCRIPT_META)
+  runMain(() => main(), SCRIPT_META)
 }

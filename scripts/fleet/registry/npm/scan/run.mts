@@ -5,12 +5,13 @@
  *   scan refuses before contacting Socket when those bytes differ. Each
  *   verified entry is submitted as a `tmp` full scan (hidden from the dashboard
  *   scan list — a promotion gate, not a tracked branch scan), and gated on the
- *   org's OWN security policy: any alert whose policy action is `error` fails
- *   the entry, mirroring the report-level:error semantics. Fail-closed by
- *   design: promotion always includes a full scan. Auth is verified ONCE up
- *   front (`preflightSocketScanAuth`) with a cheap quota read; an interactive
- *   run with no token in the environment opens the Socket dashboard in the
- *   browser and prompts for a pasted key (masked — the token never echoes).
+ *   org's OWN security policy: actionable malware and AI-detected malware block
+ *   approval. Ignored, monitored, and other findings remain in the report.
+ *   Fail-closed by design: promotion always includes a full scan. Auth is
+ *   verified ONCE up front (`preflightSocketScanAuth`) with a cheap quota read;
+ *   an interactive run with no token in the environment opens the Socket
+ *   dashboard in the browser and prompts for a pasted key (masked — the token
+ *   never echoes).
  */
 
 import crypto from 'node:crypto'
@@ -21,21 +22,22 @@ import process from 'node:process'
 
 import { SocketSdk } from '@socketsecurity/sdk-stable'
 
-import { logger, rootPath, runCapture } from '../shared.mts'
+import { logger, rootPath, runCapture } from '../../shared.mts'
 import {
   acquireSocketTokenViaOAuth,
   socketOAuthConfigured,
-} from '../socket-oauth.mts'
-import { readFullScanNdjson } from './scan-ndjson.mts'
-import type { FullScanArtifact, FullScanStreamResult } from './scan-ndjson.mts'
-export type { FullScanArtifact } from './scan-ndjson.mts'
-import { defaultPackTarball } from './staged.mts'
-import { collectThreatFailures, runLocalThreatScan } from './threat-scan.mts'
-import type { ThreatManifest } from './threat-scan.mts'
+} from '../../socket-oauth.mts'
+import { readFullScanNdjson } from './ndjson.mts'
+import type { FullScanArtifact, FullScanStreamResult } from './ndjson.mts'
+export type { FullScanArtifact } from './ndjson.mts'
+import { defaultPackTarball } from '../staged.mts'
+import { collectThreatFailures, runLocalThreatScan } from '../threat-scan.mts'
+import type { ThreatManifest } from '../threat-scan.mts'
 import { getSocketApiToken } from '@socketsecurity/lib-stable/env/socket'
 import { errorMessage } from '@socketsecurity/lib-stable/errors/message'
 import { safeDelete } from '@socketsecurity/lib-stable/fs/safe'
 import { sleep } from '@socketsecurity/lib-stable/promises/timers'
+import { pRetry } from '@socketsecurity/lib-stable/promises/retry'
 import { password } from '@socketsecurity/lib-stable/stdio/prompts'
 
 export const SOCKET_TOKEN_ENV_VAR = 'SOCKET_API_TOKEN'
@@ -48,7 +50,7 @@ async function openSocketScanTokenPage<T>(
   task: (open: (url: string) => Promise<void>) => Promise<T>,
 ): Promise<T> {
   const { withBrowserAuthNavigation } =
-    await import('../../browser/auth-navigation.mts')
+    await import('../../../ai/browser/auth-navigation.mts')
   return await withBrowserAuthNavigation('socket-scan', task)
 }
 
@@ -266,12 +268,10 @@ export interface PolicyFailingAlert {
 }
 
 /**
- * Every alert the org security policy has an opinion about, split by the
- * action that policy assigns it. `error` blocks a promotion; `warn` does not,
- * but the publish pipeline's scan stage records the count so a clean-but-noisy
- * artifact is visible in the receipt instead of rounding to "passed". Pure.
+ * Every alert the org security policy has an opinion about, split by action.
  */
 export interface PolicyAlertSummary {
+  alerts: Array<PolicyFailingAlert & { action: string }>
   error: PolicyFailingAlert[]
   /**
    * Total alerts seen across every artifact, whatever the policy says about
@@ -280,6 +280,22 @@ export interface PolicyAlertSummary {
    */
   total: number
   warn: PolicyFailingAlert[]
+}
+
+export function isNpmBlockingMalwareAlert(alert: {
+  type: string
+  action: string
+}): boolean {
+  return (
+    (alert.action === 'error' || alert.action === 'warn') &&
+    (alert.type === 'gptMalware' || alert.type === 'malware')
+  )
+}
+
+export function npmBlockingMalwareAlerts(
+  summary: PolicyAlertSummary,
+): PolicyAlertSummary['alerts'] {
+  return summary.alerts.filter(isNpmBlockingMalwareAlert)
 }
 
 const RESOLVED_ALERT_ACTIONS = new Set(['error', 'ignore', 'monitor', 'warn'])
@@ -312,7 +328,12 @@ function isResolvedPolicyAlert(alert: unknown): alert is {
 export function summarizeResolvedPolicyAlerts(
   artifacts: readonly FullScanArtifact[],
 ): PolicyAlertSummary | undefined {
-  const summary: PolicyAlertSummary = { error: [], total: 0, warn: [] }
+  const summary: PolicyAlertSummary = {
+    alerts: [],
+    error: [],
+    total: 0,
+    warn: [],
+  }
   for (let i = 0, { length } = artifacts; i < length; i += 1) {
     const artifact = artifacts[i]!
     if (
@@ -329,14 +350,17 @@ export function summarizeResolvedPolicyAlerts(
       }
       summary.total += 1
       const { action } = alert
-      if (action !== 'error' && action !== 'warn') {
-        continue
-      }
-      summary[action].push({
+      const detail = {
+        action,
         artifact: `${artifact.name ?? '<unnamed>'}@${artifact.version ?? '?'}`,
         severity: alert.severity ?? 'unknown',
         type: alert.type,
-      })
+      }
+      summary.alerts.push(detail)
+      if (action !== 'error' && action !== 'warn') {
+        continue
+      }
+      summary[action].push(detail)
     }
   }
   return summary
@@ -398,10 +422,12 @@ export async function scanStagedEntry(
  * run never got that far).
  */
 export interface StagedScanVerdict {
+  blockingAlerts: number
   artifactCount: number
   detail: string
   errorAlerts: PolicyFailingAlert[]
   ok: boolean
+  totalAlerts: number
   scanId?: string | undefined
   warnAlerts: PolicyFailingAlert[]
 }
@@ -410,10 +436,12 @@ export interface StagedScanVerdict {
 // a FAILURE here, never a pass. `detail` is what the receipt records.
 function scanRefused(detail: string): StagedScanVerdict {
   return {
+    blockingAlerts: 0,
     artifactCount: 0,
     detail,
     errorAlerts: [],
     ok: false,
+    totalAlerts: 0,
     warnAlerts: [],
   }
 }
@@ -533,12 +561,70 @@ async function createStagedArchiveScan(config: {
   return { scanId }
 }
 
-type FullScanAttempt =
+export type FullScanAttempt =
   | FullScanStreamResult
   | { missingStream: true }
   | { readStatus: number | undefined }
 
-async function streamFullScanAttempt(
+export function isTransientNpmScanRead(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+  const record = error as Record<string, unknown>
+  const status = record['status']
+  if (typeof status === 'number') {
+    return status === 408 || status === 429 || (status >= 500 && status <= 599)
+  }
+  return [
+    'EAI_AGAIN',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'UND_ERR_CONNECT_TIMEOUT',
+    'UND_ERR_HEADERS_TIMEOUT',
+    'UND_ERR_SOCKET',
+  ].includes(String(record['code']))
+}
+
+export async function retryNpmScanRead(
+  read: () => Promise<FullScanAttempt>,
+  options: { retry?: typeof pRetry | undefined } = {},
+): Promise<FullScanAttempt> {
+  const { retry = pRetry } = options
+  const result = await retry(
+    async () => {
+      const attempt = await read()
+      if (
+        'readStatus' in attempt &&
+        isTransientNpmScanRead({ status: attempt.readStatus })
+      ) {
+        throw Object.assign(
+          new Error('Socket scan results are temporarily unavailable.'),
+          {
+            status: attempt.readStatus,
+          },
+        )
+      }
+      return attempt
+    },
+    {
+      retries: 5,
+      baseDelayMs: 2000,
+      maxDelayMs: 30_000,
+      backoffFactor: 2,
+      jitter: false,
+      onRetryCancelOnFalse: true,
+      onRetryRethrow: true,
+      onRetry: (...args) => isTransientNpmScanRead(args[1]),
+    },
+  )
+  if (!result) {
+    throw new Error('Socket scan read was interrupted.')
+  }
+  return result
+}
+
+export async function streamFullScanAttempt(
   sdk: SocketSdk,
   orgSlug: string,
   scanId: string,
@@ -588,7 +674,9 @@ async function readFullScanEvidence(config: {
   const deadline = Date.now() + FULL_SCAN_READ_TIMEOUT_MS
   try {
     for (;;) {
-      const streamed = await streamFullScanAttempt(sdk, orgSlug, scanId)
+      const streamed = await retryNpmScanRead(() =>
+        streamFullScanAttempt(sdk, orgSlug, scanId),
+      )
       if ('readStatus' in streamed) {
         const { readStatus: status } = streamed
         const scopeHint =
@@ -669,11 +757,8 @@ async function readFullScanEvidence(config: {
 }
 
 /**
- * {@link scanStagedEntry} with its evidence kept: identical gate semantics —
- * only `error`-action alerts block — but the verdict carries the scan id, the
- * artifact count, and the warn-action alerts so a pipeline stage can record
- * WHAT the scan saw. Fails closed on every unreachable / unrecognized path,
- * exactly as the boolean form does.
+ * {@link scanStagedEntry} with its evidence kept. Every alert blocks approval,
+ * and the verdict carries the scan id and alert details for review.
  */
 export async function scanStagedEntryDetailed(
   entry: {
@@ -755,21 +840,25 @@ export async function scanStagedEntryDetailed(
     const seen =
       `full scan ${scanId} (org ${orgSlug}): ${artifacts.length} artifact(s), ` +
       `${summary.total} alert(s) — ${summary.error.length} error, ${summary.warn.length} warn`
-    const failing = summary.error
-    if (failing.length > 0) {
+    const alerts = npmBlockingMalwareAlerts(summary)
+    if (alerts.length > 0) {
       logger.fail(
-        `Scan gate: ${failing.length} policy-failing alert(s) for ${name}@${version}; not approving.`,
+        `Scan gate: ${alerts.length} malware finding(s) for ${name}@${version}; not approving.`,
       )
-      for (let i = 0, { length } = failing; i < length; i += 1) {
-        const f = failing[i]!
-        logger.fail(`  - ${f.type} (${f.severity}) in ${f.artifact}`)
+      for (let i = 0, { length } = alerts; i < length; i += 1) {
+        const f = alerts[i]!
+        logger.fail(
+          `  - ${f.type} (${f.severity}, ${f.action}) in ${f.artifact}`,
+        )
       }
       return {
+        blockingAlerts: alerts.length,
         artifactCount: artifacts.length,
-        detail: `${seen}; blocking: ${failing.map(f => `${f.type} (${f.severity}) in ${f.artifact}`).join(', ')}`,
-        errorAlerts: failing,
+        detail: `${seen}; blocking: ${alerts.map(f => `${f.type} (${f.severity}) in ${f.artifact}`).join(', ')}`,
+        errorAlerts: summary.error,
         ok: false,
         scanId,
+        totalAlerts: summary.total,
         warnAlerts: summary.warn,
       }
     }
@@ -782,31 +871,30 @@ export async function scanStagedEntryDetailed(
       const passed = await runThreatLeg(tarballPath, entry, runThreat)
       if (!passed) {
         return {
+          blockingAlerts: alerts.length,
           artifactCount: artifacts.length,
           detail: `${seen}; the local code-threat leg refused ${name}@${version} (see the gate's log above)`,
-          errorAlerts: [],
+          errorAlerts: summary.error,
           ok: false,
           scanId,
+          totalAlerts: summary.total,
           warnAlerts: summary.warn,
         }
       }
     }
     return {
+      blockingAlerts: alerts.length,
       artifactCount: artifacts.length,
       detail: seen,
-      errorAlerts: [],
+      errorAlerts: summary.error,
       ok: true,
       scanId,
+      totalAlerts: summary.total,
       warnAlerts: summary.warn,
     }
   } finally {
-    // Clean the tarball when a packTarball provider downloaded it into a temp
-    // dir (the registry-API `stage download` and the browser-read passback
-    // both mkdtemp under os.tmpdir()). A repo-local `pnpm pack` output lands
-    // in the package dir, NOT under tmpdir, so it is never touched —
-    // pnpm/repo hygiene owns that one.
     if (tarballPath.startsWith(tmpRoot + path.sep)) {
-      await safeDelete(path.dirname(tarballPath))
+      await safeDelete(tarballPath)
     }
   }
 }
