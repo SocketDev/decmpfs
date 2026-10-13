@@ -99,6 +99,11 @@ eligible files without guessing the savings. Compression is per-file and does
 not change APFS file modification times, add a volume quota, or replace ZFS
 dataset placement and quota controls.
 
+### Documentation
+
+- [Rust API reference](docs/api.md), with the complete hosted [docs.rs API](https://docs.rs/decmpfs/0.1.5/decmpfs/)
+- [Command reference](docs/commands.md)
+
 ## Development
 
 ```sh

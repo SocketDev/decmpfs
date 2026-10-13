@@ -6,6 +6,25 @@
     "ref": "fleet-pack-011e1c67ce8860fdf7dca52a45e1a8d6620379e6",
     "cascadeSha": "011e1c67ce8860fdf7dca52a45e1a8d6620379e6"
   },
+  "docs": {
+    "surfaces": [
+      {
+        "kind": "api",
+        "hub": "docs/api.md",
+        "sources": [
+          "crates/decmpfs/src/lib.rs",
+          "crates/decmpfs/src/gate.rs",
+          "crates/decmpfs/src/remove.rs",
+          "crates/decmpfs/src/stream.rs"
+        ]
+      },
+      {
+        "kind": "commands",
+        "hub": "docs/commands.md",
+        "sources": ["crates/decmpfs/src/bin/decmpfs.rs"]
+      }
+    ]
+  },
   "repo": {
     "type": "solo"
   },
