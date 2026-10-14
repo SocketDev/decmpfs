@@ -26,54 +26,54 @@
     },
     "pnpm": {
       "notes": [
-        "Eight supported platforms use native binaries from the pnpm v12.10.1 GitHub release, including darwin-x64.",
+        "Eight supported platforms use native binaries from the pnpm v12.12.0 GitHub release, including darwin-x64.",
         "Linux glibc and musl platforms use distinct assets and integrity values.",
         "Each platform asset has a verified SHA-512 integrity value.",
-        "The dated soak exception expires on 2026-10-13."
+        "The dated soak exception expires on 2026-10-17."
       ],
       "description": "Fast, disk space efficient package manager",
       "repository": "github:pnpm/pnpm",
-      "version": "12.10.1",
-      "tag": "v12.10.1",
+      "version": "12.12.0",
+      "tag": "v12.12.0",
       "platforms": {
         "darwin-arm64": {
           "asset": "pnpm-darwin-arm64.tar.gz",
-          "integrity": "sha512-5SvbhcEv699H17dZ7u0Ab3DF1P//qJGri9IJ3hF+Wmw3bDDX3k6igPG7itAHoytAVIAt5/wo3x/kPaFnXktOFg=="
+          "integrity": "sha512-7VnH+RdUx7PpoxkNv+Lb15REk3XpVj1S94tSSxnhBWn53tah9rFSGaWdoljF+a8+5FtmiLvKkzV3qZ/9+HmVPQ=="
         },
         "darwin-x64": {
           "asset": "pnpm-darwin-x64.tar.gz",
-          "integrity": "sha512-25OcWYI3scMDKSS35wwh1RfmpwsyWr+f1GJmJhl3UGLgc2aM08WFLXZqbwnIloTqFaLBf36AtHrdiKj3/1n5yQ=="
+          "integrity": "sha512-zjyoVTj2Bvo2DQuTnOCMaqBIazuMQHFl8Nt7+SZ19SVRemXvvh+Bg8iMzgaBDwJTEikpBx2fYY/Q0lSD36535w=="
         },
         "linux-arm64": {
           "asset": "pnpm-linux-arm64.tar.gz",
-          "integrity": "sha512-248GmCrXat/zoxnIIiDP2rfV0iPxP456eI4U/Yq3a0VdQRPmh/WLL3juSFVAyrQWgUOFRbTqIgBBHCX3il5Pfw=="
+          "integrity": "sha512-xph5ueHRQX0mX1Lo53g74gJA8rCG9ce9iy48Rm6nSFSfv13y0ZH1o+8k5ai4GM6ZAuud6ZXF5zkU+gQemp6CRA=="
         },
         "linux-arm64-musl": {
           "asset": "pnpm-linux-arm64-musl.tar.gz",
-          "integrity": "sha512-JAL5hrzKHe2ZXQPLSe5NQg30vtPGb5wEbhJVEGCQgWBpHS6ubA5famQunPQ716xJeWcyGeGzRdFdaMlz9wZZqQ=="
+          "integrity": "sha512-V/k+2BJszqLgo7SK6vtRIAUrtYEKcieI6aG7SlRURYqPHMzCAL7h6g0+llXRKQFbLOXf9qsRSfWcvsCPaEf5cw=="
         },
         "linux-x64": {
           "asset": "pnpm-linux-x64.tar.gz",
-          "integrity": "sha512-vvgv2+2omqOZKWdj06GVnC+huCGnoi1B8gYoLiGJSmpmJCbtSbzG8PXh+K/l8+E2poCBCFG5jjfAt/rslpGhGA=="
+          "integrity": "sha512-pKcD9MeYjJ0qy/IOrd7FHmsQMiqoi+wcBG3HGcnodsldG9I9gZ9joj0lCb8uqDCAqY4TnBvpmosJl4UpKJL3mg=="
         },
         "linux-x64-musl": {
           "asset": "pnpm-linux-x64-musl.tar.gz",
-          "integrity": "sha512-PQpjyJgG+unKNVelOKAFGgHZoBgF4nYKveCMUqjPM68vyq94VHrw/nKPedRrPSAnu+6p+I4gfweaGIJfWpyedw=="
+          "integrity": "sha512-asJz8aBD4IFzXfJ45IhWFB631m+OJJ5Mn6PJOQalM/HM306ahRKoRITA8/a6OKRhx8klu/2uw8JYrQF9eEm+YQ=="
         },
         "win32-arm64": {
           "asset": "pnpm-win32-arm64.zip",
-          "integrity": "sha512-fE+4VjTu1g9DP6akXA7LwudU9AgGvqsBEFbAZFjQi5bY7sGxIU9Rp7xfEHrAGp/b7XnBzdRVgnEsk8une5oIvw=="
+          "integrity": "sha512-i3NLV4gR0qL8jdSI0NbL9frQfXAGwnZu8WSlNJC+0vVUst53cm0JqeT39nWcqcfPsM5mszx5QA8+YZg3sjxvrw=="
         },
         "win32-x64": {
           "asset": "pnpm-win32-x64.zip",
-          "integrity": "sha512-+EAJeSq0IHPqO2LuMa12eqBDt04tmYB60lFNPpc3Z6n9O2T5YR+AhcDsUe6CFfxaYIZ74ccWz01UGeNfPmyFbQ=="
+          "integrity": "sha512-db9WaY/ydV4uqHUln/GI9pzxXi1MdGlsRZQDQKMr8BO/ktYfV9eeCwGI5ttJBWMWWewClOZQkp3yiAq89YT6dA=="
         }
       },
       "origin": "gh-asset",
       "soakBypass": {
-        "version": "12.10.1",
-        "published": "2026-10-06",
-        "removable": "2026-10-13"
+        "published": "2026-10-10",
+        "removable": "2026-10-17",
+        "version": "12.12.0"
       }
     },
     "gh": {
