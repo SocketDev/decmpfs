@@ -10,17 +10,16 @@
  * Run: copy the built addon as bench/decmpfs.node, then node
  * bench/write-overhead.mjs. Writes bench/results.json.
  */
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { unlinkSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { promises as fsp } from 'node:fs'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { isMainModule } from '../scripts/fleet/process/is-main-module.mts'
+import { runMain } from '../scripts/fleet/process/main/run.mts'
 import { safeDeleteSync } from '@socketsecurity/lib-stable/fs/safe'
 
-const require = createRequire(import.meta.url)
 const here = path.dirname(fileURLToPath(import.meta.url))
-const addon = require(path.join(here, 'decmpfs.node'))
 
 const sizes = [512 * 1024, 4 * 1024 * 1024, 32 * 1024 * 1024]
 const REPS = 25
@@ -43,60 +42,82 @@ export function timeSync(fn) {
   return Number(process.hrtime.bigint() - t0) / 1e6
 }
 
-const rows = []
-for (let i2 = 0, { length } = sizes; i2 < length; i2 += 1) {
-  const size = sizes[i2]
-  const data = payload(size)
-  const dir = path.join(here, `work-${size}`)
-  mkdirSync(dir, { recursive: true })
-  const dec = path.join(dir, 'dec.bin')
-  const plain = path.join(dir, 'plain.bin')
-  const pre = path.join(dir, 'pre.bin')
-
-  // Precompute compressed bytes for the raw-write floor.
-  await addon.writeDecmpfsFile(pre, data, { force: true })
-  const compressedBytes = readFileSync(pre)
-
-  // Warmups.
-  await addon.writeDecmpfsFile(dec, data, { force: true })
-  addon.writeDecmpfsFileSync(`${dec}w`, data, { force: true })
-  safeDeleteSync(`${dec}w`)
-  await fsp.writeFile(plain, data)
-  await addon.compressFile(plain, { force: true })
-
-  let asyncMs = 0
-  let syncMs = 0
-  let rawMs = 0
-  let compressFileMs = 0
-  let plainMs = 0
-  for (let i = 0; i < REPS; i++) {
-    asyncMs += await time(() =>
-      addon.writeDecmpfsFile(dec, data, { force: true }),
-    )
-    syncMs += timeSync(() =>
-      addon.writeDecmpfsFileSync(dec, data, { force: true }),
-    )
-    rawMs += await time(() => fsp.writeFile(pre, compressedBytes))
-    await fsp.writeFile(plain, data)
-    compressFileMs += await time(() =>
-      addon.compressFile(plain, { force: true }),
-    )
-    plainMs += await time(() => fsp.writeFile(plain, data))
-    safeDeleteSync(dec)
-    safeDeleteSync(plain)
-  }
-  rows.push({
-    size,
-    async_write_copy_compress_ms: +(asyncMs / REPS).toFixed(3),
-    sync_write_copy_compress_ms: +(syncMs / REPS).toFixed(3),
-    compress_file_in_place_ms: +(compressFileMs / REPS).toFixed(3),
-    raw_write_floor_ms: +(rawMs / REPS).toFixed(3),
-    plain_write_floor_ms: +(plainMs / REPS).toFixed(3),
-  })
-  safeDeleteSync(dir)
+const SCRIPT_META = {
+  describe: 'measure decmpfs write-path overhead against filesystem floors',
+  help: 'Usage: node bench/write-overhead.mjs\nWrites bench/results.json.',
+  json: 'result',
 }
-writeFileSync(
-  path.join(here, 'results.json'),
-  `${JSON.stringify(rows, undefined, 2)}\n`,
-)
-console.table(rows.map(({ size, ...r }) => ({ size_kib: size / 1024, ...r })))
+
+export async function main() {
+  const require = createRequire(import.meta.url)
+  const addon = require(path.join(here, 'decmpfs.node'))
+  const rows = []
+  for (let i2 = 0, { length } = sizes; i2 < length; i2 += 1) {
+    const size = sizes[i2]
+    const data = payload(size)
+    const dir = path.join(here, `work-${size}`)
+    mkdirSync(dir, { recursive: true })
+    const dec = path.join(dir, 'dec.bin')
+    const plain = path.join(dir, 'plain.bin')
+    const pre = path.join(dir, 'pre.bin')
+
+    // Precompute compressed bytes for the raw-write floor.
+    await addon.writeDecmpfsFile(pre, data, { force: true })
+    const compressedBytes = readFileSync(pre)
+
+    // Warmups.
+    await addon.writeDecmpfsFile(dec, data, { force: true })
+    addon.writeDecmpfsFileSync(`${dec}w`, data, { force: true })
+    safeDeleteSync(`${dec}w`)
+    await fsp.writeFile(plain, data)
+    await addon.compressFile(plain, { force: true })
+
+    let asyncMs = 0
+    let syncMs = 0
+    let rawMs = 0
+    let compressFileMs = 0
+    let plainMs = 0
+    for (let i = 0; i < REPS; i++) {
+      asyncMs += await time(() =>
+        addon.writeDecmpfsFile(dec, data, { force: true }),
+      )
+      syncMs += timeSync(() =>
+        addon.writeDecmpfsFileSync(dec, data, { force: true }),
+      )
+      rawMs += await time(() => fsp.writeFile(pre, compressedBytes))
+      await fsp.writeFile(plain, data)
+      compressFileMs += await time(() =>
+        addon.compressFile(plain, { force: true }),
+      )
+      plainMs += await time(() => fsp.writeFile(plain, data))
+      safeDeleteSync(dec)
+      safeDeleteSync(plain)
+    }
+    rows.push({
+      __proto__: null,
+      size,
+      async_write_copy_compress_ms: +(asyncMs / REPS).toFixed(3),
+      sync_write_copy_compress_ms: +(syncMs / REPS).toFixed(3),
+      compress_file_in_place_ms: +(compressFileMs / REPS).toFixed(3),
+      raw_write_floor_ms: +(rawMs / REPS).toFixed(3),
+      plain_write_floor_ms: +(plainMs / REPS).toFixed(3),
+    })
+    safeDeleteSync(dir)
+  }
+  writeFileSync(
+    path.join(here, 'results.json'),
+    `${JSON.stringify(rows, undefined, 2)}\n`,
+  )
+  console.table(
+    rows.map(({ size, ...r }) => ({
+      __proto__: null,
+      size_kib: size / 1024,
+      ...r,
+    })),
+  )
+  return { __proto__: null, exitCode: 0, data: rows }
+}
+
+if (isMainModule(import.meta.url)) {
+  runMain(main, SCRIPT_META)
+}
