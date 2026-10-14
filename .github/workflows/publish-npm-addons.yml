@@ -39,6 +39,14 @@ jobs:
             git fetch "${FETCH_ARGS[@]}"
           fi
           git checkout -q --detach FETCH_HEAD
+      - name: Snapshot native build controllers
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 0600 scripts/fleet/registry/napi-matrix.mts "$RUNNER_TEMP/napi-matrix.mts"
+          install -m 0600 scripts/fleet/npm/native/build.mts "$RUNNER_TEMP/native-build.mts"
+          install -m 0600 scripts/fleet/npm/native-artifact-files.mts "$RUNNER_TEMP/native-artifact-files.mts"
+          install -m 0600 scripts/fleet/npm/native-artifacts.mts "$RUNNER_TEMP/native-artifacts.mts"
       - name: Set up and install
         uses: ./.github/actions/fleet/setup-and-install
         with:
@@ -46,6 +54,15 @@ jobs:
           checkout-ref: ${{ github.sha }}
           payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
           payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+      - name: Restore source-bound native build controllers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p scripts/fleet/npm/native
+          install -m 0600 "$RUNNER_TEMP/napi-matrix.mts" scripts/fleet/registry/napi-matrix.mts
+          install -m 0600 "$RUNNER_TEMP/native-build.mts" scripts/fleet/npm/native/build.mts
+          install -m 0600 "$RUNNER_TEMP/native-artifact-files.mts" scripts/fleet/npm/native-artifact-files.mts
+          install -m 0600 "$RUNNER_TEMP/native-artifacts.mts" scripts/fleet/npm/native-artifacts.mts
       - id: gen
         name: Derive napi build matrix
         run: |
@@ -86,6 +103,14 @@ jobs:
             git fetch "${FETCH_ARGS[@]}"
           fi
           git checkout -q --detach FETCH_HEAD
+      - name: Snapshot native build controllers
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 0600 scripts/fleet/registry/napi-matrix.mts "$RUNNER_TEMP/napi-matrix.mts"
+          install -m 0600 scripts/fleet/npm/native/build.mts "$RUNNER_TEMP/native-build.mts"
+          install -m 0600 scripts/fleet/npm/native-artifact-files.mts "$RUNNER_TEMP/native-artifact-files.mts"
+          install -m 0600 scripts/fleet/npm/native-artifacts.mts "$RUNNER_TEMP/native-artifacts.mts"
       - name: 'Check out source'
         uses: ./.github/actions/fleet/checkout
         with:
@@ -102,6 +127,15 @@ jobs:
           checkout-ref: ${{ github.sha }}
           payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
           payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+      - name: Restore source-bound native build controllers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p scripts/fleet/npm/native
+          install -m 0600 "$RUNNER_TEMP/napi-matrix.mts" scripts/fleet/registry/napi-matrix.mts
+          install -m 0600 "$RUNNER_TEMP/native-build.mts" scripts/fleet/npm/native/build.mts
+          install -m 0600 "$RUNNER_TEMP/native-artifact-files.mts" scripts/fleet/npm/native-artifact-files.mts
+          install -m 0600 "$RUNNER_TEMP/native-artifacts.mts" scripts/fleet/npm/native-artifacts.mts
       - name: Run custom native producer
         if: ${{ matrix.customBuild == true }}
         env:

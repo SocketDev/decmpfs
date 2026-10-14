@@ -4479,7 +4479,6 @@ scripts/fleet/npm/approve.mts
 scripts/fleet/npm/auth-browser-flow.mts
 scripts/fleet/npm/auth-token.mts
 scripts/fleet/npm/auth/run.mts
-scripts/fleet/npm/native-artifacts.mts
 scripts/fleet/npm/publish-npm.mts
 scripts/fleet/npm/publish/artifact/config.mts
 scripts/fleet/npm/publish/artifact/package.mts
@@ -4806,7 +4805,6 @@ scripts/fleet/registry/gh-scope-cli.mts
 scripts/fleet/registry/gh-scope-lease.mts
 scripts/fleet/registry/github-dispatch.mts
 scripts/fleet/registry/go/shared.mts
-scripts/fleet/registry/napi-matrix.mts
 scripts/fleet/registry/npm/access-context-schema.mts
 scripts/fleet/registry/npm/account-context-schema.mts
 scripts/fleet/registry/npm/account/inventory.mts
@@ -4932,7 +4930,6 @@ scripts/fleet/release/record/producer.mts
 scripts/fleet/release/record/recovery-evidence.mts
 scripts/fleet/release/record/recovery-receipt.mts
 scripts/fleet/release/record/recovery.mts
-scripts/fleet/release/record/run.mts
 scripts/fleet/release/reservation/archive.mts
 scripts/fleet/release/reservation/attestation.mts
 scripts/fleet/release/reservation/provenance.mts
@@ -5574,12 +5571,18 @@ yarn.lock
 /scripts/fleet/*
 !/scripts/fleet/npm/
 /scripts/fleet/npm/*
+!/scripts/fleet/npm/native-artifact-files.mts
+!/scripts/fleet/npm/native-artifacts.mts
+!/scripts/fleet/npm/native/
+/scripts/fleet/npm/native/*
+!/scripts/fleet/npm/native/build.mts
 !/scripts/fleet/npm/scan/
 /scripts/fleet/npm/scan/*
 !/scripts/fleet/npm/scan/receipt.mts
 !/scripts/fleet/npm/scan/staged.mts
 !/scripts/fleet/registry/
 /scripts/fleet/registry/*
+!/scripts/fleet/registry/napi-matrix.mts
 !/scripts/fleet/registry/npm/
 /scripts/fleet/registry/npm/*
 !/scripts/fleet/registry/npm/scan/
@@ -5587,6 +5590,11 @@ yarn.lock
 !/scripts/fleet/registry/npm/scan/ndjson.mts
 !/scripts/fleet/registry/npm/scan/run.mts
 !/scripts/fleet/registry/npm/staged.mts
+!/scripts/fleet/release/
+/scripts/fleet/release/*
+!/scripts/fleet/release/record/
+/scripts/fleet/release/record/*
+!/scripts/fleet/release/record/run.mts
 !/scripts/fleet/setup/
 /scripts/fleet/setup/*
 !/scripts/fleet/setup/bootstrap/
