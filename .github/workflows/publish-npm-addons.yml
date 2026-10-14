@@ -61,12 +61,6 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.napi-matrix.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
-    env:
-      # The abi producer version installed from crates.io on every leg.
-      ABITIOUS_VERSION: 0.1.0
-      # socket-btm build the opentui prebuilts come from; update via
-      # scripts/update-from-upstream.mts, which prints the newest tag.
-      OPENTUI_BUILD_TAG: opentui-20260424-18f0f46
     steps:
       - name: Bootstrap checkout
         shell: bash
@@ -108,21 +102,29 @@ jobs:
           checkout-ref: ${{ github.sha }}
           payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
           payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+      - name: Run custom native producer
+        if: ${{ matrix.customBuild == true }}
+        env:
+          NAPI_TARGET: ${{ matrix.target }}
+        run: node scripts/fleet/npm/native/build.mts
       # Socket-original composites, not the third-party Rust toolchain and
       # cache actions they replace. An addon member's Actions allowlist then
       # needs nothing beyond actions/* and its own local composites, so a grep
       # for a third-party Rust action comes back empty in every fleet member,
       # addon or not.
       - name: Rust toolchain
+        if: ${{ matrix.customBuild != true }}
         uses: ./.github/actions/fleet/setup-rust-toolchain
         with:
           channel: stable
       - name: Rust cache
+        if: ${{ matrix.customBuild != true }}
         uses: ./.github/actions/fleet/setup-rust-cache
         with:
           prefix-key: napi-${{ matrix.target }}
           workspaces: .
       - name: 'Prefer rustup Cargo over the SFW shim'
+        if: ${{ matrix.customBuild != true }}
         shell: bash
         # The SFW proxy MITMs crates.io, and on Windows schannel rejects its
         # certificate ("revocation status is unknown"), breaking every cargo
@@ -130,30 +132,38 @@ jobs:
         # runs unshimmed; crate installs stay --locked.
         run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - name: Install abi (crates.io)
+        if: ${{ matrix.customBuild != true }}
         shell: bash
+        env:
+          ABITIOUS_VERSION: 0.1.0
         run: cargo install abitious --version "$ABITIOUS_VERSION" --locked
       - name: Fetch opentui prebuilt
+        if: ${{ matrix.customBuild != true }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           PLATFORM_ID: ${{ matrix.platformId }}
+          OPENTUI_BUILD_TAG: opentui-20260424-18f0f46
         # Exact-name download: socket-btm names each prebuilt asset
         # `<tag>-<platformId>.node`, which downloadSocketBtmRelease's generic
         # binary naming (`<tool>-<platformId>`, no tag infix or extension)
         # cannot resolve — fetch the asset directly by its exact name.
         run: |
           set -euo pipefail
-          FINAL="packages/core/build/dev/${PLATFORM_ID}/out/Final"
-          mkdir -p "$FINAL"
+          OUTPUT_DIR=".cache/fleet/native-addons/build/${PLATFORM_ID}"
+          mkdir -p "$OUTPUT_DIR"
           gh release download "$OPENTUI_BUILD_TAG" -R SocketDev/socket-btm \
             --pattern "${OPENTUI_BUILD_TAG}-${PLATFORM_ID}.node" \
-            --output "$FINAL/opentui.node"
-          test -s "$FINAL/opentui.node" || {
-            echo "× opentui.node missing at $FINAL after the prebuilt fetch." >&2
+            --output "$OUTPUT_DIR/opentui.node"
+          test -s "$OUTPUT_DIR/opentui.node" || {
+            echo "opentui.node missing at $OUTPUT_DIR after the prebuilt fetch." >&2
             exit 1
           }
       - name: Build abitious stub
+        if: ${{ matrix.customBuild != true }}
         shell: bash
+        env:
+          ABITIOUS_VERSION: 0.1.0
         # `abi build --compress` needs the self-loader stub cdylib. The
         # @abitious/* npm platform packages (its auto-resolve source) are not
         # published yet, so build the stub from the pinned abitious tag and
@@ -165,9 +175,11 @@ jobs:
             https://github.com/SocketDev/abitious abitious-src
           cargo build --manifest-path abitious-src/Cargo.toml -p abitious-stub --release
       - name: Build + compress stuie.node
+        if: ${{ matrix.customBuild != true }}
         shell: bash
         env:
           PLATFORM_ID: ${{ matrix.platformId }}
+          ABITIOUS_VERSION: 0.1.0
         run: |
           set -euo pipefail
           case "$PLATFORM_ID" in
@@ -177,19 +189,21 @@ jobs:
           esac
           abi build --compress --release -p stuie-node \
             --stub "abitious-src/target/release/${STUB_FILE}"
-          FINAL="packages/core/build/dev/${PLATFORM_ID}/out/Final"
-          mv stuie_node.node "$FINAL/stuie.node"
+          OUTPUT_DIR=".cache/fleet/native-addons/build/${PLATFORM_ID}"
+          mkdir -p "$OUTPUT_DIR"
+          mv stuie_node.node "$OUTPUT_DIR/stuie.node"
       - name: 'Upload artifact'
         uses: ./.github/actions/fleet/upload-artifact
         with:
           if-no-files-found: error
           name: addons-${{ matrix.platformId }}
-          path: packages/core/build/dev/${{ matrix.platformId }}/out/Final
+          path: .cache/fleet/native-addons/build/${{ matrix.platformId }}
       # Last step on purpose: the restore-phase call above exported the
       # RUST_CACHE_* job env; this saves the populated target dirs. Runs only
       # when every previous step succeeded — the same success gate the old
       # cache post step used.
       - name: Save Rust cache
+        if: ${{ matrix.customBuild != true }}
         uses: ./.github/actions/fleet/setup-rust-cache
         with:
           phase: save

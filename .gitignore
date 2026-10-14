@@ -5548,6 +5548,7 @@ yarn.lock
 !/.github/workflows/publish-npm-addons.yml
 !/.github/workflows/publish-npm.yml
 !/.github/workflows/release-github.yml
+!/.github/workflows/release-record.yml
 !/.github/workflows/sweep-jobs.yml
 !/.gitignore
 !/.npmrc
