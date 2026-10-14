@@ -35,6 +35,7 @@
     }
   ],
   "napi": {
+    "buildScript": "scripts/repo/native/build.mts",
     "platforms": [
       "darwin-arm64",
       "darwin-x64",
