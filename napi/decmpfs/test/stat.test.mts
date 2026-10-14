@@ -8,7 +8,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
-import { test } from 'node:test'
+import { test } from 'vitest'
 
 import { safeDeleteSync } from '@socketsecurity/lib-stable/fs/safe'
 
@@ -18,7 +18,7 @@ import { safeDeleteSync } from '@socketsecurity/lib-stable/fs/safe'
 const require = createRequire(import.meta.url)
 const { decmpfsStat, writeDecmpfsFile } = require('../index.cjs')
 
-void test('decmpfsStat reports { compressed, logical, physical } for a plain file', () => {
+test('decmpfsStat reports { compressed, logical, physical } for a plain file', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'decmpfs-stat-'))
   try {
     const filePath = path.join(dir, 'f')
@@ -37,7 +37,7 @@ void test('decmpfsStat reports { compressed, logical, physical } for a plain fil
   }
 })
 
-void test('decmpfsStat reflects a compressed write where the FS supports it', async () => {
+test('decmpfsStat reflects a compressed write where the FS supports it', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'decmpfs-stat-c-'))
   try {
     const filePath = path.join(dir, 'addon.node')
@@ -62,7 +62,7 @@ void test('decmpfsStat reflects a compressed write where the FS supports it', as
   }
 })
 
-void test('decmpfsStat throws a shaped error for a missing path', () => {
+test('decmpfsStat throws a shaped error for a missing path', () => {
   assert.throws(() =>
     decmpfsStat(path.join(os.tmpdir(), 'decmpfs-no-such-stat-xyz')),
   )

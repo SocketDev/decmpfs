@@ -12,7 +12,7 @@ import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { finished } from 'node:stream/promises'
-import { after, before, test } from 'node:test'
+import { afterAll, beforeAll, test } from 'vitest'
 
 import { safeDelete } from '@socketsecurity/lib-stable/fs/safe'
 
@@ -20,10 +20,10 @@ const require = createRequire(import.meta.url)
 const decmpfs = require('../index.cjs')
 
 let dir
-before(async () => {
+beforeAll(async () => {
   dir = await mkdtemp(path.join(os.tmpdir(), 'decmpfs-node-'))
 })
-after(async () => {
+afterAll(async () => {
   if (dir) {
     await safeDelete(dir)
   }
@@ -31,12 +31,12 @@ after(async () => {
 
 const compressible = Buffer.alloc(300_000, 0x41)
 
-void test('exports the two write functions', () => {
+test('exports the two write functions', () => {
   assert.equal(typeof decmpfs.writeDecmpfsFile, 'function')
   assert.equal(typeof decmpfs.writeDecmpfsFileSync, 'function')
 })
 
-void test('stream: writes multiple chunks and publishes atomically', async () => {
+test('stream: writes multiple chunks and publishes atomically', async () => {
   const p = path.join(dir, 'stream.node')
   const stream = decmpfs.createDecmpfsWriteStream(p, {
     glob: '**/*.node',
@@ -49,7 +49,7 @@ void test('stream: writes multiple chunks and publishes atomically', async () =>
   assert.equal(stream.result.before, compressible.length)
 })
 
-void test('stream: incompressible input falls back to an identical plain file', async () => {
+test('stream: incompressible input falls back to an identical plain file', async () => {
   const p = path.join(dir, 'stream-random.node')
   const random = crypto.randomBytes(300_000)
   const stream = decmpfs.createDecmpfsWriteStream(p, { size: random.length })
@@ -62,7 +62,7 @@ void test('stream: incompressible input falls back to an identical plain file', 
   assert.match(stream.result.reason, /NoGain|Unsupported/)
 })
 
-void test('stream: an incomplete download leaves the existing destination untouched', async () => {
+test('stream: an incomplete download leaves the existing destination untouched', async () => {
   const p = path.join(dir, 'stream-incomplete.node')
   writeFileSync(p, 'existing')
   const stream = decmpfs.createDecmpfsWriteStream(p, { size: 10 })
@@ -71,7 +71,7 @@ void test('stream: an incomplete download leaves the existing destination untouc
   assert.equal(readFileSync(p, 'utf8'), 'existing')
 })
 
-void test('sync: atomic default — writes + round-trips, returns an Outcome', () => {
+test('sync: atomic default — writes + round-trips, returns an Outcome', () => {
   const p = path.join(dir, 'sync-default.node')
   const r = decmpfs.writeDecmpfsFileSync(p, compressible, { glob: '**/*.node' })
   assert.equal(readFileSync(p).equals(compressible), true, 'round-trips')
@@ -80,7 +80,7 @@ void test('sync: atomic default — writes + round-trips, returns an Outcome', (
   assert.match(r.reason, /Compressed|NoGain|Unsupported/)
 })
 
-void test('sync: atomic:false — direct write, round-trips', () => {
+test('sync: atomic:false — direct write, round-trips', () => {
   const p = path.join(dir, 'sync-direct.node')
   const r = decmpfs.writeDecmpfsFileSync(p, compressible, {
     atomic: false,
@@ -90,7 +90,7 @@ void test('sync: atomic:false — direct write, round-trips', () => {
   assert.equal(r.before, compressible.length)
 })
 
-void test('async: writeDecmpfsFile — writes + round-trips', async () => {
+test('async: writeDecmpfsFile — writes + round-trips', async () => {
   const p = path.join(dir, 'async.node')
   const r = await decmpfs.writeDecmpfsFile(p, compressible, {
     glob: '**/*.node',
@@ -99,14 +99,14 @@ void test('async: writeDecmpfsFile — writes + round-trips', async () => {
   assert.equal(r.before, compressible.length)
 })
 
-void test('no options — defaults (atomic, any path), still writes', () => {
+test('no options — defaults (atomic, any path), still writes', () => {
   const p = path.join(dir, 'no-opts.bin')
   const r = decmpfs.writeDecmpfsFileSync(p, compressible)
   assert.equal(readFileSync(p).equals(compressible), true)
   assert.equal(typeof r.compressed, 'boolean')
 })
 
-void test('gate glob exclude — plain write, Skipped:GateExcluded', () => {
+test('gate glob exclude — plain write, Skipped:GateExcluded', () => {
   const p = path.join(dir, 'excluded.txt')
   const r = decmpfs.writeDecmpfsFileSync(p, compressible, { glob: '**/*.node' })
   assert.equal(r.compressed, false)
@@ -114,7 +114,7 @@ void test('gate glob exclude — plain write, Skipped:GateExcluded', () => {
   assert.equal(readFileSync(p).equals(compressible), true)
 })
 
-void test('gate size floor exclude — small file under min, plain write', () => {
+test('gate size floor exclude — small file under min, plain write', () => {
   const p = path.join(dir, 'small.node')
   const small = Buffer.alloc(1024, 0x42)
   const r = decmpfs.writeDecmpfsFileSync(p, small, {
@@ -126,7 +126,7 @@ void test('gate size floor exclude — small file under min, plain write', () =>
   assert.equal(readFileSync(p).equals(small), true)
 })
 
-void test('incompressible data — round-trips (NoGain or compressed-with-no-shrink)', () => {
+test('incompressible data — round-trips (NoGain or compressed-with-no-shrink)', () => {
   const p = path.join(dir, 'random.node')
   const random = crypto.randomBytes(200_000)
   const r = decmpfs.writeDecmpfsFileSync(p, random, { glob: '**/*.node' })
@@ -134,7 +134,7 @@ void test('incompressible data — round-trips (NoGain or compressed-with-no-shr
   assert.match(r.reason, /NoGain|Compressed|Unsupported/)
 })
 
-void test('force:false on an existing file — ExistsNoForce, leaves it', () => {
+test('force:false on an existing file — ExistsNoForce, leaves it', () => {
   const p = path.join(dir, 'exists.node')
   decmpfs.writeDecmpfsFileSync(p, compressible, { glob: '**/*.node' })
   const r = decmpfs.writeDecmpfsFileSync(p, Buffer.from('new'), {
@@ -144,7 +144,7 @@ void test('force:false on an existing file — ExistsNoForce, leaves it', () => 
   assert.equal(readFileSync(p).equals(compressible), true, 'original untouched')
 })
 
-void test('errorOnExist on an existing file — throws', () => {
+test('errorOnExist on an existing file — throws', () => {
   const p = path.join(dir, 'exists2.node')
   decmpfs.writeDecmpfsFileSync(p, compressible)
   assert.throws(
@@ -157,7 +157,7 @@ void test('errorOnExist on an existing file — throws', () => {
   )
 })
 
-void test('invalid gate size predicate — throws', () => {
+test('invalid gate size predicate — throws', () => {
   const p = path.join(dir, 'bad-gate.node')
   assert.throws(
     () =>
@@ -167,7 +167,7 @@ void test('invalid gate size predicate — throws', () => {
   assert.equal(existsSync(p), false, 'nothing written on a bad gate')
 })
 
-void test('a write into a missing directory throws a Node-shaped ENOENT', () => {
+test('a write into a missing directory throws a Node-shaped ENOENT', () => {
   const missing = path.join(dir, 'no-such-subdir', 'out.node')
   assert.throws(
     () => decmpfs.writeDecmpfsFileSync(missing, compressible),
@@ -180,7 +180,7 @@ void test('a write into a missing directory throws a Node-shaped ENOENT', () => 
   )
 })
 
-void test('async: a write into a missing directory rejects with a Node-shaped ENOENT', async () => {
+test('async: a write into a missing directory rejects with a Node-shaped ENOENT', async () => {
   const missing = path.join(dir, 'no-such-subdir', 'out-async.node')
   await assert.rejects(
     decmpfs.writeDecmpfsFile(missing, compressible),
@@ -192,7 +192,7 @@ void test('async: a write into a missing directory rejects with a Node-shaped EN
   )
 })
 
-void test('on APFS the compressible file is smaller on disk than its logical size', () => {
+test('on APFS the compressible file is smaller on disk than its logical size', () => {
   const p = path.join(dir, 'apfs.node')
   const r = decmpfs.writeDecmpfsFileSync(p, compressible, { glob: '**/*.node' })
   if (r.compressed && r.reason === 'Compressed') {

@@ -11,7 +11,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import * as os from 'node:os'
 import path from 'node:path'
-import { after, before, test } from 'node:test'
+import { afterAll, beforeAll, test } from 'vitest'
 
 import { safeDelete } from '@socketsecurity/lib-stable/fs/safe'
 
@@ -19,10 +19,10 @@ const require = createRequire(import.meta.url)
 const decmpfs = require('../index.cjs')
 
 let dir
-before(async () => {
+beforeAll(async () => {
   dir = await mkdtemp(path.join(os.tmpdir(), 'decmpfs-copy-'))
 })
-after(async () => {
+afterAll(async () => {
   if (dir) {
     await safeDelete(dir)
   }
@@ -39,7 +39,7 @@ function compressedSource(name) {
   return { src, compressed: wrote.compressed }
 }
 
-void test('exports the copy functions and Node-parity mode flags', () => {
+test('exports the copy functions and Node-parity mode flags', () => {
   assert.equal(typeof decmpfs.copyDecmpfsFile, 'function')
   assert.equal(typeof decmpfs.copyDecmpfsFileSync, 'function')
   assert.equal(typeof decmpfs.copyFile, 'function')
@@ -49,7 +49,7 @@ void test('exports the copy functions and Node-parity mode flags', () => {
   assert.equal(decmpfs.COPYFILE_FICLONE_FORCE, 4)
 })
 
-void test('sync: copy round-trips and preserves compression state', () => {
+test('sync: copy round-trips and preserves compression state', () => {
   const { src, compressed } = compressedSource('copy-sync-src.node')
   const dest = path.join(dir, 'copy-sync-dest.node')
   const r = decmpfs.copyDecmpfsFileSync(src, dest)
@@ -63,7 +63,7 @@ void test('sync: copy round-trips and preserves compression state', () => {
   }
 })
 
-void test('async: copy round-trips', async () => {
+test('async: copy round-trips', async () => {
   const { src } = compressedSource('copy-async-src.node')
   const dest = path.join(dir, 'copy-async-dest.node')
   const r = await decmpfs.copyDecmpfsFile(src, dest)
@@ -71,7 +71,7 @@ void test('async: copy round-trips', async () => {
   assert.equal(typeof r.reason, 'string')
 })
 
-void test('sync: force default replaces an existing destination', () => {
+test('sync: force default replaces an existing destination', () => {
   const { src } = compressedSource('copy-force-src.node')
   const dest = path.join(dir, 'copy-force-dest.node')
   writeFileSync(dest, 'stale')
@@ -79,7 +79,7 @@ void test('sync: force default replaces an existing destination', () => {
   assert.equal(readFileSync(dest).equals(compressible), true, 'replaced')
 })
 
-void test('sync: force false reports ExistsNoForce without replacing', () => {
+test('sync: force false reports ExistsNoForce without replacing', () => {
   const { src } = compressedSource('copy-noforce-src.node')
   const dest = path.join(dir, 'copy-noforce-dest.node')
   writeFileSync(dest, 'keep me')
@@ -88,7 +88,7 @@ void test('sync: force false reports ExistsNoForce without replacing', () => {
   assert.equal(readFileSync(dest, 'utf8'), 'keep me', 'not replaced')
 })
 
-void test('sync: errorOnExist throws on an existing destination', () => {
+test('sync: errorOnExist throws on an existing destination', () => {
   const { src } = compressedSource('copy-eoe-src.node')
   const dest = path.join(dir, 'copy-eoe-dest.node')
   writeFileSync(dest, 'occupied')
@@ -98,7 +98,7 @@ void test('sync: errorOnExist throws on an existing destination', () => {
   )
 })
 
-void test('sync: a missing source throws a Node-shaped ENOENT', () => {
+test('sync: a missing source throws a Node-shaped ENOENT', () => {
   const missing = path.join(dir, 'absent.node')
   assert.throws(
     () => decmpfs.copyDecmpfsFileSync(missing, path.join(dir, 'never.node')),
@@ -112,7 +112,7 @@ void test('sync: a missing source throws a Node-shaped ENOENT', () => {
   )
 })
 
-void test('copyFile: COPYFILE_EXCL rejects an existing destination', () => {
+test('copyFile: COPYFILE_EXCL rejects an existing destination', () => {
   const { src } = compressedSource('copyfile-excl-src.node')
   const dest = path.join(dir, 'copyfile-excl-dest.node')
   writeFileSync(dest, 'occupied')
@@ -122,7 +122,7 @@ void test('copyFile: COPYFILE_EXCL rejects an existing destination', () => {
   )
 })
 
-void test('copyFile: default mode copies with compression preserved', async () => {
+test('copyFile: default mode copies with compression preserved', async () => {
   const { src, compressed } = compressedSource('copyfile-default-src.node')
   const dest = path.join(dir, 'copyfile-default-dest.node')
   const r = await decmpfs.copyFile(src, dest)
@@ -132,7 +132,7 @@ void test('copyFile: default mode copies with compression preserved', async () =
   }
 })
 
-void test('copyFile: FICLONE mode behaves like default (clone-first, never a compression-dropping copy)', async () => {
+test('copyFile: FICLONE mode behaves like default (clone-first, never a compression-dropping copy)', async () => {
   const { src, compressed } = compressedSource('copyfile-ficlone-src.node')
   const dest = path.join(dir, 'copyfile-ficlone-dest.node')
   const r = await decmpfs.copyFile(src, dest, decmpfs.COPYFILE_FICLONE)
@@ -142,7 +142,7 @@ void test('copyFile: FICLONE mode behaves like default (clone-first, never a com
   }
 })
 
-void test('copyFile: FICLONE_FORCE clones on a cloning FS and round-trips', () => {
+test('copyFile: FICLONE_FORCE clones on a cloning FS and round-trips', () => {
   const { src, compressed } = compressedSource('copyfile-force-src.node')
   const dest = path.join(dir, 'copyfile-force-dest.node')
   if (process.platform === 'win32' || !compressed) {

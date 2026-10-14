@@ -50,6 +50,16 @@
       "decmpfs.node": "npm/{target}/decmpfs.{target}.node"
     }
   },
+  "coverage": {
+    "include": [
+      "napi/decmpfs/index.cjs",
+      "napi/decmpfs/scripts/**/*.mts",
+      "scripts/repo/**/*.mts"
+    ],
+    "exclude": {
+      "remove": ["scripts/**"]
+    }
+  },
   "ai": {
     "localAssist": true
   },

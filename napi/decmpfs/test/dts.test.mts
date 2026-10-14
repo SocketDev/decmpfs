@@ -7,11 +7,11 @@
 
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { test } from 'node:test'
+import { test } from 'vitest'
 
 const require = createRequire(import.meta.url)
 
-void test('every declared public export is present on the built addon', () => {
+test('every declared public export is present on the built addon', () => {
   const addon: Record<string, unknown> = require('../index.cjs')
   const functions = [
     'copyDecmpfsFile',

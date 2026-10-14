@@ -11,7 +11,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
-import { after, before, test } from 'node:test'
+import { afterAll, beforeAll, test } from 'vitest'
 
 import { safeDelete } from '@socketsecurity/lib-stable/fs/safe'
 
@@ -20,7 +20,7 @@ const decmpfs = require('../index.cjs')
 
 let dir
 let stub
-before(async () => {
+beforeAll(async () => {
   dir = await mkdtemp(path.join(os.tmpdir(), 'decmpfs-exe-'))
   // A synthetic non-Mach-O stub: exercises the binding's inject/write path (the
   // packer routes a non-Mach-O stub through the EOF-footer append on any host)
@@ -29,7 +29,7 @@ before(async () => {
   stub = path.join(dir, 'stub.bin')
   writeFileSync(stub, Buffer.concat([Buffer.from('\x7fELF'), Buffer.alloc(64)]))
 })
-after(async () => {
+afterAll(async () => {
   if (dir) {
     await safeDelete(dir)
   }
@@ -45,12 +45,12 @@ function writeTinyExecutable(name) {
   return src
 }
 
-void test('exports the pack functions', () => {
+test('exports the pack functions', () => {
   assert.equal(typeof decmpfs.packExecutable, 'function')
   assert.equal(typeof decmpfs.packExecutableSync, 'function')
 })
 
-void test('sync: packs a tiny executable, dest lands executable', () => {
+test('sync: packs a tiny executable, dest lands executable', () => {
   const src = writeTinyExecutable('sync-src.sh')
   const dest = path.join(dir, 'sync-dest.bin')
   const beforeSize = statSync(src).size
@@ -73,7 +73,7 @@ void test('sync: packs a tiny executable, dest lands executable', () => {
   }
 })
 
-void test('async: packExecutable — packs and round-trips the same result shape', async () => {
+test('async: packExecutable — packs and round-trips the same result shape', async () => {
   const src = writeTinyExecutable('async-src.sh')
   const dest = path.join(dir, 'async-dest.bin')
   const beforeSize = statSync(src).size
@@ -87,7 +87,7 @@ void test('async: packExecutable — packs and round-trips the same result shape
   assert.ok(r.after > 0)
 })
 
-void test('gateGlob miss — skippedGate true, nothing written', () => {
+test('gateGlob miss — skippedGate true, nothing written', () => {
   const src = writeTinyExecutable('gate-src.sh')
   const dest = path.join(dir, 'gate-dest.bin')
 
@@ -103,7 +103,7 @@ void test('gateGlob miss — skippedGate true, nothing written', () => {
   assert.equal(existsSync(dest), false, 'a gate miss must write nothing')
 })
 
-void test('gateSize floor miss on a tiny source — skippedGate true', () => {
+test('gateSize floor miss on a tiny source — skippedGate true', () => {
   const src = writeTinyExecutable('gate-size-src.sh')
   const dest = path.join(dir, 'gate-size-dest.bin')
 
@@ -113,7 +113,7 @@ void test('gateSize floor miss on a tiny source — skippedGate true', () => {
   assert.equal(existsSync(dest), false)
 })
 
-void test('invalid gate size predicate — throws', () => {
+test('invalid gate size predicate — throws', () => {
   const src = writeTinyExecutable('bad-gate-src.sh')
   const dest = path.join(dir, 'bad-gate-dest.bin')
 
