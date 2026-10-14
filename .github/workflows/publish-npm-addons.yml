@@ -1,19 +1,20 @@
-name: 'build: native packages'
-run-name: 'build: native packages ${{ github.ref_name }}'
+name: 'publish: npm addons'
+run-name: 'publish: npm addons ${{ github.ref_name }}'
 
 # Per-target native builds of the decmpfs node addon: the tier-1 subset on every
 # push/PR (native runners, no cross C toolchain) and the FULL 8-target release
-# set via the all-targets dispatch. The matrix is DERIVED from the single source
+# set via workflow dispatch. The matrix is DERIVED from the single source
 # of truth (napi/decmpfs/scripts/targets.mts) — adding a target there changes
 # the matrix with no edit here.
 #
 # The windows legs download node.lib (the node.exe import library) for the napi
-# build; musl legs install the musl toolchain.
+# build; musl legs compile and load-check inside Alpine.
 
 on:
   push:
     branches: [main]
     paths:
+      - '.cargo/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'crates/**'
@@ -23,9 +24,10 @@ on:
       - 'pnpm-workspace.yaml'
       - 'pnpm-lock.yaml'
       - 'tsconfig.json'
-      - '.github/workflows/build-native-packages.yml'
+      - '.github/workflows/publish-npm-addons.yml'
   pull_request:
     paths:
+      - '.cargo/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'crates/**'
@@ -35,13 +37,8 @@ on:
       - 'pnpm-workspace.yaml'
       - 'pnpm-lock.yaml'
       - 'tsconfig.json'
-      - '.github/workflows/build-native-packages.yml'
+      - '.github/workflows/publish-npm-addons.yml'
   workflow_dispatch:
-    inputs:
-      all-targets:
-        description: 'Build every target in targets.mts (release set), not just tier-1.'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -89,7 +86,7 @@ jobs:
       - name: Derive the build matrix from targets.mts
         id: gen
         env:
-          ALL_TARGETS: ${{ github.event.inputs.all-targets }}
+          ALL_TARGETS: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           set -euo pipefail
           node --input-type=module <<'JS' >> "$GITHUB_OUTPUT"
@@ -123,6 +120,9 @@ jobs:
             .filter(t => all || tier1.has(t.triple))
             .map(t => ({
               ...t,
+              platformId: t.triple
+                .replace(/-(gnu|msvc)$/, '')
+                .replace(/^win32-/, 'win-'),
               runner:
                 t.os === 'darwin'
                   ? t.cpu === 'arm64'
@@ -164,9 +164,6 @@ jobs:
         with:
           key: ${{ matrix.triple }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Install the musl toolchain (musl targets only)
-        if: ${{ matrix.libc == 'musl' }}
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
       - name: Download node.lib (Windows targets only)
         if: ${{ runner.os == 'Windows' }}
         env:
@@ -180,7 +177,28 @@ jobs:
           New-Item -ItemType Directory -Force $dir | Out-Null
           Invoke-WebRequest -Uri "https://nodejs.org/dist/$v/win-$arch/node.lib" -OutFile "$dir/node.lib"
           "NODE_LIB_DIR=$dir" | Add-Content $env:GITHUB_ENV
-      - name: Build the addon
+      - name: Build musl addon in Alpine
+        if: ${{ matrix.libc == 'musl' }}
+        env:
+          RUST_TARGET: ${{ matrix.rust }}
+          PACKAGE_TRIPLE: ${{ matrix.triple }}
+        run: |
+          set -euo pipefail
+          musl_build_image='rust:alpine@sha256:0cce0a5e0e8ba67a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1' # rust Alpine musl build image
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            -v "$HOME/.cargo/registry:/usr/local/cargo/registry" \
+            -e RUST_TARGET -e RUST_TOOLCHAIN=nightly-2026-09-24 \
+            -e CARGO_TERM_COLOR -e RUST_BACKTRACE \
+            -e CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=gcc \
+            -e CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=gcc \
+            "$musl_build_image" \
+            sh -ec 'apk add --no-cache build-base cmake perl linux-headers; rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal; rustup target add --toolchain "$RUST_TOOLCHAIN" "$RUST_TARGET"; exec rustup run "$RUST_TOOLCHAIN" cargo build --locked --release --target "$RUST_TARGET" -p decmpfs-node'
+          mkdir -p "npm-out/$PACKAGE_TRIPLE"
+          cp "target/$RUST_TARGET/release/libdecmpfs_node.so" "npm-out/$PACKAGE_TRIPLE/decmpfs.node"
+      - name: Build non-musl addon
+        if: ${{ matrix.libc != 'musl' }}
         env:
           RUST_TARGET: ${{ matrix.rust }}
           PACKAGE_TRIPLE: ${{ matrix.triple }}
@@ -190,8 +208,11 @@ jobs:
           PATH="$HOME/.cargo/bin:$PATH" node scripts/build.mts --prod --target "$RUST_TARGET"
           mkdir -p "../../npm-out/$PACKAGE_TRIPLE"
           cp decmpfs.node "../../npm-out/$PACKAGE_TRIPLE/decmpfs.node"
+      - name: Check musl addon in Alpine
+        if: ${{ matrix.libc == 'musl' }}
+        run: docker run --rm -v "$GITHUB_WORKSPACE/npm-out/${{ matrix.triple }}/decmpfs.node:/tmp/decmpfs.node:ro" node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 node -e 'require("/tmp/decmpfs.node")' # node 24 alpine
       - name: Upload the built addon
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (2026-04-10)
         with:
-          name: decmpfs-node-${{ matrix.triple }}
+          name: addons-${{ matrix.platformId }}
           path: npm-out/${{ matrix.triple }}

@@ -17,9 +17,7 @@
       {
         "kind": "commands",
         "hub": "docs/commands.md",
-        "sources": [
-          "crates/decmpfs/src/bin/decmpfs.rs"
-        ]
+        "sources": ["crates/decmpfs/src/bin/decmpfs.rs"]
       }
     ]
   },
@@ -36,6 +34,21 @@
       "type": "addon"
     }
   ],
+  "napi": {
+    "platforms": [
+      "darwin-arm64",
+      "darwin-x64",
+      "linux-arm64-gnu",
+      "linux-x64-gnu",
+      "win32-x64-msvc",
+      "linux-arm64-musl",
+      "linux-x64-musl",
+      "win32-arm64-msvc"
+    ],
+    "artifactFiles": {
+      "decmpfs.node": "npm/{target}/decmpfs.{target}.node"
+    }
+  },
   "ai": {
     "localAssist": true
   },
@@ -47,8 +60,6 @@
     "versionPolicy": "patch-only"
   },
   "capabilities": {
-    "cargo": [
-      "."
-    ]
+    "cargo": ["."]
   }
 }
