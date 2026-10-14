@@ -41,6 +41,9 @@ jobs:
           git checkout -q --detach FETCH_HEAD
       - name: Set up and install
         uses: ./.github/actions/fleet/setup-and-install
+        with:
+          payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
+          payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
       - name: Plan nightly
         id: plan
         run: pnpm run release:nightly:plan --ecosystem cargo

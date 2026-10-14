@@ -61,6 +61,7 @@ jobs:
             git fetch "${FETCH_ARGS[@]}"
           fi
           git checkout -q --detach FETCH_HEAD
+          install -m 0600 scripts/fleet/release/record/run.mts "$RUNNER_TEMP/npm-release-record-run.mts"
       - name: Set up and install
         uses: ./.github/actions/fleet/setup-and-install
         with:
@@ -68,6 +69,9 @@ jobs:
           payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
           payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
           checkout-ref: ${{ github.sha }}
+      - name: Restore trusted release-record controller
+        shell: bash
+        run: install -m 0600 "$RUNNER_TEMP/npm-release-record-run.mts" scripts/fleet/release/record/run.mts
       - name: Mint release token
         id: release-app
         uses: ./.github/actions/fleet/github-release-app-token
