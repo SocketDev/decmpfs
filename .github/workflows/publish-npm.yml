@@ -733,11 +733,13 @@ jobs:
       - name: 'Mint release token'
         if: ${{ steps.content-trust.outputs.trusted == 'true' }}
         id: release-app
-        uses: ./.github/actions/fleet/github-release-app-token
-        with:
-          client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
-          private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
+        env:
+          APP_PRIVATE_KEY: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+          CLIENT_ID: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
+          OWNER: ${{ github.repository_owner }}
+          PERMISSIONS: '{"administration":"read","contents":"write"}'
+          REPOSITORIES: ${{ github.event.repository.name }}
+        run: node .github/actions/fleet/github-release-app-token/mint-app-installation-token.mjs
       # The version resolver consumes a prerelease hint, uses configured odai
       # for patch/minor, or defaults to minor.
       - name: Publish

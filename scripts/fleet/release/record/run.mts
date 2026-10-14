@@ -11,7 +11,7 @@ import {
   listStagedPackages,
   npmScratchCwd,
 } from '../../registry/npm/shared.mts'
-import { isAlreadyPublished } from '../../registry/npm/registry.mts'
+import { isPublishedVersionChecked } from '../../registry/npm/registry.mts'
 import { resolveNpmStageCommand } from '../../registry/npm/stage-command.mts'
 import { runNativeNpmOperation } from '../../registry/npm/settings/trust.mts'
 import { resolveNpmWorkspaceLayout } from '../../registry/npm/workspace.mts'
@@ -93,7 +93,7 @@ async function processNpmReleaseRecord(
     }
   }
   for (const identity of identities) {
-    if (await isAlreadyPublished(identity.name, identity.version)) {
+    if (await isPublishedVersionChecked(identity.name, identity.version)) {
       throw new Error(
         `A public npm release cannot be abandoned or reused: ${identity.name}@${identity.version}.`,
       )
