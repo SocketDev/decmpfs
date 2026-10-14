@@ -26,6 +26,7 @@ import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
 function die(message: string): never {
+  // oxlint-disable-next-line socket/no-direct-stream-write
   process.stderr.write(`[mint-app-token] ${message}\n`)
   process.exit(1)
 }
@@ -178,6 +179,7 @@ async function main(): Promise<void> {
     die(`token mint returned no token. Saw: ${minted.body}.`)
   }
 
+  // oxlint-disable-next-line socket/no-direct-stream-write
   process.stdout.write(`::add-mask::${token}\n`)
   appendFileSync(env('GITHUB_OUTPUT'), `token=${token}\n`)
 }
