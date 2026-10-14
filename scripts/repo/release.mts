@@ -158,14 +158,6 @@ if (bump) {
   // first (they are generated, gitignored, and referenced by `link:` from the
   // napi package) or the relock DROPS their importers and CI's frozen install
   // — which generates them before installing — mismatches (the v0.1.2 red).
-  const manifests = spawnSync(
-    process.execPath,
-    [path.join(root, 'napi', 'decmpfs', 'scripts', 'make-npm-dirs.mts')],
-    { cwd: root, stdio: 'inherit' },
-  )
-  if (manifests.status !== 0) {
-    die(`make-npm-dirs exited ${manifests.status ?? 'on a signal'}.`)
-  }
   const relocked = spawnSync(
     'pnpm',
     ['install', '--lockfile-only', '--ignore-scripts'],
@@ -203,6 +195,17 @@ if (bump) {
     const section = changelogSection(version, subjects)
     edit('CHANGELOG.md', src => src.replace(/\n## /, () => `\n${section}\n## `))
   }
+}
+
+// Always materialize the platform manifests before the parity gate. A release
+// of an already-committed version must refresh the exact tarball manifests too.
+const manifests = spawnSync(
+  process.execPath,
+  [path.join(root, 'napi', 'decmpfs', 'scripts', 'make-npm-dirs.mts')],
+  { cwd: root, stdio: 'inherit' },
+)
+if (manifests.status !== 0) {
+  die(`make-npm-dirs exited ${manifests.status ?? 'on a signal'}.`)
 }
 
 // Every release path runs the lockstep gate + requires a real CHANGELOG section.

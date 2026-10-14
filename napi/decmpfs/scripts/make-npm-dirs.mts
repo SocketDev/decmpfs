@@ -14,10 +14,12 @@ import {
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { stringifyWithFormatting } from '@socketsecurity/lib-stable/json/format'
+
 import { TARGETS } from './targets.mts'
 
 const nodeRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
-// This package is a member of the cargo workspace rooted at the repo, so cargo
+// This package is a member of the `cargo` workspace rooted at the repo, so `cargo`
 // writes the cdylib to the WORKSPACE-ROOT target/, not this package's dir.
 const repoRoot = path.join(nodeRoot, '..', '..')
 const mainManifest = JSON.parse(
@@ -70,7 +72,7 @@ for (const target of TARGETS) {
   }
   writeFileSync(
     path.join(dir, 'package.json'),
-    `${JSON.stringify(manifest, undefined, 2)}\n`,
+    stringifyWithFormatting(manifest),
   )
 
   // Every published package ships a README + LICENSE (npm includes both without
@@ -93,27 +95,17 @@ for (const target of TARGETS) {
   }
 }
 
-// Re-pin the loader's optionalDependencies rows to this manifest's own
-// version. The bump lifts the version field and this generator stamps the
-// platform manifests from it, but the loader's exact sibling pins live in
-// THIS manifest — leaving them behind fails the bump's version-lockstep gate
-// (`pins 0.1.2 != 0.1.3`). The generator is the lockstep owner, so it closes
-// the loop.
+// The main package owns version pins. Generation must not edit its source
+// manifest, because CI also runs this script on a clean checkout.
 const optionalDeps = mainManifest.optionalDependencies ?? {}
-let pinsChanged = false
 for (const target of TARGETS) {
   const depName = `@decmpfs/${target.triple}`
-  if (
-    typeof optionalDeps[depName] === 'string' &&
-    optionalDeps[depName] !== mainManifest.version
-  ) {
-    optionalDeps[depName] = mainManifest.version
-    pinsChanged = true
+  if (optionalDeps[depName] !== mainManifest.version) {
+    throw new Error(
+      `Platform package pin is out of sync. Where: napi/decmpfs/package.json ` +
+        `optionalDependencies[${JSON.stringify(depName)}]. Saw: ` +
+        `${JSON.stringify(optionalDeps[depName])}; wanted ${JSON.stringify(mainManifest.version)}. ` +
+        'Fix: update the release version and all platform pins together, then rerun generation.',
+    )
   }
-}
-if (pinsChanged) {
-  writeFileSync(
-    path.join(nodeRoot, 'package.json'),
-    `${JSON.stringify(mainManifest, undefined, 2)}\n`,
-  )
 }

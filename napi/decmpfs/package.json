@@ -34,11 +34,14 @@
     "typescript": "catalog:"
   },
   "optionalDependencies": {
-    "@decmpfs/darwin-arm64": "0.1.4",
-    "@decmpfs/darwin-x64": "0.1.4",
-    "@decmpfs/linux-arm64-gnu": "0.1.4",
-    "@decmpfs/linux-x64-gnu": "0.1.4",
-    "@decmpfs/win32-x64-msvc": "0.1.4"
+    "@decmpfs/darwin-arm64": "0.1.5",
+    "@decmpfs/darwin-x64": "0.1.5",
+    "@decmpfs/linux-arm64-gnu": "0.1.5",
+    "@decmpfs/linux-arm64-musl": "0.1.5",
+    "@decmpfs/linux-x64-gnu": "0.1.5",
+    "@decmpfs/linux-x64-musl": "0.1.5",
+    "@decmpfs/win32-arm64-msvc": "0.1.5",
+    "@decmpfs/win32-x64-msvc": "0.1.5"
   },
   "engines": {
     "node": ">=18"
