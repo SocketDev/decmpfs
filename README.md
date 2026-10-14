@@ -80,7 +80,7 @@ Node - an N-API binding in [`napi/`](napi/), async + `Sync` variants of each:
   `COPYFILE_EXCL` / `COPYFILE_FICLONE` / `COPYFILE_FICLONE_FORCE`, backed by the
   clone-first copy libuv lacks on macOS.
 
-## Compressing build output on APFS
+### Compressing build output on APFS
 
 The `decmpfs` command can compress eligible files in a completed build tree.
 Run it after the build has finished so it never rewrites files while Cargo or

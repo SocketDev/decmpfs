@@ -28,9 +28,9 @@ The size fields are allocated byte counts unless the method documentation for a 
 ## Copy, remove, and streaming writes
 
 - `try_clone_file(src, dest)` attempts a copy-on-write clone. `Ok(false)` means the platform or filesystem cannot clone that pair; it is not an error.
-- `copy_file(src, dest)` preserves the source's compression state. It clones when possible, otherwise copies and recompresses a compressed source. An existing destination is replaced.
+- `copy_file(src, dest)` preserves the source's compression state when possible. If the destination cannot be compressed or compression is skipped, it completes a plain copy and returns `CopyOutcome::CopiedPlain`; inspect the returned outcome to distinguish that case. An existing destination is replaced.
 - `rm(path, options)` removes a file with the options in `RmOptions`.
-- `DecmpfsWriter::create(path, expected_len, gate)` accepts data in chunks. Call `finish()` to write and verify the completed file, or `abort()` to stop the write.
+- `DecmpfsWriter::create(path, expected_len, gate)` accepts data in chunks. Call `finish()` to verify the received byte count and publish the completed file, or `abort()` to stop the write.
 
 ## Optional features
 

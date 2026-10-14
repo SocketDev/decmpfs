@@ -2835,6 +2835,7 @@ docs/fleet/development/grafana-mcp.md
 docs/fleet/development/javascript-api.md
 docs/fleet/development/jev-pr-review.md
 docs/fleet/development/mcp-service-connections.md
+docs/fleet/development/napi-javascript.md
 docs/fleet/development/pgbot.md
 docs/fleet/development/rust-javascript.md
 docs/fleet/development/settings.md
@@ -5415,6 +5416,7 @@ yarn.lock
 !/.git-hooks/_shared/push/file-scan.mts
 !/.git-hooks/_shared/push/pr-commit-count.mts
 !/.git-hooks/_shared/push/range.mts
+!/.git-hooks/_shared/push/release-ledger.mts
 !/.git-hooks/_shared/push/release-tags.mts
 !/.git-hooks/_shared/push/repo-gates.mts
 !/.git-hooks/_shared/push/signatures.mts
@@ -5543,6 +5545,7 @@ yarn.lock
 !/.github/workflows/nightly-cargo.yml
 !/.github/workflows/nightly-npm.yml
 !/.github/workflows/publish-cargo.yml
+!/.github/workflows/publish-npm-addons.yml
 !/.github/workflows/publish-npm.yml
 !/.github/workflows/release-github.yml
 !/.github/workflows/sweep-jobs.yml

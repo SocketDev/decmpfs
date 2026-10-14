@@ -27,7 +27,9 @@ const REPS = 25
 const block = Buffer.from('compressible chunk 0123456789 ')
 export function payload(n) {
   const buf = Buffer.alloc(n)
-  for (let i = 0; i < n; i += block.length) {block.copy(buf, i)}
+  for (let i = 0; i < n; i += block.length) {
+    block.copy(buf, i)
+  }
   return buf
 }
 export async function time(fn) {

@@ -1,218 +1,195 @@
 name: 'publish: npm addons'
-run-name: 'publish: npm addons ${{ github.ref_name }}'
-
-# Per-target native builds of the decmpfs node addon: the tier-1 subset on every
-# push/PR (native runners, no cross C toolchain) and the FULL 8-target release
-# set via workflow dispatch. The matrix is DERIVED from the single source
-# of truth (napi/decmpfs/scripts/targets.mts) — adding a target there changes
-# the matrix with no edit here.
-#
-# The windows legs download node.lib (the node.exe import library) for the napi
-# build; musl legs compile and load-check inside Alpine.
+run-name: 'publish: npm addons'
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.cargo/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'crates/**'
-      - 'napi/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'pnpm-workspace.yaml'
-      - 'pnpm-lock.yaml'
-      - 'tsconfig.json'
-      - '.github/workflows/publish-npm-addons.yml'
-  pull_request:
-    paths:
-      - '.cargo/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'crates/**'
-      - 'napi/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'pnpm-workspace.yaml'
-      - 'pnpm-lock.yaml'
-      - 'tsconfig.json'
-      - '.github/workflows/publish-npm-addons.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-defaults:
-  run:
-    shell: bash
-
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
-
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
-        with:
-          persist-credentials: false
-      - name: Set up pnpm
-        uses: ./.github/actions/repo/setup-pnpm
-      - name: Generate platform workspace manifests
-        run: node napi/decmpfs/scripts/make-npm-dirs.mts
-      - name: Install workspace devdependencies
-        run: pnpm install --frozen-lockfile
-      - name: Test the addon build script
-        run: node scripts/fleet/test.mts test/repo/unit
-
-  prepare:
-    name: Prepare
-    runs-on: ubuntu-latest
+  napi-matrix:
+    if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    name: Plan native addon matrix
+    runs-on: ubuntu-26.04
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
     steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
-        with:
-          persist-credentials: false
-      - name: Derive the build matrix from targets.mts
-        id: gen
+      - name: Bootstrap checkout
+        shell: bash
         env:
-          ALL_TARGETS: ${{ github.event_name == 'workflow_dispatch' }}
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_REF: ${{ github.sha }}
         run: |
           set -euo pipefail
-          node --input-type=module <<'JS' >> "$GITHUB_OUTPUT"
-          import { readFileSync } from 'node:fs'
-          // The TARGETS file is the single source of truth; the tier-1 set =
-          // the native-runner targets. Emit the GitHub Actions matrix JSON.
-          const src = readFileSync('napi/decmpfs/scripts/targets.mts', 'utf8')
-          const all = process.env.ALL_TARGETS === 'true'
-          // Parse each target block field-independently: the field order in
-          // the manifest must not couple to this parser.
-          const entries = src
-            .split("triple: '")
-            .slice(1)
-            .map(block => ({
-              triple: /^([^']+)'/.exec(block)?.[1],
-              os: /os: '([^']+)'/.exec(block)?.[1],
-              cpu: /cpu: '([^']+)'/.exec(block)?.[1],
-              libc: /libc: '([^']+)'/.exec(block)?.[1],
-              rust: /rust: '([^']+)'/.exec(block)?.[1],
-              artifact: /artifact: '([^']+)'/.exec(block)?.[1],
-            }))
-            .filter(t => t.triple && t.os && t.cpu && t.rust && t.artifact)
-          const tier1 = new Set([
-            'darwin-arm64',
-            'darwin-x64',
-            'linux-arm64-gnu',
-            'linux-x64-gnu',
-            'win32-x64-msvc',
-          ])
-          const matrix = entries
-            .filter(t => all || tier1.has(t.triple))
-            .map(t => ({
-              ...t,
-              platformId: t.triple
-                .replace(/-(gnu|msvc)$/, '')
-                .replace(/^win32-/, 'win-'),
-              runner:
-                t.os === 'darwin'
-                  ? t.cpu === 'arm64'
-                    ? 'macos-26'
-                    : 'macos-15'
-                  : t.os === 'win32'
-                    ? t.cpu === 'arm64'
-                      ? 'windows-11-arm'
-                      : 'windows-latest'
-                    : t.cpu === 'arm64'
-                      ? 'ubuntu-26.04-arm'
-                      : 'ubuntu-26.04',
-            }))
-          if (!matrix.length) throw new Error('no targets resolved')
-          console.log(`matrix=${JSON.stringify({ include: matrix })}`)
-          JS
-  build:
-    name: Build (${{ matrix.triple }})
-    needs: [check, prepare]
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          FETCH_ARGS=(--no-tags --prune --depth 1 origin "${TRIGGER_REF}")
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            export GIT_CONFIG_COUNT=1
+            export GIT_CONFIG_KEY_0="http.${SERVER_URL}/.extraheader"
+            export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${AUTH_B64}"
+            git fetch "${FETCH_ARGS[@]}"
+          else
+            git fetch "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
+      - name: Set up and install
+        uses: ./.github/actions/fleet/setup-and-install
+        with:
+          socket-api-token: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
+          checkout-ref: ${{ github.sha }}
+          payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
+          payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+      - id: gen
+        name: Derive napi build matrix
+        run: |
+          set -euo pipefail
+          MATRIX="$(node scripts/fleet/registry/napi-matrix.mts --print-matrix)"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  napi-build:
+    if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    name: 'Build (${{ matrix.target }})'
+    needs: napi-matrix
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.napi-matrix.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
+    env:
+      # The abi producer version installed from crates.io on every leg.
+      ABITIOUS_VERSION: 0.1.0
+      # socket-btm build the opentui prebuilts come from; update via
+      # scripts/update-from-upstream.mts, which prints the newest tag.
+      OPENTUI_BUILD_TAG: opentui-20260424-18f0f46
     steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
+      - name: Bootstrap checkout
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git init -q
+          git config --local advice.detachedHead false
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "${SERVER_URL}/${REPOSITORY}"
+          FETCH_ARGS=(--no-tags --prune --depth 1 origin "${TRIGGER_REF}")
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            AUTH_B64="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+            export GIT_CONFIG_COUNT=1
+            export GIT_CONFIG_KEY_0="http.${SERVER_URL}/.extraheader"
+            export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${AUTH_B64}"
+            git fetch "${FETCH_ARGS[@]}"
+          else
+            git fetch "${FETCH_ARGS[@]}"
+          fi
+          git checkout -q --detach FETCH_HEAD
+      - name: 'Check out source'
+        uses: ./.github/actions/fleet/checkout
         with:
-          persist-credentials: false
-      - name: Hydrate the fleet pack
-        run: node scripts/repo/bootstrap/fleet.mjs --preserve-tracked
-      - name: Set up Rust toolchain
+          checkout-ref: ${{ github.sha }}
+          payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
+          payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+      - name: 'Set up and install'
+        uses: ./.github/actions/fleet/setup-and-install
+        with:
+          socket-api-token: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
+          # Reuse the Release App for a contents:read token scoped to wheelhouse.
+          # Both credentials enable the private release fallback. Without the
+          # key, hydration still pulls public GHCR anonymously.
+          checkout-ref: ${{ github.sha }}
+          payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
+          payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
+      # Socket-original composites, not the third-party Rust toolchain and
+      # cache actions they replace. An addon member's Actions allowlist then
+      # needs nothing beyond actions/* and its own local composites, so a grep
+      # for a third-party Rust action comes back empty in every fleet member,
+      # addon or not.
+      - name: Rust toolchain
         uses: ./.github/actions/fleet/setup-rust-toolchain
         with:
-          channel: nightly-2026-09-24
-          targets: ${{ matrix.rust }}
-          components: clippy,rustfmt
+          channel: stable
       - name: Rust cache
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2 (2026-03-12)
+        uses: ./.github/actions/fleet/setup-rust-cache
         with:
-          key: ${{ matrix.triple }}
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Download node.lib (Windows targets only)
-        if: ${{ runner.os == 'Windows' }}
+          prefix-key: napi-${{ matrix.target }}
+          workspaces: .
+      - name: 'Prefer rustup Cargo over the SFW shim'
+        shell: bash
+        # The SFW proxy MITMs crates.io, and on Windows schannel rejects its
+        # certificate ("revocation status is unknown"), breaking every cargo
+        # network operation. Front-load the rustup toolchain dir so cargo
+        # runs unshimmed; crate installs stay --locked.
+        run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Install abi (crates.io)
+        shell: bash
+        run: cargo install abitious --version "$ABITIOUS_VERSION" --locked
+      - name: Fetch opentui prebuilt
+        shell: bash
         env:
-          TARGET_CPU: ${{ matrix.cpu }}
-          WORKSPACE: ${{ github.workspace }}
-        shell: pwsh
-        run: |
-          $v = (node -p process.version)
-          $arch = if ($env:TARGET_CPU -eq "arm64") { "arm64" } else { "x64" }
-          $dir = "$env:WORKSPACE/.cache/node-lib"
-          New-Item -ItemType Directory -Force $dir | Out-Null
-          Invoke-WebRequest -Uri "https://nodejs.org/dist/$v/win-$arch/node.lib" -OutFile "$dir/node.lib"
-          "NODE_LIB_DIR=$dir" | Add-Content $env:GITHUB_ENV
-      - name: Build musl addon in Alpine
-        if: ${{ matrix.libc == 'musl' }}
-        env:
-          RUST_TARGET: ${{ matrix.rust }}
-          PACKAGE_TRIPLE: ${{ matrix.triple }}
+          GH_TOKEN: ${{ github.token }}
+          PLATFORM_ID: ${{ matrix.platformId }}
+        # Exact-name download: socket-btm names each prebuilt asset
+        # `<tag>-<platformId>.node`, which downloadSocketBtmRelease's generic
+        # binary naming (`<tool>-<platformId>`, no tag infix or extension)
+        # cannot resolve — fetch the asset directly by its exact name.
         run: |
           set -euo pipefail
-          musl_build_image='rust:alpine@sha256:0cce0a5e0e8ba67a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1' # rust Alpine musl build image
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -w /workspace \
-            -v "$HOME/.cargo/registry:/usr/local/cargo/registry" \
-            -e RUST_TARGET -e RUST_TOOLCHAIN=nightly-2026-09-24 \
-            -e CARGO_TERM_COLOR -e RUST_BACKTRACE \
-            -e CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=gcc \
-            -e CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=gcc \
-            "$musl_build_image" \
-            sh -ec 'apk add --no-cache build-base cmake perl linux-headers; rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal; rustup target add --toolchain "$RUST_TOOLCHAIN" "$RUST_TARGET"; exec rustup run "$RUST_TOOLCHAIN" cargo build --locked --release --target "$RUST_TARGET" -p decmpfs-node'
-          mkdir -p "npm-out/$PACKAGE_TRIPLE"
-          cp "target/$RUST_TARGET/release/libdecmpfs_node.so" "npm-out/$PACKAGE_TRIPLE/decmpfs.node"
-      - name: Build non-musl addon
-        if: ${{ matrix.libc != 'musl' }}
-        env:
-          RUST_TARGET: ${{ matrix.rust }}
-          PACKAGE_TRIPLE: ${{ matrix.triple }}
+          FINAL="packages/core/build/dev/${PLATFORM_ID}/out/Final"
+          mkdir -p "$FINAL"
+          gh release download "$OPENTUI_BUILD_TAG" -R SocketDev/socket-btm \
+            --pattern "${OPENTUI_BUILD_TAG}-${PLATFORM_ID}.node" \
+            --output "$FINAL/opentui.node"
+          test -s "$FINAL/opentui.node" || {
+            echo "× opentui.node missing at $FINAL after the prebuilt fetch." >&2
+            exit 1
+          }
+      - name: Build abitious stub
+        shell: bash
+        # `abi build --compress` needs the self-loader stub cdylib. The
+        # @abitious/* npm platform packages (its auto-resolve source) are not
+        # published yet, so build the stub from the pinned abitious tag and
+        # hand it to `--stub`. Cloned into the workspace so cargo paths stay
+        # native on every runner OS.
         run: |
           set -euo pipefail
-          cd napi/decmpfs
-          PATH="$HOME/.cargo/bin:$PATH" node scripts/build.mts --prod --target "$RUST_TARGET"
-          mkdir -p "../../npm-out/$PACKAGE_TRIPLE"
-          cp decmpfs.node "../../npm-out/$PACKAGE_TRIPLE/decmpfs.node"
-      - name: Check musl addon in Alpine
-        if: ${{ matrix.libc == 'musl' }}
-        run: docker run --rm -v "$GITHUB_WORKSPACE/npm-out/${{ matrix.triple }}/decmpfs.node:/tmp/decmpfs.node:ro" node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 node -e 'require("/tmp/decmpfs.node")' # node 24 alpine
-      - name: Upload the built addon
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (2026-04-10)
+          git clone --depth=1 --single-branch --branch "v${ABITIOUS_VERSION}" \
+            https://github.com/SocketDev/abitious abitious-src
+          cargo build --manifest-path abitious-src/Cargo.toml -p abitious-stub --release
+      - name: Build + compress stuie.node
+        shell: bash
+        env:
+          PLATFORM_ID: ${{ matrix.platformId }}
+        run: |
+          set -euo pipefail
+          case "$PLATFORM_ID" in
+            darwin-*) STUB_FILE=libabitious_stub.dylib ;;
+            win-*)    STUB_FILE=abitious_stub.dll ;;
+            *)        STUB_FILE=libabitious_stub.so ;;
+          esac
+          abi build --compress --release -p stuie-node \
+            --stub "abitious-src/target/release/${STUB_FILE}"
+          FINAL="packages/core/build/dev/${PLATFORM_ID}/out/Final"
+          mv stuie_node.node "$FINAL/stuie.node"
+      - name: 'Upload artifact'
+        uses: ./.github/actions/fleet/upload-artifact
         with:
+          if-no-files-found: error
           name: addons-${{ matrix.platformId }}
-          path: npm-out/${{ matrix.triple }}
+          path: packages/core/build/dev/${{ matrix.platformId }}/out/Final
+      # Last step on purpose: the restore-phase call above exported the
+      # RUST_CACHE_* job env; this saves the populated target dirs. Runs only
+      # when every previous step succeeded — the same success gate the old
+      # cache post step used.
+      - name: Save Rust cache
+        uses: ./.github/actions/fleet/setup-rust-cache
+        with:
+          phase: save
