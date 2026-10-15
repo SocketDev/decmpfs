@@ -278,11 +278,18 @@
     "yaml": "catalog:"
   },
   "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": ">=12.12.0",
-      "onFail": "error"
-    }
+    "packageManager": [
+      {
+        "name": "npm",
+        "version": ">=12.2.0",
+        "onFail": "error"
+      },
+      {
+        "name": "pnpm",
+        "version": ">=12.12.0",
+        "onFail": "error"
+      }
+    ]
   },
   "engines": {
     "node": ">=24",
