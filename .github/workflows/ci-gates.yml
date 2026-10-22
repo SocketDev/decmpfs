@@ -78,6 +78,7 @@ jobs:
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0 (2026-07-14)
         with:
           node-version: 24
+          package-manager-cache: false
       - name: Set up pnpm
         uses: ./.github/actions/repo/setup-pnpm
       - name: Generate platform workspace manifests
@@ -125,6 +126,7 @@ jobs:
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0 (2026-07-14)
         with:
           node-version: 24
+          package-manager-cache: false
       - name: Set up pnpm
         uses: ./.github/actions/repo/setup-pnpm
       - name: Generate platform workspace manifests
