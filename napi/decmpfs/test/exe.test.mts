@@ -11,7 +11,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
-import { afterAll, beforeAll, test } from 'vitest'
+import { after, before, test } from 'node:test'
 
 import { safeDelete } from '@socketsecurity/lib-stable/fs/safe'
 
@@ -20,7 +20,7 @@ const decmpfs = require('../index.cjs')
 
 let dir
 let stub
-beforeAll(async () => {
+before(async () => {
   dir = await mkdtemp(path.join(os.tmpdir(), 'decmpfs-exe-'))
   // A synthetic non-Mach-O stub: exercises the binding's inject/write path (the
   // packer routes a non-Mach-O stub through the EOF-footer append on any host)
@@ -29,7 +29,7 @@ beforeAll(async () => {
   stub = path.join(dir, 'stub.bin')
   writeFileSync(stub, Buffer.concat([Buffer.from('\x7fELF'), Buffer.alloc(64)]))
 })
-afterAll(async () => {
+after(async () => {
   if (dir) {
     await safeDelete(dir)
   }

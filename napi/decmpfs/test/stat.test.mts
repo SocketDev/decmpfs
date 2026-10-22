@@ -8,7 +8,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
-import { test } from 'vitest'
+import { test } from 'node:test'
 
 import { safeDeleteSync } from '@socketsecurity/lib-stable/fs/safe'
 

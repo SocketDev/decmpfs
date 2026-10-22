@@ -11,7 +11,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import * as os from 'node:os'
 import path from 'node:path'
-import { afterAll, beforeAll, test } from 'vitest'
+import { after, before, test } from 'node:test'
 
 import { safeDelete } from '@socketsecurity/lib-stable/fs/safe'
 
@@ -19,10 +19,10 @@ const require = createRequire(import.meta.url)
 const decmpfs = require('../index.cjs')
 
 let dir
-beforeAll(async () => {
+before(async () => {
   dir = await mkdtemp(path.join(os.tmpdir(), 'decmpfs-copy-'))
 })
-afterAll(async () => {
+after(async () => {
   if (dir) {
     await safeDelete(dir)
   }

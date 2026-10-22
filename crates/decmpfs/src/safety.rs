@@ -8,7 +8,7 @@ use crate::{verify, Backend, Error, Outcome, SkipReason};
 
 /// Reached only when the backend reported `Supported`. Fail-soft: a permission,
 /// read-only, or busy failure is a `Skipped` Outcome, never a hard `Err`. And if a
-/// (broken) backend ever leaves the file no longer loadable, roll back to the
+/// (broken) backend ever changes the file unexpectedly, roll back to the
 /// pre-apply bytes so a corrupt addon is never stranded.
 pub(crate) fn apply_guarded<B: Backend>(backend: &B, path: &Path) -> Result<Outcome, Error> {
     // INV-idempotent.
@@ -20,9 +20,8 @@ pub(crate) fn apply_guarded<B: Backend>(backend: &B, path: &Path) -> Result<Outc
 
     let before = verify::on_disk_bytes(path)?;
 
-    // INV-loadable: snapshot the native-binary magic so we can confirm the file
-    // still loads after compression (a post-compress *content* hash is vacuous —
-    // the kernel decompresses on read, so it always matches).
+    // INV-loadable: keep the native-binary magic for a fast first check. A full
+    // readback check below then verifies every byte after transparent decompression.
     let magic_before = verify::magic_prefix(path)?;
 
     // INV-rollback: keep the original bytes so a backend that produces a non-loadable
@@ -46,11 +45,8 @@ pub(crate) fn apply_guarded<B: Backend>(backend: &B, path: &Path) -> Result<Outc
     verify_loadable_or_restore(backend, path, before, magic_before, &snapshot)
 }
 
-/// Post-apply gate for the in-place path: if the file no longer carries its
-/// native-binary magic the backend broke it, so restore the snapshot and report
-/// `Skipped(NotLoadable)`; otherwise classify the win. Split out so the
-/// not-loadable rollback is unit-testable without a backend that corrupts a file
-/// (pass a `magic_before` the file no longer matches).
+/// Post-apply gate for the in-place path: restore the snapshot if the file loses
+/// its native-binary magic or differs from the complete pre-apply bytes.
 fn verify_loadable_or_restore<B: Backend>(
     backend: &B,
     path: &Path,
@@ -58,9 +54,19 @@ fn verify_loadable_or_restore<B: Backend>(
     magic_before: [u8; 4],
     snapshot: &[u8],
 ) -> Result<Outcome, Error> {
-    if verify::magic_prefix(path)? != magic_before {
+    let magic_matches = verify::magic_prefix(path)
+        .map(|magic| magic == magic_before)
+        .unwrap_or(false);
+    if !magic_matches {
         restore(path, snapshot)?;
         return Ok(classify_outcome(false, before, before, None));
+    }
+
+    if !verify::readback_matches(path, snapshot).unwrap_or(false) {
+        restore(path, snapshot)?;
+        return Ok(Outcome::Skipped {
+            reason: SkipReason::IntegrityRevert,
+        });
     }
 
     // INV-verify: prefer the backend's authoritative signal (btrfs FIEMAP ENCODED —
@@ -189,8 +195,23 @@ fn restore(path: &Path, bytes: &[u8]) -> Result<(), Error> {
         context: "rollback restore: path has no parent",
         source: std::io::Error::from(std::io::ErrorKind::InvalidInput),
     })?;
-    let tmp = dir.join(format!(".decmpfs-restore-{}.tmp", std::process::id()));
-    let wrote = std::fs::File::create(&tmp)
+    let name = path
+        .file_name()
+        .map_or_else(|| "addon".into(), |name| name.to_string_lossy());
+    static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let tmp = dir.join(format!(
+        ".{name}.decmpfs-restore-{}-{nanos}-{seq}.tmp",
+        std::process::id()
+    ));
+    let wrote = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp)
         .and_then(|mut file| {
             file.write_all(bytes)?;
             file.sync_all()
@@ -322,6 +343,21 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
+    #[test]
+    fn restore_does_not_truncate_a_stale_temp() {
+        let dir =
+            std::env::temp_dir().join(format!("decmpfs-stale-restore-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("f");
+        let stale = dir.join(format!(".decmpfs-restore-{}.tmp", std::process::id()));
+        std::fs::write(&path, b"corrupt").unwrap();
+        std::fs::write(&stale, b"stale rollback bytes").unwrap();
+        restore(&path, b"the original bytes").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"the original bytes");
+        assert_eq!(std::fs::read(&stale).unwrap(), b"stale rollback bytes");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     // A target whose parent directory does not exist: the backend's temp create
     // fails with ENOENT — not a permission/busy/too-large skip — so the guarded
     // one-pass write propagates it as a hard Err rather than swallowing it.
@@ -399,6 +435,26 @@ mod tests {
     }
 
     #[test]
+    fn readback_suffix_mismatch_is_restored_and_skipped() {
+        let dir = std::env::temp_dir().join(format!("decmpfs-suffix-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("f");
+        let original = b"\x7fELF original bytes after the magic";
+        std::fs::write(&path, original).unwrap();
+        let magic_before = verify::magic_prefix(&path).unwrap();
+        std::fs::write(&path, b"\x7fELF altered bytes after the magic").unwrap();
+        let out = verify_loadable_or_restore(&Os, &path, 100, magic_before, original).unwrap();
+        assert!(matches!(
+            out,
+            Outcome::Skipped {
+                reason: SkipReason::IntegrityRevert
+            }
+        ));
+        assert_eq!(std::fs::read(&path).unwrap(), original);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn read_back_mismatch_is_restored_and_skipped() {
         // Drive the one-pass oracle rollback: the file on disk differs from the bytes
         // we claim to have stored, so the read-back mismatches, the content is
@@ -430,8 +486,15 @@ mod tests {
             restore(&target, b"bytes").is_err(),
             "rename-over-dir must Err"
         );
-        let tmp = dir.join(format!(".decmpfs-restore-{}.tmp", std::process::id()));
-        assert!(!tmp.exists(), "temp left behind");
+        let prefix = format!(".a-dir.decmpfs-restore-{}-", std::process::id());
+        assert!(
+            std::fs::read_dir(&dir).unwrap().all(|entry| !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(&prefix)),
+            "temp left behind"
+        );
         assert!(target.is_dir(), "directory target untouched");
         std::fs::remove_dir_all(&dir).ok();
     }
