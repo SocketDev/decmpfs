@@ -3237,6 +3237,7 @@ scripts/fleet/ai/model-training-policy.mts
 scripts/fleet/ai/odai.mts
 scripts/fleet/ai/odai/ci.mts
 scripts/fleet/ai/odai/diagnostics.mts
+scripts/fleet/ai/odai/image.generated.json
 scripts/fleet/ai/odai/run.mts
 scripts/fleet/ai/opencode-auth-store.mts
 scripts/fleet/ai/opencode-auth.mts
