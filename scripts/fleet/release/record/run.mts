@@ -71,6 +71,14 @@ async function processNpmReleaseRecord(
     })
     return { exitCode: 0, data: existing }
   }
+  return abandonNpmReleaseRecord(values, names, values.version)
+}
+
+async function abandonNpmReleaseRecord(
+  values: ReturnType<typeof parseNpmReleaseRecordArgs>['values'],
+  names: string[],
+  version: string,
+): Promise<{ exitCode: number; data: unknown }> {
   if (!values.reason?.trim()) {
     throw new Error('Permanent abandonment requires --reason.')
   }
@@ -82,17 +90,19 @@ async function processNpmReleaseRecord(
     version: string
   }> = []
   let resolvedSourceSha: string | undefined
-  for (const name of names) {
-    const key = { registry: 'npm' as const, name, version: values.version }
+  for (let index = 0, { length } = names; index < length; index += 1) {
+    const name = names[index]!
+    const key = { registry: 'npm' as const, name, version }
     const existing = await store.read(key)
     if (existing?.record.sourceSha) {
       identities.push({ ...key, sourceSha: existing.record.sourceSha })
     } else {
-      resolvedSourceSha ??= await npmReleaseSourceSha(values.version)
+      resolvedSourceSha ??= await npmReleaseSourceSha(version)
       identities.push({ ...key, sourceSha: resolvedSourceSha })
     }
   }
-  for (const identity of identities) {
+  for (let index = 0, { length } = identities; index < length; index += 1) {
+    const identity = identities[index]!
     if (await isPublishedVersionChecked(identity.name, identity.version)) {
       throw new Error(
         `A public npm release cannot be abandoned or reused: ${identity.name}@${identity.version}.`,
@@ -106,7 +116,8 @@ async function processNpmReleaseRecord(
     }
   }
   const records: Array<Awaited<ReturnType<typeof abandonNpmRelease>>> = []
-  for (const identity of identities) {
+  for (let index = 0, { length } = identities; index < length; index += 1) {
+    const identity = identities[index]!
     records.push(await abandonNpmRelease(identity, values.reason))
   }
   if (values['record-only']) {

@@ -1434,6 +1434,8 @@ const ALWAYS_TRACKED_PREFIXES = [
   'patches/fleet/run-local-ci@0.18.1.patch',
   'patches/fleet/vitest@5.0.0.patch',
   'patches/fleet/vitest@5.0.3.patch',
+  'patches/fleet/vitest@5.0.4.patch',
+  'patches/fleet/vitest@5.0.5.patch',
   'scripts/fleet/npm/native-artifact-files.mts',
   'scripts/fleet/npm/native-artifacts.mts',
   'scripts/fleet/npm/native/build.mts',
@@ -3929,6 +3931,884 @@ function effectiveMemberManifest(manifest, dest) {
   )
 }
 
+var require_object = /* @__PURE__ */ __commonJSMin(exports => {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+  const require_primordials_uncurry = require_uncurry()
+  /**
+   * @file Safe references to `Object` static methods and prototype methods.
+   *   Annex B legacy accessor methods (`__defineGetter__`, `__lookupGetter__`,
+   *   etc.) are exposed alongside the canonical static methods —
+   *   implementations exist in V8, SpiderMonkey, and JavaScriptCore even though
+   *   the spec calls them "normative optional".
+   */
+  const ObjectCtor = Object
+  const ObjectAssign = Object.assign
+  const ObjectCreate = Object.create
+  const ObjectDefineProperties = Object.defineProperties
+  const ObjectDefineProperty = Object.defineProperty
+  const ObjectEntries = Object.entries
+  const ObjectFreeze = Object.freeze
+  const ObjectFromEntries = Object.fromEntries
+  const ObjectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor
+  const ObjectGetOwnPropertyDescriptors = Object.getOwnPropertyDescriptors
+  const ObjectGetOwnPropertyNames = Object.getOwnPropertyNames
+  const ObjectGetOwnPropertySymbols = Object.getOwnPropertySymbols
+  const ObjectGetPrototypeOf = Object.getPrototypeOf
+  const ObjectHasOwn = Object.hasOwn
+  const ObjectIs = Object.is
+  const ObjectIsExtensible = Object.isExtensible
+  const ObjectIsFrozen = Object.isFrozen
+  const ObjectIsSealed = Object.isSealed
+  const ObjectKeys = Object.keys
+  const ObjectPreventExtensions = Object.preventExtensions
+  const ObjectSeal = Object.seal
+  const ObjectSetPrototypeOf = Object.setPrototypeOf
+  const ObjectValues = Object.values
+  const ObjectPrototype = Object.prototype
+  const ObjectPrototypeHasOwnProperty = require_primordials_uncurry.uncurryThis(
+    Object.prototype.hasOwnProperty,
+  )
+  const ObjectPrototypeIsPrototypeOf = require_primordials_uncurry.uncurryThis(
+    Object.prototype.isPrototypeOf,
+  )
+  const ObjectPrototypePropertyIsEnumerable =
+    require_primordials_uncurry.uncurryThis(
+      Object.prototype.propertyIsEnumerable,
+    )
+  const ObjectPrototypeToString = require_primordials_uncurry.uncurryThis(
+    Object.prototype.toString,
+  )
+  const ObjectPrototypeValueOf = require_primordials_uncurry.uncurryThis(
+    Object.prototype.valueOf,
+  )
+  const objectProto = Object.prototype
+  const ObjectPrototypeDefineGetter = require_primordials_uncurry.uncurryThis(
+    objectProto.__defineGetter__,
+  )
+  const ObjectPrototypeDefineSetter = require_primordials_uncurry.uncurryThis(
+    objectProto.__defineSetter__,
+  )
+  const ObjectPrototypeLookupGetter = require_primordials_uncurry.uncurryThis(
+    objectProto.__lookupGetter__,
+  )
+  const ObjectPrototypeLookupSetter = require_primordials_uncurry.uncurryThis(
+    objectProto.__lookupSetter__,
+  )
+  exports.ObjectAssign = ObjectAssign
+  exports.ObjectCreate = ObjectCreate
+  exports.ObjectCtor = ObjectCtor
+  exports.ObjectDefineProperties = ObjectDefineProperties
+  exports.ObjectDefineProperty = ObjectDefineProperty
+  exports.ObjectEntries = ObjectEntries
+  exports.ObjectFreeze = ObjectFreeze
+  exports.ObjectFromEntries = ObjectFromEntries
+  exports.ObjectGetOwnPropertyDescriptor = ObjectGetOwnPropertyDescriptor
+  exports.ObjectGetOwnPropertyDescriptors = ObjectGetOwnPropertyDescriptors
+  exports.ObjectGetOwnPropertyNames = ObjectGetOwnPropertyNames
+  exports.ObjectGetOwnPropertySymbols = ObjectGetOwnPropertySymbols
+  exports.ObjectGetPrototypeOf = ObjectGetPrototypeOf
+  exports.ObjectHasOwn = ObjectHasOwn
+  exports.ObjectIs = ObjectIs
+  exports.ObjectIsExtensible = ObjectIsExtensible
+  exports.ObjectIsFrozen = ObjectIsFrozen
+  exports.ObjectIsSealed = ObjectIsSealed
+  exports.ObjectKeys = ObjectKeys
+  exports.ObjectPreventExtensions = ObjectPreventExtensions
+  exports.ObjectPrototype = ObjectPrototype
+  exports.ObjectPrototypeDefineGetter = ObjectPrototypeDefineGetter
+  exports.ObjectPrototypeDefineSetter = ObjectPrototypeDefineSetter
+  exports.ObjectPrototypeHasOwnProperty = ObjectPrototypeHasOwnProperty
+  exports.ObjectPrototypeIsPrototypeOf = ObjectPrototypeIsPrototypeOf
+  exports.ObjectPrototypeLookupGetter = ObjectPrototypeLookupGetter
+  exports.ObjectPrototypeLookupSetter = ObjectPrototypeLookupSetter
+  exports.ObjectPrototypePropertyIsEnumerable =
+    ObjectPrototypePropertyIsEnumerable
+  exports.ObjectPrototypeToString = ObjectPrototypeToString
+  exports.ObjectPrototypeValueOf = ObjectPrototypeValueOf
+  exports.ObjectSeal = ObjectSeal
+  exports.ObjectSetPrototypeOf = ObjectSetPrototypeOf
+  exports.ObjectValues = ObjectValues
+})
+
+var require_predicates$1 = /* @__PURE__ */ __commonJSMin(exports => {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+  /**
+   * @file Array type-guard predicates. Currently just a re-export of native
+   *   `Array.isArray` for consistency with the rest of the arrays surface —
+   *   kept in its own leaf because it's runtime-trivial but conceptually a
+   *   different concern from `chunk` / `unique` / `join`.
+   */
+  /**
+   * Alias for native Array.isArray. Determines whether the passed value is an
+   * array.
+   *
+   * This is a direct reference to the native `Array.isArray` method, providing
+   * a type guard that narrows the type to an array type. Exported for
+   * consistency with other array utilities in this module.
+   *
+   * @example
+   *   ;```ts
+   *   // Check if value is an array
+   *   isArray([1, 2, 3])
+   *   // Returns: true
+   *
+   *   isArray('not an array')
+   *   // Returns: false
+   *
+   *   isArray(null)
+   *   // Returns: false
+   *
+   *   // Type guard usage
+   *   function processValue(value: unknown) {
+   *     if (isArray(value)) {
+   *       // TypeScript knows value is an array here
+   *       console.log(value.length)
+   *     }
+   *   }
+   *   ```
+   *
+   * @param value - The value to check.
+   *
+   * @returns `true` if the value is an array, `false` otherwise
+   */
+  const isArray = Array.isArray
+  exports.isArray = isArray
+})
+
+var require_predicates = /* @__PURE__ */ __commonJSMin(exports => {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+  const require_arrays_predicates = require_predicates$1()
+  const require_primordials_object = require_object()
+  /**
+   * @file Object type guards: `hasKeys`, `hasOwn`, `isObject`, `isPlainObject`.
+   *   All four narrow `unknown` to a typed shape and tolerate `null` /
+   *   `undefined` without throwing.
+   */
+  /**
+   * Check if an object has any enumerable own properties.
+   *
+   * Returns `true` if the object has at least one enumerable own property,
+   * `false` otherwise. Also returns `false` for null/undefined.
+   *
+   * @example
+   *   ;```ts
+   *   hasKeys({ a: 1 }) // true
+   *   hasKeys({}) // false
+   *   hasKeys([]) // false
+   *   hasKeys([1, 2]) // true
+   *   hasKeys(null) // false
+   *   hasKeys(undefined) // false
+   *   hasKeys(Object.create({ inherited: true })) // false
+   *   ```
+   *
+   * @param obj - The value to check.
+   *
+   * @returns `true` if obj has enumerable own properties, `false` otherwise
+   */
+  function hasKeys(obj) {
+    if (obj === null || obj === void 0) return false
+    for (const key in obj)
+      if (require_primordials_object.ObjectHasOwn(obj, key)) return true
+    return false
+  }
+  /**
+   * Check if an object has an own property.
+   *
+   * Type-safe wrapper around `Object.hasOwn()` that returns `false` for
+   * null/undefined instead of throwing. Only checks own properties, not
+   * inherited ones from the prototype chain.
+   *
+   * @example
+   *   ;```ts
+   *   const obj = { name: 'Alice' }
+   *   hasOwn(obj, 'name') // true
+   *   hasOwn(obj, 'age') // false
+   *   hasOwn(obj, 'toString') // false (inherited)
+   *   hasOwn(null, 'name') // false
+   *   ```
+   *
+   * @param obj - The value to check.
+   * @param propKey - The property key to look for.
+   *
+   * @returns `true` if obj has the property as an own property, `false`
+   *   otherwise.
+   */
+  function hasOwn(obj, propKey) {
+    if (obj === null || obj === void 0) return false
+    return require_primordials_object.ObjectHasOwn(obj, propKey)
+  }
+  /**
+   * Check if a value is an object, arrays included.
+   *
+   * Returns `true` for any object type including arrays, dates, etc. Returns
+   * `false` for primitives and `null`. Functions are not considered objects
+   * here (typeof functions === 'function').
+   *
+   * @example
+   *   ;```ts
+   *   isObject({}) // true
+   *   isObject([]) // true
+   *   isObject(new Date()) // true
+   *   isObject(() => {}) // false
+   *   isObject(null) // false
+   *   ```
+   *
+   * @param value - The value to check.
+   *
+   * @returns `true` for any object, arrays included; `false` otherwise
+   */
+  function isObject(value) {
+    return value !== null && typeof value === 'object'
+  }
+  /**
+   * Check if a value is a plain object, so neither an array nor a built-in.
+   *
+   * Returns `true` only for plain objects created with `{}` or
+   * `Object.create(null)`. Returns `false` for arrays, built-in objects (Date,
+   * RegExp, etc.), and primitives.
+   *
+   * @example
+   *   ;```ts
+   *   isPlainObject({}) // true
+   *   isPlainObject({ a: 1 }) // true
+   *   isPlainObject(Object.create(null)) // true
+   *   isPlainObject([]) // false
+   *   isPlainObject(new Date()) // false
+   *   ```
+   *
+   * @param value - The value to check.
+   *
+   * @returns `true` if value is a plain object, `false` otherwise
+   */
+  function isPlainObject(value) {
+    if (
+      value === null ||
+      typeof value !== 'object' ||
+      require_arrays_predicates.isArray(value)
+    )
+      return false
+    const proto = require_primordials_object.ObjectGetPrototypeOf(value)
+    return (
+      proto === null || proto === require_primordials_object.ObjectPrototype
+    )
+  }
+  exports.hasKeys = hasKeys
+  exports.hasOwn = hasOwn
+  exports.isObject = isObject
+  exports.isPlainObject = isPlainObject
+})
+
+var require_boolean = /* @__PURE__ */ __commonJSMin(exports => {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+  /**
+   * Convert an environment variable value to a boolean.
+   *
+   * @example
+   *   ;```typescript
+   *   import { envAsBoolean } from '@socketsecurity/lib/env/boolean'
+   *
+   *   envAsBoolean('true') // true
+   *   envAsBoolean('1') // true
+   *   envAsBoolean('yes') // true
+   *   envAsBoolean('  true  ') // true (trimmed)
+   *   envAsBoolean('  true  ', { trim: false }) // false (strict)
+   *   envAsBoolean(undefined) // false
+   *   envAsBoolean(undefined, { defaultValue: true }) // true
+   *   ```
+   *
+   * @param value - The value to convert.
+   * @param options - Options bag: `defaultValue`, `trim`.
+   *
+   * @returns `true` if value is '1', 'true', or 'yes' (case-insensitive), `false`
+   *   otherwise.
+   */
+  function envAsBoolean(value, options) {
+    const { defaultValue = false, trim = true } = {
+      __proto__: null,
+      ...options,
+    }
+    if (typeof value === 'string') {
+      const candidate = trim ? value.trim() : value
+      if (!candidate) return !!defaultValue
+      const lower = candidate.toLowerCase()
+      return lower === '1' || lower === 'true' || lower === 'yes'
+    }
+    if (value === null || value === void 0) return !!defaultValue
+    return !!value
+  }
+  exports.envAsBoolean = envAsBoolean
+})
+
+var require_async_hooks = /* @__PURE__ */ __commonJSMin(exports => {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+  const require_constants_runtime = require_runtime()
+  let asyncHooks
+  function getNodeAsyncHooks() {
+    if (!require_constants_runtime.IS_NODE) return
+    asyncHooks ??= /*@__PURE__*/ __require('async_hooks')
+    return asyncHooks
+  }
+  exports.getNodeAsyncHooks = getNodeAsyncHooks
+})
+
+var require_error = /* @__PURE__ */ __commonJSMin(exports => {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+  /**
+   * @file Safe references to `Error` and its subclass constructors, plus V8's
+   *   stack-trace API. `Error.isError` is ES2025; `captureStackTrace` /
+   *   `prepareStackTrace` / `stackTraceLimit` are V8 extensions absent on
+   *   JavaScriptCore and SpiderMonkey. Each is typed `Function | undefined` so
+   *   non-V8 importers stay safe.
+   */
+  const ErrorCtor = Error
+  const AggregateErrorCtor = AggregateError
+  const EvalErrorCtor = EvalError
+  const RangeErrorCtor = RangeError
+  const ReferenceErrorCtor = ReferenceError
+  const SyntaxErrorCtor = SyntaxError
+  const TypeErrorCtor = TypeError
+  const URIErrorCtor = URIError
+  const ErrorIsError = Error.isError
+  const ErrorCaptureStackTrace = Error.captureStackTrace
+  const ErrorPrepareStackTrace = Error.prepareStackTrace
+  const stackTraceLimitGetter = (() => {
+    const getter = Error.__lookupGetter__?.('stackTraceLimit')
+    /* c8 ignore start */
+    if (typeof getter === 'function') return () => getter.call(Error)
+    /* c8 ignore stop */
+  })()
+  function ErrorStackTraceLimit() {
+    /* c8 ignore start - non-V8 fallback path unreachable under test */
+    if (stackTraceLimitGetter) return stackTraceLimitGetter()
+    return Error.stackTraceLimit
+    /* c8 ignore stop */
+  }
+  exports.AggregateErrorCtor = AggregateErrorCtor
+  exports.ErrorCaptureStackTrace = ErrorCaptureStackTrace
+  exports.ErrorCtor = ErrorCtor
+  exports.ErrorIsError = ErrorIsError
+  exports.ErrorPrepareStackTrace = ErrorPrepareStackTrace
+  exports.ErrorStackTraceLimit = ErrorStackTraceLimit
+  exports.EvalErrorCtor = EvalErrorCtor
+  exports.RangeErrorCtor = RangeErrorCtor
+  exports.ReferenceErrorCtor = ReferenceErrorCtor
+  exports.SyntaxErrorCtor = SyntaxErrorCtor
+  exports.TypeErrorCtor = TypeErrorCtor
+  exports.URIErrorCtor = URIErrorCtor
+})
+
+var require_map_set = /* @__PURE__ */ __commonJSMin(exports => {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+  const require_primordials_uncurry = require_uncurry()
+  const require_primordials_object = require_object()
+  const require_primordials_error = require_error()
+  /**
+   * @file Safe references to `Map`, `Set`, `WeakMap`, `WeakSet`, and `WeakRef`.
+   *   Constructors plus uncurried prototype methods. `WeakRef` exposes only its
+   *   constructor — there's a separate `weakRefSafe` wrapper in `./uncurry` for
+   *   the throws-on-non-Object case.
+   */
+  const MapCtor = Map
+  const SetCtor = Set
+  const WeakMapCtor = WeakMap
+  const WeakRefCtor = WeakRef
+  const WeakSetCtor = WeakSet
+  const MapPrototypeClear = require_primordials_uncurry.uncurryThis(
+    Map.prototype.clear,
+  )
+  const MapPrototypeDelete = require_primordials_uncurry.uncurryThis(
+    Map.prototype.delete,
+  )
+  const MapPrototypeEntries = require_primordials_uncurry.uncurryThis(
+    Map.prototype.entries,
+  )
+  const MapPrototypeForEach = require_primordials_uncurry.uncurryThis(
+    Map.prototype.forEach,
+  )
+  const MapPrototypeGet = require_primordials_uncurry.uncurryThis(
+    Map.prototype.get,
+  )
+  const MapPrototypeGetOrInsert =
+    Map.prototype.getOrInsert === void 0
+      ? mapGetOrInsertFallback
+      : require_primordials_uncurry.uncurryThis(Map.prototype.getOrInsert)
+  const MapPrototypeGetOrInsertComputed =
+    Map.prototype.getOrInsertComputed === void 0
+      ? mapGetOrInsertComputedFallback
+      : require_primordials_uncurry.uncurryThis(
+          Map.prototype.getOrInsertComputed,
+        )
+  const MapPrototypeHas = require_primordials_uncurry.uncurryThis(
+    Map.prototype.has,
+  )
+  const MapPrototypeKeys = require_primordials_uncurry.uncurryThis(
+    Map.prototype.keys,
+  )
+  const MapPrototypeSet = require_primordials_uncurry.uncurryThis(
+    Map.prototype.set,
+  )
+  const MapPrototypeValues = require_primordials_uncurry.uncurryThis(
+    Map.prototype.values,
+  )
+  const SetPrototypeAdd = require_primordials_uncurry.uncurryThis(
+    Set.prototype.add,
+  )
+  const SetPrototypeClear = require_primordials_uncurry.uncurryThis(
+    Set.prototype.clear,
+  )
+  const SetPrototypeDelete = require_primordials_uncurry.uncurryThis(
+    Set.prototype.delete,
+  )
+  const SetPrototypeDifference = require_primordials_uncurry.uncurryThis(
+    Set.prototype.difference,
+  )
+  const SetPrototypeEntries = require_primordials_uncurry.uncurryThis(
+    Set.prototype.entries,
+  )
+  const SetPrototypeForEach = require_primordials_uncurry.uncurryThis(
+    Set.prototype.forEach,
+  )
+  const SetPrototypeHas = require_primordials_uncurry.uncurryThis(
+    Set.prototype.has,
+  )
+  const SetPrototypeIntersection = require_primordials_uncurry.uncurryThis(
+    Set.prototype.intersection,
+  )
+  const SetPrototypeIsDisjointFrom = require_primordials_uncurry.uncurryThis(
+    Set.prototype.isDisjointFrom,
+  )
+  const SetPrototypeIsSubsetOf = require_primordials_uncurry.uncurryThis(
+    Set.prototype.isSubsetOf,
+  )
+  const SetPrototypeIsSupersetOf = require_primordials_uncurry.uncurryThis(
+    Set.prototype.isSupersetOf,
+  )
+  const SetPrototypeKeys = require_primordials_uncurry.uncurryThis(
+    Set.prototype.keys,
+  )
+  const SetPrototypeSymmetricDifference =
+    require_primordials_uncurry.uncurryThis(Set.prototype.symmetricDifference)
+  const SetPrototypeUnion = require_primordials_uncurry.uncurryThis(
+    Set.prototype.union,
+  )
+  const SetPrototypeValues = require_primordials_uncurry.uncurryThis(
+    Set.prototype.values,
+  )
+  const SetPrototypeSizeGetter = require_primordials_uncurry.uncurryThis(
+    require_primordials_object.ObjectGetOwnPropertyDescriptor(
+      Set.prototype,
+      'size',
+    ).get,
+  )
+  const WeakMapPrototypeDelete = require_primordials_uncurry.uncurryThis(
+    WeakMap.prototype.delete,
+  )
+  const WeakMapPrototypeGet = require_primordials_uncurry.uncurryThis(
+    WeakMap.prototype.get,
+  )
+  const WeakMapPrototypeGetOrInsert =
+    WeakMap.prototype.getOrInsert === void 0
+      ? weakMapGetOrInsertFallback
+      : require_primordials_uncurry.uncurryThis(WeakMap.prototype.getOrInsert)
+  const WeakMapPrototypeGetOrInsertComputed =
+    WeakMap.prototype.getOrInsertComputed === void 0
+      ? weakMapGetOrInsertComputedFallback
+      : require_primordials_uncurry.uncurryThis(
+          WeakMap.prototype.getOrInsertComputed,
+        )
+  const WeakMapPrototypeHas = require_primordials_uncurry.uncurryThis(
+    WeakMap.prototype.has,
+  )
+  const WeakMapPrototypeSet = require_primordials_uncurry.uncurryThis(
+    WeakMap.prototype.set,
+  )
+  const WeakSetPrototypeAdd = require_primordials_uncurry.uncurryThis(
+    WeakSet.prototype.add,
+  )
+  const WeakSetPrototypeDelete = require_primordials_uncurry.uncurryThis(
+    WeakSet.prototype.delete,
+  )
+  const WeakSetPrototypeHas = require_primordials_uncurry.uncurryThis(
+    WeakSet.prototype.has,
+  )
+  function mapGetOrInsertComputedFallback(map, key, callbackfn) {
+    if (typeof callbackfn !== 'function')
+      throw new require_primordials_error.TypeErrorCtor(
+        `getOrInsertComputed takes a callback. Saw ${typeof callbackfn}, wanted a function computing the value to insert.`,
+      )
+    if (MapPrototypeHas(map, key)) return MapPrototypeGet(map, key)
+    const value = callbackfn(key)
+    MapPrototypeSet(map, key, value)
+    return value
+  }
+  function mapGetOrInsertFallback(map, key, value) {
+    if (MapPrototypeHas(map, key)) return MapPrototypeGet(map, key)
+    MapPrototypeSet(map, key, value)
+    return value
+  }
+  function weakMapGetOrInsertComputedFallback(map, key, callbackfn) {
+    if (typeof callbackfn !== 'function')
+      throw new require_primordials_error.TypeErrorCtor(
+        `getOrInsertComputed takes a callback. Saw ${typeof callbackfn}, wanted a function computing the value to insert.`,
+      )
+    if (WeakMapPrototypeHas(map, key)) return WeakMapPrototypeGet(map, key)
+    const value = callbackfn(key)
+    WeakMapPrototypeSet(map, key, value)
+    return value
+  }
+  function weakMapGetOrInsertFallback(map, key, value) {
+    if (WeakMapPrototypeHas(map, key)) return WeakMapPrototypeGet(map, key)
+    WeakMapPrototypeSet(map, key, value)
+    return value
+  }
+  exports.MapCtor = MapCtor
+  exports.MapPrototypeClear = MapPrototypeClear
+  exports.MapPrototypeDelete = MapPrototypeDelete
+  exports.MapPrototypeEntries = MapPrototypeEntries
+  exports.MapPrototypeForEach = MapPrototypeForEach
+  exports.MapPrototypeGet = MapPrototypeGet
+  exports.MapPrototypeGetOrInsert = MapPrototypeGetOrInsert
+  exports.MapPrototypeGetOrInsertComputed = MapPrototypeGetOrInsertComputed
+  exports.MapPrototypeHas = MapPrototypeHas
+  exports.MapPrototypeKeys = MapPrototypeKeys
+  exports.MapPrototypeSet = MapPrototypeSet
+  exports.MapPrototypeValues = MapPrototypeValues
+  exports.SetCtor = SetCtor
+  exports.SetPrototypeAdd = SetPrototypeAdd
+  exports.SetPrototypeClear = SetPrototypeClear
+  exports.SetPrototypeDelete = SetPrototypeDelete
+  exports.SetPrototypeDifference = SetPrototypeDifference
+  exports.SetPrototypeEntries = SetPrototypeEntries
+  exports.SetPrototypeForEach = SetPrototypeForEach
+  exports.SetPrototypeHas = SetPrototypeHas
+  exports.SetPrototypeIntersection = SetPrototypeIntersection
+  exports.SetPrototypeIsDisjointFrom = SetPrototypeIsDisjointFrom
+  exports.SetPrototypeIsSubsetOf = SetPrototypeIsSubsetOf
+  exports.SetPrototypeIsSupersetOf = SetPrototypeIsSupersetOf
+  exports.SetPrototypeKeys = SetPrototypeKeys
+  exports.SetPrototypeSizeGetter = SetPrototypeSizeGetter
+  exports.SetPrototypeSymmetricDifference = SetPrototypeSymmetricDifference
+  exports.SetPrototypeUnion = SetPrototypeUnion
+  exports.SetPrototypeValues = SetPrototypeValues
+  exports.WeakMapCtor = WeakMapCtor
+  exports.WeakMapPrototypeDelete = WeakMapPrototypeDelete
+  exports.WeakMapPrototypeGet = WeakMapPrototypeGet
+  exports.WeakMapPrototypeGetOrInsert = WeakMapPrototypeGetOrInsert
+  exports.WeakMapPrototypeGetOrInsertComputed =
+    WeakMapPrototypeGetOrInsertComputed
+  exports.WeakMapPrototypeHas = WeakMapPrototypeHas
+  exports.WeakMapPrototypeSet = WeakMapPrototypeSet
+  exports.WeakRefCtor = WeakRefCtor
+  exports.WeakSetCtor = WeakSetCtor
+  exports.WeakSetPrototypeAdd = WeakSetPrototypeAdd
+  exports.WeakSetPrototypeDelete = WeakSetPrototypeDelete
+  exports.WeakSetPrototypeHas = WeakSetPrototypeHas
+  exports.mapGetOrInsertComputedFallback = mapGetOrInsertComputedFallback
+  exports.mapGetOrInsertFallback = mapGetOrInsertFallback
+  exports.weakMapGetOrInsertComputedFallback =
+    weakMapGetOrInsertComputedFallback
+  exports.weakMapGetOrInsertFallback = weakMapGetOrInsertFallback
+})
+
+var require_rewire = /* @__PURE__ */ __commonJSMin(exports => {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+  const require_constants_runtime = require_runtime()
+  const require_primordials_object = require_object()
+  const require_objects_predicates = require_predicates()
+  const require_env_boolean = require_boolean()
+  const require_node_async_hooks = require_async_hooks()
+  const require_primordials_map_set = require_map_set()
+  let isolatedOverridesStorage
+  const sharedOverridesSymbol = Symbol.for(
+    '@socketsecurity/lib/env/rewire/test-overrides',
+  )
+  const globalThisRef = globalThis
+  if (
+    require_env_boolean.envAsBoolean(safeProcessEnv()?.['VITEST']) &&
+    !globalThisRef[sharedOverridesSymbol]
+  )
+    globalThisRef[sharedOverridesSymbol] =
+      new require_primordials_map_set.MapCtor()
+  const sharedOverrides = globalThisRef[sharedOverridesSymbol]
+  /**
+   * Clear a specific environment variable override.
+   *
+   * @example
+   *   ;```typescript
+   *   import { setEnv, clearEnv } from '@socketsecurity/lib/env/rewire'
+   *
+   *   setEnv('CI', '1')
+   *   clearEnv('CI')
+   *   ```
+   *
+   * @param key - The environment variable name to clear.
+   */
+  function clearEnv(key) {
+    sharedOverrides?.delete(key)
+  }
+  /**
+   * Lazily load the async_hooks module. Aliases the canonical
+   * `node/async-hooks` accessor, the single owner of the bundler-safe require;
+   * kept as an export so this module's surface is unchanged.
+   *
+   * @private
+   */
+  const getAsyncHooks = require_node_async_hooks.getNodeAsyncHooks
+  /**
+   * Get an environment variable value, checking overrides first.
+   *
+   * Resolution order: 1. Isolated overrides (temporary - set via
+   * withEnv/withEnvSync) 2. Shared overrides (persistent - set via setEnv in
+   * beforeEach) 3. process.env (including vi.stubEnv modifications)
+   *
+   * @example
+   *   ;```typescript
+   *   import { getEnvValue } from '@socketsecurity/lib/env/rewire'
+   *
+   *   const value = getEnvValue('NODE_ENV')
+   *   // e.g. 'production' or undefined
+   *   ```
+   *
+   * @internal Used by env getters to support test rewiring
+   */
+  function getEnvValue(key) {
+    const isolatedOverrides = getIsolatedOverrides()
+    if (isolatedOverrides?.has(key)) return isolatedOverrides.get(key)
+    if (sharedOverrides?.has(key)) return sharedOverrides.get(key)
+    return safeProcessEnv()?.[key]
+  }
+  /**
+   * Get the current isolated-override map, or undefined when none is active.
+   * Off Node, in browser bundles, there is no AsyncLocalStorage and no isolated
+   * context — env getters fall straight through to the other tiers.
+   *
+   * @private
+   */
+  function getIsolatedOverrides() {
+    return require_constants_runtime.IS_NODE
+      ? getIsolatedOverridesStorage().getStore()
+      : void 0
+  }
+  /**
+   * Get the process-scoped AsyncLocalStorage used for nested env overrides
+   * (withEnv/withEnvSync).
+   *
+   * Constructed LAZILY (memoized) rather than at module-eval: an
+   * AsyncLocalStorage holds a live native handle, and constructing it at import
+   * time pins that handle into every module transitively importing this leaf —
+   * aborting V8 --build-snapshot serialization. Deferring to first use keeps
+   * the single-store semantics while leaving module import snapshot-safe.
+   *
+   * @private
+   */
+  function getIsolatedOverridesStorage() {
+    if (isolatedOverridesStorage === void 0) {
+      const { AsyncLocalStorage } = require_node_async_hooks.getNodeAsyncHooks()
+      isolatedOverridesStorage = new AsyncLocalStorage()
+    }
+    return isolatedOverridesStorage
+  }
+  /**
+   * Check if an environment variable has been overridden.
+   *
+   * @example
+   *   ;```typescript
+   *   import { setEnv, hasOverride } from '@socketsecurity/lib/env/rewire'
+   *
+   *   hasOverride('CI') // false
+   *   setEnv('CI', '1')
+   *   hasOverride('CI') // true
+   *   ```
+   *
+   * @param key - The environment variable name to check.
+   *
+   * @returns `true` if the variable has been overridden, `false` otherwise
+   */
+  function hasOverride(key) {
+    return !!(getIsolatedOverrides()?.has(key) || sharedOverrides?.has(key))
+  }
+  /**
+   * Check if an environment variable key exists, checking overrides first.
+   *
+   * Resolution order: 1. Isolated overrides (temporary - set via
+   * withEnv/withEnvSync) 2. Shared overrides (persistent - set via setEnv in
+   * beforeEach) 3. process.env (including vi.stubEnv modifications)
+   *
+   * @example
+   *   ;```typescript
+   *   import { isInEnv } from '@socketsecurity/lib/env/rewire'
+   *
+   *   isInEnv('PATH') // true (usually set)
+   *   isInEnv('MISSING') // false
+   *   ```
+   *
+   * @internal Used by env getters to check for key presence rather than value
+   *   truthiness.
+   */
+  function isInEnv(key) {
+    if (getIsolatedOverrides()?.has(key)) return true
+    if (sharedOverrides?.has(key)) return true
+    const env = safeProcessEnv()
+    return env ? require_objects_predicates.hasOwn(env, key) : false
+  }
+  /**
+   * Clear all environment variable overrides. Useful in afterEach hooks to
+   * ensure clean test state.
+   *
+   * @example
+   *   ;```typescript
+   *   import { resetEnv } from './rewire.mjs'
+   *
+   *   afterEach(() => {
+   *     resetEnv()
+   *   })
+   *   ```
+   */
+  function resetEnv() {
+    sharedOverrides?.clear()
+  }
+  /**
+   * Read `process.env` without assuming a real Node `process`. Probes the
+   * GLOBAL `process` via `typeof` (no `node:process` import — webpack throws
+   * UnhandledSchemeError on `node:` specifiers before the `browser`-field stubs
+   * apply), so browser bundles load this leaf cleanly and env getters read as
+   * unset instead of throwing.
+   *
+   * @private
+   */
+  function safeProcessEnv() {
+    return typeof process !== 'undefined' && process ? process.env : void 0
+  }
+  /**
+   * Set an environment variable override for testing. This does not modify
+   * process.env, only affects env getters.
+   *
+   * Works in test hooks (beforeEach) without needing AsyncLocalStorage context.
+   * Vitest's module isolation ensures each test file has independent overrides.
+   *
+   * @example
+   *   ;```typescript
+   *   import { setEnv, resetEnv } from './rewire.mjs'
+   *   import { isCI } from './ci.mjs'
+   *
+   *   beforeEach(() => {
+   *     setEnv('CI', '1')
+   *   })
+   *
+   *   afterEach(() => {
+   *     resetEnv()
+   *   })
+   *
+   *   it('should detect CI environment', () => {
+   *     expect(isCI()).toBe(true)
+   *   })
+   *   ```
+   */
+  function setEnv(key, value) {
+    sharedOverrides?.set(key, value)
+  }
+  /**
+   * Run code with environment overrides in an isolated AsyncLocalStorage
+   * context. Creates true context isolation - overrides don't leak to
+   * concurrent code.
+   *
+   * Useful for tests that need temporary overrides without affecting other
+   * tests or for nested override scenarios.
+   *
+   * @example
+   *   ;```typescript
+   *   import { withEnv } from './rewire.mjs'
+   *   import { isCI } from './ci.mjs'
+   *
+   *   // Temporary override in isolated context
+   *   await withEnv({ CI: '1' }, async () => {
+   *     expect(isCI()).toBe(true)
+   *   })
+   *   expect(isCI()).toBe(false) // Override is gone
+   *   ```
+   *
+   * @example
+   *   ;```typescript
+   *   // Nested overrides work correctly
+   *   setEnv('CI', '1') // Shared override (persistent)
+   *
+   *   await withEnv({ CI: '0' }, async () => {
+   *     expect(isCI()).toBe(false) // Isolated override takes precedence
+   *   })
+   *
+   *   expect(isCI()).toBe(true) // Back to shared override
+   *   ```
+   */
+  async function withEnv(overrides, fn) {
+    const map = new require_primordials_map_set.MapCtor(
+      require_primordials_object.ObjectEntries(overrides),
+    )
+    return await getIsolatedOverridesStorage().run(map, fn)
+  }
+  /**
+   * Synchronous version of withEnv for non-async code.
+   *
+   * @example
+   *   ;```typescript
+   *   import { withEnvSync } from './rewire.mjs'
+   *   import { isCI } from './ci.mjs'
+   *
+   *   const result = withEnvSync({ CI: '1' }, () => {
+   *     return isCI()
+   *   })
+   *   expect(result).toBe(true)
+   *   ```
+   */
+  function withEnvSync(overrides, fn) {
+    const map = new require_primordials_map_set.MapCtor(
+      require_primordials_object.ObjectEntries(overrides),
+    )
+    return getIsolatedOverridesStorage().run(map, fn)
+  }
+  exports.clearEnv = clearEnv
+  exports.getAsyncHooks = getAsyncHooks
+  exports.getEnvValue = getEnvValue
+  exports.getIsolatedOverrides = getIsolatedOverrides
+  exports.getIsolatedOverridesStorage = getIsolatedOverridesStorage
+  exports.hasOverride = hasOverride
+  exports.isInEnv = isInEnv
+  exports.resetEnv = resetEnv
+  exports.safeProcessEnv = safeProcessEnv
+  exports.setEnv = setEnv
+  exports.withEnv = withEnv
+  exports.withEnvSync = withEnvSync
+})
+
+var require_ci = /* @__PURE__ */ __commonJSMin(exports => {
+  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+  const require_env_rewire = require_rewire()
+  /**
+   * @file CI environment predicate. Exports `isCI()`, which returns whether the
+   *   `CI` environment variable is present (using the rewire helper so tests
+   *   can override without touching `process.env`). Deliberately not memoized:
+   *   the rewire overrides must stay live between calls.
+   */
+  /**
+   * Returns whether the CI environment variable is set.
+   *
+   * @example
+   *   ;```typescript
+   *   import { isCI } from '@socketsecurity/lib/env/ci'
+   *
+   *   if (isCI()) {
+   *     console.log('Running in CI')
+   *   }
+   *   ```
+   *
+   * @returns `true` if running in a CI environment, `false` otherwise
+   */
+  function isCI() {
+    return require_env_rewire.isInEnv('CI')
+  }
+  exports.isCI = isCI
+})
+
+var import_ci = require_ci()
 /**
  * True when argv carries a bare `--`.
  *
@@ -10892,6 +11772,13 @@ function installFiles(filesDir, dest, manifest, options) {
   for (let i = 0, { length } = rels; i < length; i += 1) {
     const rel = rels[i]
     const target = path.join(dest, rel)
+    if (
+      opts.preserveTracked === true &&
+      (isAlwaysTrackedSurface(rel) || rel === '.gitignore')
+    ) {
+      skippedAlwaysTracked += 1
+      continue
+    }
     const stat = repoOwnedPaths.has(normalizeBundlePath(rel))
       ? lstatSync(target, { throwIfNoEntry: false })
       : void 0
@@ -11911,7 +12798,7 @@ function isManagedGitignoreResult(index, current) {
     composeGitignore({
       packBlock,
       target: withFleet,
-    }) === current
+    }) === current.replace(/^# <\/?fleet>\n/gm, '')
   )
 }
 function readIndexFile(dest, relative) {
@@ -11970,105 +12857,6 @@ function repairTrackedHydration(dest, options) {
   return repaired
 }
 
-var require_object = /* @__PURE__ */ __commonJSMin(exports => {
-  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
-  const require_primordials_uncurry = require_uncurry()
-  /**
-   * @file Safe references to `Object` static methods and prototype methods.
-   *   Annex B legacy accessor methods (`__defineGetter__`, `__lookupGetter__`,
-   *   etc.) are exposed alongside the canonical static methods —
-   *   implementations exist in V8, SpiderMonkey, and JavaScriptCore even though
-   *   the spec calls them "normative optional".
-   */
-  const ObjectCtor = Object
-  const ObjectAssign = Object.assign
-  const ObjectCreate = Object.create
-  const ObjectDefineProperties = Object.defineProperties
-  const ObjectDefineProperty = Object.defineProperty
-  const ObjectEntries = Object.entries
-  const ObjectFreeze = Object.freeze
-  const ObjectFromEntries = Object.fromEntries
-  const ObjectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor
-  const ObjectGetOwnPropertyDescriptors = Object.getOwnPropertyDescriptors
-  const ObjectGetOwnPropertyNames = Object.getOwnPropertyNames
-  const ObjectGetOwnPropertySymbols = Object.getOwnPropertySymbols
-  const ObjectGetPrototypeOf = Object.getPrototypeOf
-  const ObjectHasOwn = Object.hasOwn
-  const ObjectIs = Object.is
-  const ObjectIsExtensible = Object.isExtensible
-  const ObjectIsFrozen = Object.isFrozen
-  const ObjectIsSealed = Object.isSealed
-  const ObjectKeys = Object.keys
-  const ObjectPreventExtensions = Object.preventExtensions
-  const ObjectSeal = Object.seal
-  const ObjectSetPrototypeOf = Object.setPrototypeOf
-  const ObjectValues = Object.values
-  const ObjectPrototype = Object.prototype
-  const ObjectPrototypeHasOwnProperty = require_primordials_uncurry.uncurryThis(
-    Object.prototype.hasOwnProperty,
-  )
-  const ObjectPrototypeIsPrototypeOf = require_primordials_uncurry.uncurryThis(
-    Object.prototype.isPrototypeOf,
-  )
-  const ObjectPrototypePropertyIsEnumerable =
-    require_primordials_uncurry.uncurryThis(
-      Object.prototype.propertyIsEnumerable,
-    )
-  const ObjectPrototypeToString = require_primordials_uncurry.uncurryThis(
-    Object.prototype.toString,
-  )
-  const ObjectPrototypeValueOf = require_primordials_uncurry.uncurryThis(
-    Object.prototype.valueOf,
-  )
-  const objectProto = Object.prototype
-  const ObjectPrototypeDefineGetter = require_primordials_uncurry.uncurryThis(
-    objectProto.__defineGetter__,
-  )
-  const ObjectPrototypeDefineSetter = require_primordials_uncurry.uncurryThis(
-    objectProto.__defineSetter__,
-  )
-  const ObjectPrototypeLookupGetter = require_primordials_uncurry.uncurryThis(
-    objectProto.__lookupGetter__,
-  )
-  const ObjectPrototypeLookupSetter = require_primordials_uncurry.uncurryThis(
-    objectProto.__lookupSetter__,
-  )
-  exports.ObjectAssign = ObjectAssign
-  exports.ObjectCreate = ObjectCreate
-  exports.ObjectCtor = ObjectCtor
-  exports.ObjectDefineProperties = ObjectDefineProperties
-  exports.ObjectDefineProperty = ObjectDefineProperty
-  exports.ObjectEntries = ObjectEntries
-  exports.ObjectFreeze = ObjectFreeze
-  exports.ObjectFromEntries = ObjectFromEntries
-  exports.ObjectGetOwnPropertyDescriptor = ObjectGetOwnPropertyDescriptor
-  exports.ObjectGetOwnPropertyDescriptors = ObjectGetOwnPropertyDescriptors
-  exports.ObjectGetOwnPropertyNames = ObjectGetOwnPropertyNames
-  exports.ObjectGetOwnPropertySymbols = ObjectGetOwnPropertySymbols
-  exports.ObjectGetPrototypeOf = ObjectGetPrototypeOf
-  exports.ObjectHasOwn = ObjectHasOwn
-  exports.ObjectIs = ObjectIs
-  exports.ObjectIsExtensible = ObjectIsExtensible
-  exports.ObjectIsFrozen = ObjectIsFrozen
-  exports.ObjectIsSealed = ObjectIsSealed
-  exports.ObjectKeys = ObjectKeys
-  exports.ObjectPreventExtensions = ObjectPreventExtensions
-  exports.ObjectPrototype = ObjectPrototype
-  exports.ObjectPrototypeDefineGetter = ObjectPrototypeDefineGetter
-  exports.ObjectPrototypeDefineSetter = ObjectPrototypeDefineSetter
-  exports.ObjectPrototypeHasOwnProperty = ObjectPrototypeHasOwnProperty
-  exports.ObjectPrototypeIsPrototypeOf = ObjectPrototypeIsPrototypeOf
-  exports.ObjectPrototypeLookupGetter = ObjectPrototypeLookupGetter
-  exports.ObjectPrototypeLookupSetter = ObjectPrototypeLookupSetter
-  exports.ObjectPrototypePropertyIsEnumerable =
-    ObjectPrototypePropertyIsEnumerable
-  exports.ObjectPrototypeToString = ObjectPrototypeToString
-  exports.ObjectPrototypeValueOf = ObjectPrototypeValueOf
-  exports.ObjectSeal = ObjectSeal
-  exports.ObjectSetPrototypeOf = ObjectSetPrototypeOf
-  exports.ObjectValues = ObjectValues
-})
-
 var require_json = /* @__PURE__ */ __commonJSMin(exports => {
   Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
   /**
@@ -12081,52 +12869,6 @@ var require_json = /* @__PURE__ */ __commonJSMin(exports => {
   const JSONStringify = JSON.stringify
   exports.JSONParse = JSONParse
   exports.JSONStringify = JSONStringify
-})
-
-var require_error = /* @__PURE__ */ __commonJSMin(exports => {
-  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
-  /**
-   * @file Safe references to `Error` and its subclass constructors, plus V8's
-   *   stack-trace API. `Error.isError` is ES2025; `captureStackTrace` /
-   *   `prepareStackTrace` / `stackTraceLimit` are V8 extensions absent on
-   *   JavaScriptCore and SpiderMonkey. Each is typed `Function | undefined` so
-   *   non-V8 importers stay safe.
-   */
-  const ErrorCtor = Error
-  const AggregateErrorCtor = AggregateError
-  const EvalErrorCtor = EvalError
-  const RangeErrorCtor = RangeError
-  const ReferenceErrorCtor = ReferenceError
-  const SyntaxErrorCtor = SyntaxError
-  const TypeErrorCtor = TypeError
-  const URIErrorCtor = URIError
-  const ErrorIsError = Error.isError
-  const ErrorCaptureStackTrace = Error.captureStackTrace
-  const ErrorPrepareStackTrace = Error.prepareStackTrace
-  const stackTraceLimitGetter = (() => {
-    const getter = Error.__lookupGetter__?.('stackTraceLimit')
-    /* c8 ignore start */
-    if (typeof getter === 'function') return () => getter.call(Error)
-    /* c8 ignore stop */
-  })()
-  function ErrorStackTraceLimit() {
-    /* c8 ignore start - non-V8 fallback path unreachable under test */
-    if (stackTraceLimitGetter) return stackTraceLimitGetter()
-    return Error.stackTraceLimit
-    /* c8 ignore stop */
-  }
-  exports.AggregateErrorCtor = AggregateErrorCtor
-  exports.ErrorCaptureStackTrace = ErrorCaptureStackTrace
-  exports.ErrorCtor = ErrorCtor
-  exports.ErrorIsError = ErrorIsError
-  exports.ErrorPrepareStackTrace = ErrorPrepareStackTrace
-  exports.ErrorStackTraceLimit = ErrorStackTraceLimit
-  exports.EvalErrorCtor = EvalErrorCtor
-  exports.RangeErrorCtor = RangeErrorCtor
-  exports.ReferenceErrorCtor = ReferenceErrorCtor
-  exports.SyntaxErrorCtor = SyntaxErrorCtor
-  exports.TypeErrorCtor = TypeErrorCtor
-  exports.URIErrorCtor = URIErrorCtor
 })
 
 var require_number = /* @__PURE__ */ __commonJSMin(exports => {
@@ -12322,15 +13064,18 @@ var require_array$1 = /* @__PURE__ */ __commonJSMin(exports => {
   const ArrayPrototypeToLocaleString = require_primordials_uncurry.uncurryThis(
     Array.prototype.toLocaleString,
   )
-  const ArrayPrototypeToReversed = require_primordials_uncurry.uncurryThis(
-    Array.prototype.toReversed,
-  )
-  const ArrayPrototypeToSorted = require_primordials_uncurry.uncurryThis(
-    Array.prototype.toSorted,
-  )
-  const ArrayPrototypeToSpliced = require_primordials_uncurry.uncurryThis(
-    Array.prototype.toSpliced,
-  )
+  const ArrayPrototypeToReversed =
+    typeof Array.prototype.toReversed === 'function'
+      ? require_primordials_uncurry.uncurryThis(Array.prototype.toReversed)
+      : arrayToReversedFallback
+  const ArrayPrototypeToSorted =
+    typeof Array.prototype.toSorted === 'function'
+      ? require_primordials_uncurry.uncurryThis(Array.prototype.toSorted)
+      : arrayToSortedFallback
+  const ArrayPrototypeToSpliced =
+    typeof Array.prototype.toSpliced === 'function'
+      ? require_primordials_uncurry.uncurryThis(Array.prototype.toSpliced)
+      : arrayToSplicedFallback
   const ArrayPrototypeToString = require_primordials_uncurry.uncurryThis(
     Array.prototype.toString,
   )
@@ -12340,9 +13085,70 @@ var require_array$1 = /* @__PURE__ */ __commonJSMin(exports => {
   const ArrayPrototypeValues = require_primordials_uncurry.uncurryThis(
     Array.prototype.values,
   )
-  const ArrayPrototypeWith = require_primordials_uncurry.uncurryThis(
-    Array.prototype.with,
-  )
+  const ArrayPrototypeWith =
+    typeof Array.prototype.with === 'function'
+      ? require_primordials_uncurry.uncurryThis(Array.prototype.with)
+      : arrayWithFallback
+  function arrayToReversedFallback(self) {
+    const output = new ArrayCtor(self.length)
+    for (let index = 0; index < self.length; index += 1)
+      output[index] = self[self.length - index - 1]
+    return output
+  }
+  function arrayToSortedFallback(self, comparator) {
+    if (comparator !== void 0 && typeof comparator !== 'function')
+      throw new TypeError('The comparator must be a function or undefined')
+    const output = new ArrayCtor(self.length)
+    for (let index = 0; index < self.length; index += 1)
+      output[index] = self[index]
+    return ArrayPrototypeSort(output, comparator)
+  }
+  function arrayToSplicedFallback(self, start, deleteCount, ...items) {
+    const length = self.length
+    const relativeStart = normalizeArrayStart(start, length)
+    const actualDeleteCount =
+      arguments.length < 3
+        ? length - relativeStart
+        : Math.min(
+            Math.max(Math.trunc(Number(deleteCount)) || 0, 0),
+            length - relativeStart,
+          )
+    const output = new ArrayCtor(length - actualDeleteCount + items.length)
+    let outputIndex = 0
+    for (let index = 0; index < relativeStart; index += 1) {
+      output[outputIndex] = self[index]
+      outputIndex += 1
+    }
+    for (const item of items) {
+      output[outputIndex] = item
+      outputIndex += 1
+    }
+    for (
+      let index = relativeStart + actualDeleteCount;
+      index < length;
+      index += 1
+    ) {
+      output[outputIndex] = self[index]
+      outputIndex += 1
+    }
+    return output
+  }
+  function arrayWithFallback(self, index, value) {
+    const integer = Number.isNaN(index) ? 0 : Math.trunc(index)
+    const actualIndex = integer < 0 ? self.length + integer : integer
+    if (actualIndex < 0 || actualIndex >= self.length)
+      throw new RangeError('Array index is out of range')
+    const output = new ArrayCtor(self.length)
+    for (let position = 0; position < self.length; position += 1)
+      output[position] = position === actualIndex ? value : self[position]
+    return output
+  }
+  function normalizeArrayStart(index, length) {
+    const integer = Number.isNaN(index) ? 0 : Math.trunc(index)
+    if (integer === -Infinity) return 0
+    if (integer < 0) return Math.max(length + integer, 0)
+    return Math.min(integer, length)
+  }
   const anyIterator = /* @__PURE__ */ new Map().keys()
   let iteratorLookup = Object.getPrototypeOf(anyIterator)
   while (iteratorLookup && typeof iteratorLookup.next !== 'function')
@@ -12418,6 +13224,11 @@ var require_array$1 = /* @__PURE__ */ __commonJSMin(exports => {
   exports.Uint32ArrayCtor = Uint32ArrayCtor
   exports.Uint8ArrayCtor = Uint8ArrayCtor
   exports.Uint8ClampedArrayCtor = Uint8ClampedArrayCtor
+  exports.arrayToReversedFallback = arrayToReversedFallback
+  exports.arrayToSortedFallback = arrayToSortedFallback
+  exports.arrayToSplicedFallback = arrayToSplicedFallback
+  exports.arrayWithFallback = arrayWithFallback
+  exports.normalizeArrayStart = normalizeArrayStart
 })
 
 var require_math = /* @__PURE__ */ __commonJSMin(exports => {
@@ -12991,174 +13802,6 @@ var config_default = {
   },
 }
 
-var require_predicates$1 = /* @__PURE__ */ __commonJSMin(exports => {
-  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
-  /**
-   * @file Array type-guard predicates. Currently just a re-export of native
-   *   `Array.isArray` for consistency with the rest of the arrays surface —
-   *   kept in its own leaf because it's runtime-trivial but conceptually a
-   *   different concern from `chunk` / `unique` / `join`.
-   */
-  /**
-   * Alias for native Array.isArray. Determines whether the passed value is an
-   * array.
-   *
-   * This is a direct reference to the native `Array.isArray` method, providing
-   * a type guard that narrows the type to an array type. Exported for
-   * consistency with other array utilities in this module.
-   *
-   * @example
-   *   ;```ts
-   *   // Check if value is an array
-   *   isArray([1, 2, 3])
-   *   // Returns: true
-   *
-   *   isArray('not an array')
-   *   // Returns: false
-   *
-   *   isArray(null)
-   *   // Returns: false
-   *
-   *   // Type guard usage
-   *   function processValue(value: unknown) {
-   *     if (isArray(value)) {
-   *       // TypeScript knows value is an array here
-   *       console.log(value.length)
-   *     }
-   *   }
-   *   ```
-   *
-   * @param value - The value to check.
-   *
-   * @returns `true` if the value is an array, `false` otherwise
-   */
-  const isArray = Array.isArray
-  exports.isArray = isArray
-})
-
-var require_predicates = /* @__PURE__ */ __commonJSMin(exports => {
-  Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
-  const require_arrays_predicates = require_predicates$1()
-  const require_primordials_object = require_object()
-  /**
-   * @file Object type guards: `hasKeys`, `hasOwn`, `isObject`, `isPlainObject`.
-   *   All four narrow `unknown` to a typed shape and tolerate `null` /
-   *   `undefined` without throwing.
-   */
-  /**
-   * Check if an object has any enumerable own properties.
-   *
-   * Returns `true` if the object has at least one enumerable own property,
-   * `false` otherwise. Also returns `false` for null/undefined.
-   *
-   * @example
-   *   ;```ts
-   *   hasKeys({ a: 1 }) // true
-   *   hasKeys({}) // false
-   *   hasKeys([]) // false
-   *   hasKeys([1, 2]) // true
-   *   hasKeys(null) // false
-   *   hasKeys(undefined) // false
-   *   hasKeys(Object.create({ inherited: true })) // false
-   *   ```
-   *
-   * @param obj - The value to check.
-   *
-   * @returns `true` if obj has enumerable own properties, `false` otherwise
-   */
-  function hasKeys(obj) {
-    if (obj === null || obj === void 0) return false
-    for (const key in obj)
-      if (require_primordials_object.ObjectHasOwn(obj, key)) return true
-    return false
-  }
-  /**
-   * Check if an object has an own property.
-   *
-   * Type-safe wrapper around `Object.hasOwn()` that returns `false` for
-   * null/undefined instead of throwing. Only checks own properties, not
-   * inherited ones from the prototype chain.
-   *
-   * @example
-   *   ;```ts
-   *   const obj = { name: 'Alice' }
-   *   hasOwn(obj, 'name') // true
-   *   hasOwn(obj, 'age') // false
-   *   hasOwn(obj, 'toString') // false (inherited)
-   *   hasOwn(null, 'name') // false
-   *   ```
-   *
-   * @param obj - The value to check.
-   * @param propKey - The property key to look for.
-   *
-   * @returns `true` if obj has the property as an own property, `false`
-   *   otherwise.
-   */
-  function hasOwn(obj, propKey) {
-    if (obj === null || obj === void 0) return false
-    return require_primordials_object.ObjectHasOwn(obj, propKey)
-  }
-  /**
-   * Check if a value is an object, arrays included.
-   *
-   * Returns `true` for any object type including arrays, dates, etc. Returns
-   * `false` for primitives and `null`. Functions are not considered objects
-   * here (typeof functions === 'function').
-   *
-   * @example
-   *   ;```ts
-   *   isObject({}) // true
-   *   isObject([]) // true
-   *   isObject(new Date()) // true
-   *   isObject(() => {}) // false
-   *   isObject(null) // false
-   *   ```
-   *
-   * @param value - The value to check.
-   *
-   * @returns `true` for any object, arrays included; `false` otherwise
-   */
-  function isObject(value) {
-    return value !== null && typeof value === 'object'
-  }
-  /**
-   * Check if a value is a plain object, so neither an array nor a built-in.
-   *
-   * Returns `true` only for plain objects created with `{}` or
-   * `Object.create(null)`. Returns `false` for arrays, built-in objects (Date,
-   * RegExp, etc.), and primitives.
-   *
-   * @example
-   *   ;```ts
-   *   isPlainObject({}) // true
-   *   isPlainObject({ a: 1 }) // true
-   *   isPlainObject(Object.create(null)) // true
-   *   isPlainObject([]) // false
-   *   isPlainObject(new Date()) // false
-   *   ```
-   *
-   * @param value - The value to check.
-   *
-   * @returns `true` if value is a plain object, `false` otherwise
-   */
-  function isPlainObject(value) {
-    if (
-      value === null ||
-      typeof value !== 'object' ||
-      require_arrays_predicates.isArray(value)
-    )
-      return false
-    const proto = require_primordials_object.ObjectGetPrototypeOf(value)
-    return (
-      proto === null || proto === require_primordials_object.ObjectPrototype
-    )
-  }
-  exports.hasKeys = hasKeys
-  exports.hasOwn = hasOwn
-  exports.isObject = isObject
-  exports.isPlainObject = isPlainObject
-})
-
 var require_strings = /* @__PURE__ */ __commonJSMin(exports => {
   Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
   /**
@@ -13271,13 +13914,17 @@ const MCP_PROVIDERS = {
   },
   slack: {
     connectOrder: 0,
-    serverName: 'fleet-slack-hosted',
+    serverName: 'feet-slack',
     url: 'https://mcp.slack.com/mcp',
     auth: 'oauth',
     localServerName: 'fleet-slack',
     setupUrl:
       'https://docs.slack.dev/ai/slack-mcp-server/connect-to-harnesses/',
-    allowedAuthorizationHosts: ['slack.com'],
+    allowedAuthorizationHosts: [
+      'slack.com',
+      'socket.enterprise.slack.com',
+      'socketdev.slack.com',
+    ],
     clients: {
       claude: {
         kind: 'oauth',
@@ -13285,12 +13932,13 @@ const MCP_PROVIDERS = {
         callbackPort: 3118,
       },
       codex: {
-        kind: 'registration-unavailable',
-        reason: 'slack-client-registration-unverified',
+        kind: 'oauth',
+        clientId: '1292389187026.12337285527779',
+        callbackPort: 3118,
       },
       opencode: {
-        kind: 'registration-unavailable',
-        reason: 'slack-client-registration-unverified',
+        kind: 'oauth',
+        clientId: '1601185624273.8899143856786',
       },
     },
   },
@@ -13342,11 +13990,24 @@ function parseMcpPublicOAuth(value) {
   if (value === void 0) return
   if (!(0, import_predicates.isPlainObject)(value))
     throw new TypeError('MCP OAuth metadata must be an object')
-  const { clientId, callbackPort } = value
+  const { clientId, callbackPort, callbackUrl } = value
+  assertPublicClientId(clientId)
+  assertCallbackPort(callbackPort)
+  assertCallbackUrl(callbackUrl, callbackPort)
+  assertPublicOAuthKeys(value)
+  return {
+    ...(clientId === void 0 ? {} : { clientId }),
+    ...(callbackPort === void 0 ? {} : { callbackPort }),
+    ...(callbackUrl === void 0 ? {} : { callbackUrl }),
+  }
+}
+function assertPublicClientId(clientId) {
   if (clientId !== void 0 && (typeof clientId !== 'string' || !clientId))
     throw new TypeError(
       'MCP OAuth clientId must be a nonempty public identifier',
     )
+}
+function assertCallbackPort(callbackPort) {
   if (
     callbackPort !== void 0 &&
     (typeof callbackPort !== 'number' ||
@@ -13357,16 +14018,40 @@ function parseMcpPublicOAuth(value) {
     throw new TypeError(
       'MCP OAuth callbackPort must be an integer from 1 to 65535',
     )
+}
+function assertCallbackUrl(callbackUrl, callbackPort) {
+  if (callbackUrl !== void 0 && typeof callbackUrl !== 'string')
+    throw new TypeError('MCP OAuth callbackUrl must be a loopback URL')
+  if (callbackUrl !== void 0) {
+    const url = new URL(callbackUrl)
+    const loopbackHosts = /* @__PURE__ */ new Set([
+      '[::1]',
+      '127.0.0.1',
+      'localhost',
+    ])
+    if (
+      url.protocol !== 'http:' ||
+      !loopbackHosts.has(url.hostname) ||
+      !url.port ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      (callbackPort !== void 0 && Number(url.port) !== callbackPort)
+    )
+      throw new TypeError('MCP OAuth callbackUrl must be a loopback URL')
+  }
+}
+function assertPublicOAuthKeys(value) {
   if (
-    Object.keys(value).some(key => key !== 'callbackPort' && key !== 'clientId')
+    Object.keys(value).some(
+      key =>
+        key !== 'callbackPort' && key !== 'callbackUrl' && key !== 'clientId',
+    )
   )
     throw new TypeError(
-      'MCP OAuth metadata only supports clientId and callbackPort',
+      'MCP OAuth metadata only supports clientId, callbackPort, and callbackUrl',
     )
-  return {
-    clientId,
-    callbackPort,
-  }
 }
 function parseMcpAuthorizationEnv(provider, headers) {
   const env = provider?.apiKeyEnv
@@ -13413,7 +14098,8 @@ function parseMcpHttpAuthentication(name, server) {
   if (
     registeredOAuth?.kind === 'oauth' &&
     (oauth?.clientId !== registeredOAuth.clientId ||
-      oauth?.callbackPort !== registeredOAuth.callbackPort)
+      oauth?.callbackPort !== registeredOAuth.callbackPort ||
+      oauth?.callbackUrl !== registeredOAuth.callbackUrl)
   )
     throw new TypeError(
       `MCP provider ${name} requires its registered public OAuth metadata`,
@@ -13444,11 +14130,6 @@ function clientMcpServers(servers, client) {
       'registration-unavailable',
   )
 }
-function codexMcpOAuth(name, server) {
-  const support = findMcpProviderForServer(name)?.clients.codex
-  if (support?.kind !== 'oauth') return server.oauth
-  return support.clientId || support.callbackPort ? support : void 0
-}
 function compactOpenCodeCommandArrays(text, servers) {
   let result = text
   const items = Object.values(servers)
@@ -13470,15 +14151,52 @@ function compactOpenCodeCommandArrays(text, servers) {
   }
   return result
 }
+function nativeMcpOAuth(client, name, server) {
+  if (client === 'claude') return server.oauth
+  const support = findMcpProviderForServer(name)?.clients[client]
+  if (support?.kind !== 'oauth') return server.oauth
+  if (!support.clientId && !support.callbackPort && !support.callbackUrl) return
+  return {
+    ...(support.clientId === void 0 ? {} : { clientId: support.clientId }),
+    ...(support.callbackPort === void 0
+      ? {}
+      : { callbackPort: support.callbackPort }),
+    ...(support.callbackUrl === void 0
+      ? {}
+      : { callbackUrl: support.callbackUrl }),
+  }
+}
+function openCodeMcpOAuth(name, server) {
+  const oauth = nativeMcpOAuth('opencode', name, server)
+  if (!oauth) return
+  return {
+    ...(oauth.clientId === void 0 ? {} : { client_id: oauth.clientId }),
+    ...(oauth.callbackPort === void 0
+      ? {}
+      : { callback_port: oauth.callbackPort }),
+    ...(oauth.callbackUrl === void 0
+      ? {}
+      : { redirect_uri: oauth.callbackUrl }),
+  }
+}
+function nativeMcpOAuthFields(client, name, server) {
+  const oauth =
+    client === 'opencode'
+      ? openCodeMcpOAuth(name, server)
+      : nativeMcpOAuth(client, name, server)
+  return oauth === void 0 ? {} : { oauth }
+}
 function createOpenCodeMcpConfig(servers) {
   const entries = {}
   for (const [name, server] of clientMcpServers(servers, 'opencode'))
     entries[name] =
       server.kind === 'http'
         ? {
+            codemode: false,
+            disabled: false,
             type: 'remote',
             url: server.url,
-            ...(server.oauth === void 0 ? {} : { oauth: server.oauth }),
+            ...nativeMcpOAuthFields('opencode', name, server),
             ...(server.bearerTokenEnv === void 0
               ? {}
               : {
@@ -13490,11 +14208,17 @@ function createOpenCodeMcpConfig(servers) {
           }
         : {
             command: [server.command, ...server.args],
+            disabled: false,
+            environment: {
+              ...server.env,
+              FLEET_MCP_CLIENT: 'opencode',
+            },
             type: 'local',
+            codemode: false,
           }
   return {
     $schema: 'https://opencode.ai/config.json',
-    mcp: entries,
+    mcp: { servers: entries },
   }
 }
 function formatOpenCodeMcpConfig(config, servers) {
@@ -13520,36 +14244,73 @@ function parseCanonicalMcpConfig(text) {
     mcpServers: void 0,
   })
   const servers = {}
-  for (const [name, rawServer] of Object.entries(parsed['mcpServers'])) {
-    if (!(0, import_predicates.isPlainObject)(rawServer))
-      throw new Error(`MCP server ${name} must be an object`)
-    if (rawServer['type'] === 'http') {
-      const url = rawServer['url']
-      if (typeof url !== 'string' || url.length === 0)
-        throw new Error(`HTTP MCP server ${name} must have a URL`)
-      servers[name] = {
-        kind: 'http',
-        url,
-        ...parseMcpHttpAuthentication(name, rawServer),
-      }
-      continue
-    }
-    assertMcpConfigHasNoCredentials(rawServer, { location: name })
-    const command = rawServer['command']
-    if (typeof command !== 'string' || command.length === 0)
-      throw new Error(`stdio MCP server ${name} must have a command`)
-    servers[name] = {
-      args: parseStringArray(rawServer['args'] ?? [], `${name}.args`),
-      command,
-      kind: 'stdio',
+  for (const [name, rawServer] of Object.entries(parsed['mcpServers']))
+    servers[name] = parseCanonicalMcpServer(name, rawServer)
+  return sortRecord(servers)
+}
+function parseCanonicalMcpServer(name, rawServer) {
+  if (!(0, import_predicates.isPlainObject)(rawServer))
+    throw new Error(`MCP server ${name} must be an object`)
+  if (rawServer['type'] === 'http') {
+    const url = rawServer['url']
+    if (typeof url !== 'string' || url.length === 0)
+      throw new Error(`HTTP MCP server ${name} must have a URL`)
+    return {
+      kind: 'http',
+      url,
+      ...parseMcpHttpAuthentication(name, rawServer),
     }
   }
-  return sortRecord(servers)
+  assertMcpConfigHasNoCredentials(rawServer, { location: name })
+  const command = rawServer['command']
+  if (typeof command !== 'string' || command.length === 0)
+    throw new Error(`stdio MCP server ${name} must have a command`)
+  const env = parseMcpServerEnvironment(name, rawServer['env'])
+  return {
+    args: parseStringArray(rawServer['args'] ?? [], `${name}.args`),
+    command,
+    ...(env === void 0 ? {} : { env }),
+    kind: 'stdio',
+  }
+}
+function parseMcpServerEnvironment(name, env) {
+  if (env === void 0) return
+  if (
+    !(0, import_predicates.isPlainObject)(env) ||
+    Object.values(env).some(value => typeof value !== 'string')
+  )
+    throw new Error(`MCP server ${name}.env must contain string values`)
+  return { ...env }
 }
 function parseStringArray(value, field) {
   if (!Array.isArray(value) || value.some(item => typeof item !== 'string'))
     throw new Error(`MCP server ${field} must be an array of strings`)
   return [...value]
+}
+function appendCodexHttpMcpConfig(lines, name, key, server) {
+  lines.push(`url = ${tomlString(server.url)}`)
+  if (findMcpProviderForServer(name)?.auth === 'oauth')
+    lines.push(`auth = ${tomlString('oauth')}`)
+  if (server.bearerTokenEnv)
+    lines.push(`bearer_token_env_var = ${tomlString(server.bearerTokenEnv)}`)
+  const oauth = nativeMcpOAuth('codex', name, server)
+  if (!oauth?.clientId && !oauth?.callbackPort && !oauth?.callbackUrl) return
+  lines.push('', `[mcp_servers.${key}.oauth]`)
+  if (oauth.clientId) lines.push(`client_id = ${tomlString(oauth.clientId)}`)
+  if (oauth.callbackPort) lines.push(`callback_port = ${oauth.callbackPort}`)
+  if (oauth.callbackUrl)
+    lines.push(`callback_url = ${tomlString(oauth.callbackUrl)}`)
+}
+function appendCodexStdioMcpConfig(lines, key, server) {
+  lines.push(`command = ${tomlString(server.command)}`)
+  lines.push(...tomlStringArray(server.args))
+  lines.push('', `[mcp_servers.${key}.env]`)
+  const env = {
+    ...server.env,
+    FLEET_MCP_CLIENT: 'codex',
+  }
+  for (const [envName, value] of Object.entries(sortRecord(env)))
+    lines.push(`${tomlKey(envName)} = ${tomlString(value)}`)
 }
 /**
  * Render the trusted-project `.codex/config.toml` MCP section.
@@ -13562,24 +14323,9 @@ function renderCodexMcpConfig(servers) {
   for (const [name, server] of clientMcpServers(servers, 'codex')) {
     const key = /^[\w-]+$/.test(name) ? name : tomlString(name)
     lines.push('', `[mcp_servers.${key}]`)
-    if (server.kind === 'http') {
-      lines.push(`url = ${tomlString(server.url)}`)
-      if (server.bearerTokenEnv)
-        lines.push(
-          `bearer_token_env_var = ${tomlString(server.bearerTokenEnv)}`,
-        )
-      const oauth = codexMcpOAuth(name, server)
-      if (oauth?.clientId || oauth?.callbackPort) {
-        lines.push('', `[mcp_servers.${key}.oauth]`)
-        if (oauth.clientId)
-          lines.push(`client_id = ${tomlString(oauth.clientId)}`)
-        if (oauth.callbackPort)
-          lines.push(`callback_port = ${oauth.callbackPort}`)
-      }
-    } else {
-      lines.push(`command = ${tomlString(server.command)}`)
-      lines.push(...tomlStringArray(server.args))
-    }
+    if (server.kind === 'http')
+      appendCodexHttpMcpConfig(lines, name, key, server)
+    else appendCodexStdioMcpConfig(lines, key, server)
   }
   return `${lines.join('\n')}\n`
 }
@@ -13595,6 +14341,9 @@ function sortRecord(record) {
 }
 function tomlString(value) {
   return JSON.stringify(value)
+}
+function tomlKey(value) {
+  return /^[A-Za-z0-9_-]+$/.test(value) ? value : tomlString(value)
 }
 function tomlStringArray(values) {
   const compact = JSON.stringify(values)
@@ -13636,16 +14385,21 @@ function projectMcpClientConfigs(dest, preservedPaths) {
     throw new TypeError(
       `Adapter projection failed. Where: ${openCodePath}. Saw: non-object JSON; wanted an OpenCode configuration object. Fix: repair the file and retry installation.`,
     )
+  if (Object.hasOwn(existing, 'mcp') && !isPlainObject(existing['mcp']))
+    throw new TypeError(
+      `Adapter projection failed. Where: ${openCodePath}. Saw: non-object mcp member; wanted an OpenCode MCP configuration object. Fix: repair the file and retry installation.`,
+    )
   const generated = JSON.parse(renderOpenCodeMcpConfig(servers))
   if (!isPlainObject(generated))
     throw new TypeError('OpenCode MCP renderer returned invalid JSON.')
+  const generatedMcp = isPlainObject(generated['mcp']) ? generated['mcp'] : {}
   writeIfChanged(
     openCodePath,
     `${JSON.stringify(
       {
         ...generated,
         ...existing,
-        mcp: generated['mcp'],
+        mcp: generatedMcp,
       },
       void 0,
       2,
@@ -14168,6 +14922,7 @@ async function installFleet(config) {
         }
       : memberManifest
     const installResult = installFiles(filesDir, dest, runtimeManifest, {
+      preserveTracked,
       refreshTracked: cfg.refreshTracked === true,
       preservedPaths,
     })
@@ -14221,7 +14976,7 @@ async function installFleet(config) {
         manifest: runtimeManifest,
       })
     try {
-      if (!deferLegacyRuleSeed)
+      if (!(0, import_ci.isCI)() && !deferLegacyRuleSeed)
         projectInstalledAdapters(dest, { preservedPaths })
       if (!preserveTracked)
         untrackGeneratedOutputs(dest, INSTALLED_ADAPTER_PATHS)

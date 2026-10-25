@@ -37,7 +37,7 @@ export function resolveNativeBuildPlan(request: {
   config: Record<string, unknown> | undefined
   matrix: readonly NapiMatrixEntry[]
   target: string
-  repoRoot?: string
+  repoRoot?: string | undefined
 }): NativeBuildPlan {
   const { config, matrix, target, repoRoot = rootPath } = request
   if (!isNapiTarget(target) || target === 'wasm32-wasi') {
@@ -51,6 +51,28 @@ export function resolveNativeBuildPlan(request: {
       'Native target is not configured for a custom build. Where: napi matrix. Saw a missing or default producer target; wanted a configured custom producer target. Fix: declare napi.buildScript and napi.platforms.',
     )
   }
+  const { buildScript, artifactFiles } = resolveNativeBuildConfig(config)
+  const filePlan = planNativeArtifactFiles(artifactFiles, [entry])
+  const canonicalScript = resolveNativeBuildScript(repoRoot, buildScript)
+  return {
+    target,
+    platformId: entry.platformId,
+    scriptPath: canonicalScript,
+    outputDirectory: path.join(
+      repoRoot,
+      '.cache',
+      'fleet',
+      'native-addons',
+      'build',
+      entry.platformId,
+    ),
+    outputFiles: filePlan.map(item => item.source),
+  }
+}
+
+function resolveNativeBuildConfig(
+  config: Record<string, unknown> | undefined,
+): { buildScript: string; artifactFiles: Record<string, string> } {
   const napi = config?.['napi']
   if (typeof napi !== 'object' || napi === null || Array.isArray(napi)) {
     throw new Error(
@@ -78,10 +100,16 @@ export function resolveNativeBuildPlan(request: {
       'Native artifact names are missing. Where: napi.artifactFiles. Saw an empty custom producer file map; wanted every expected .node basename. Fix: declare the output files.',
     )
   }
-  const filePlan = planNativeArtifactFiles(
-    artifactFiles as Record<string, string>,
-    [entry],
-  )
+  return {
+    buildScript,
+    artifactFiles: artifactFiles as Record<string, string>,
+  }
+}
+
+function resolveNativeBuildScript(
+  repoRoot: string,
+  buildScript: string,
+): string {
   const scriptPath = path.resolve(repoRoot, ...buildScript.split('/'))
   const repoRelative = path.relative(repoRoot, scriptPath)
   if (
@@ -115,20 +143,7 @@ export function resolveNativeBuildPlan(request: {
       'Native build script is unavailable. Where: napi.buildScript. Saw a missing or out-of-scope file; wanted an existing file under scripts/repo. Fix: add the producer script inside scripts/repo.',
     )
   }
-  return {
-    target,
-    platformId: entry.platformId,
-    scriptPath: canonicalScript,
-    outputDirectory: path.join(
-      repoRoot,
-      '.cache',
-      'fleet',
-      'native-addons',
-      'build',
-      entry.platformId,
-    ),
-    outputFiles: filePlan.map(item => item.source),
-  }
+  return canonicalScript
 }
 
 export function validateNativeBuildOutputs(plan: NativeBuildPlan): void {
@@ -163,17 +178,24 @@ export async function main(): Promise<void> {
   })
   safeDeleteSync(plan.outputDirectory)
   mkdirSync(plan.outputDirectory, { recursive: true })
-  const code = await runInherit(
-    process.execPath,
-    [plan.scriptPath, plan.target, plan.outputDirectory],
-    rootPath,
-  )
+  const code = await runNativeProducer(plan)
   if (code !== 0) {
     throw new Error(
       `Native producer failed. Where: ${plan.scriptPath}. Saw exit code ${code}; wanted exit code 0. Fix: repair the configured producer script.`,
     )
   }
   validateNativeBuildOutputs(plan)
+}
+
+export async function runNativeProducer(
+  plan: NativeBuildPlan,
+): Promise<number> {
+  return await runInherit(
+    process.execPath,
+    [plan.scriptPath, plan.target, plan.outputDirectory],
+    rootPath,
+    { MBX_REMOTE_URL: '' },
+  )
 }
 
 function loadConfig(): Record<string, unknown> | undefined {

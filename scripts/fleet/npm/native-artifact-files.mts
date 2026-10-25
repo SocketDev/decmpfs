@@ -11,7 +11,7 @@ const DEFAULT_ARTIFACT_FILES = {
 
 export function planNativeArtifactFiles(
   artifactFiles: Readonly<Record<string, string>> | undefined,
-  targets: readonly { target: string; platformId: string }[],
+  targets: ReadonlyArray<{ target: string; platformId: string }>,
 ): NativeArtifactFilePlan[] {
   const files = artifactFiles ?? DEFAULT_ARTIFACT_FILES
   const entries = Object.entries(files)
@@ -30,7 +30,8 @@ export function planNativeArtifactFiles(
   }
   const outputs = new Set<string>()
   const plan: NativeArtifactFilePlan[] = []
-  for (const target of targets) {
+  for (let index = 0, { length } = targets; index < length; index += 1) {
+    const target = targets[index]!
     for (const [filename, template] of entries) {
       const destination = template
         .replaceAll('{target}', () => target.target)

@@ -78,6 +78,8 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.napi-matrix.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
+    env:
+      MBX_REMOTE_URL: ''
     steps:
       - name: Bootstrap checkout
         shell: bash
@@ -141,22 +143,11 @@ jobs:
         env:
           NAPI_TARGET: ${{ matrix.target }}
         run: node scripts/fleet/npm/native/build.mts
-      # Socket-original composites, not the third-party Rust toolchain and
-      # cache actions they replace. An addon member's Actions allowlist then
-      # needs nothing beyond actions/* and its own local composites, so a grep
-      # for a third-party Rust action comes back empty in every fleet member,
-      # addon or not.
       - name: Rust toolchain
         if: ${{ matrix.customBuild != true }}
         uses: ./.github/actions/fleet/setup-rust-toolchain
         with:
           channel: stable
-      - name: Rust cache
-        if: ${{ matrix.customBuild != true }}
-        uses: ./.github/actions/fleet/setup-rust-cache
-        with:
-          prefix-key: napi-${{ matrix.target }}
-          workspaces: .
       - name: 'Prefer rustup Cargo over the SFW shim'
         if: ${{ matrix.customBuild != true }}
         shell: bash
@@ -232,12 +223,3 @@ jobs:
           if-no-files-found: error
           name: addons-${{ matrix.platformId }}
           path: .cache/fleet/native-addons/build/${{ matrix.platformId }}
-      # Last step on purpose: the restore-phase call above exported the
-      # RUST_CACHE_* job env; this saves the populated target dirs. Runs only
-      # when every previous step succeeded — the same success gate the old
-      # cache post step used.
-      - name: Save Rust cache
-        if: ${{ matrix.customBuild != true }}
-        uses: ./.github/actions/fleet/setup-rust-cache
-        with:
-          phase: save

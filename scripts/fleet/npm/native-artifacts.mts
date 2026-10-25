@@ -166,6 +166,47 @@ async function listArtifacts(
   }))
 }
 
+async function stageNativeArtifact(
+  repository: string,
+  artifact: NativeArtifactIdentity,
+  runArtifacts: readonly NativeArtifactIdentity[],
+  filePlan: ReturnType<typeof planNativeArtifactFiles>,
+  destinationRoot: string,
+): Promise<void> {
+  if (
+    !runArtifacts.some(
+      item =>
+        item.id === artifact.id &&
+        item.digest === artifact.digest &&
+        item.name === artifact.name,
+    )
+  ) {
+    throw new Error(
+      'Native receipt artifact does not belong to the verified build run.',
+    )
+  }
+  const files = await artifactFiles(repository, artifact)
+  const platformId = artifact.name.slice('addons-'.length)
+  const platformPlan = filePlan.filter(item => item.platformId === platformId)
+  if (
+    files.length !== platformPlan.length ||
+    !platformPlan.every(item =>
+      files.some(file => file.name === item.source && file.data.length > 0),
+    )
+  ) {
+    throw new Error(
+      'Native artifact payload is incomplete. Where: build artifact. Saw a missing, empty, or unexpected file; wanted exactly the configured nonempty files. Fix: rebuild the native artifact.',
+    )
+  }
+  for (let index = 0, { length } = platformPlan; index < length; index += 1) {
+    const item = platformPlan[index]!
+    const file = files.find(candidate => candidate.name === item.source)!
+    const destination = path.join(destinationRoot, item.destination)
+    mkdirSync(path.dirname(destination), { recursive: true })
+    writeFileSync(destination, file.data)
+  }
+}
+
 async function resolveNativeReceipt(
   repository: string,
   sourceSha: string,
@@ -271,7 +312,7 @@ export async function main(): Promise<void> {
   const publishRun = getEnvValue('NATIVE_PUBLISH_RUN_ID')
   const receipt = await resolveNativeReceipt(repository, sourceSha, publishRun)
   const config = loadSocketWheelhouseConfig()?.value
-  const napi = (config?.napi ?? {}) as {
+  const napi = (config?.['napi'] ?? {}) as {
     artifactFiles?: Readonly<Record<string, string>> | undefined
   }
   const filePlan = planNativeArtifactFiles(napi.artifactFiles, matrix.include)
@@ -286,37 +327,13 @@ export async function main(): Promise<void> {
   )
   const runArtifacts = await listArtifacts(repository, receipt.runId)
   for (const artifact of receipt.artifacts) {
-    if (
-      !runArtifacts.some(
-        item =>
-          item.id === artifact.id &&
-          item.digest === artifact.digest &&
-          item.name === artifact.name,
-      )
-    ) {
-      throw new Error(
-        'Native receipt artifact does not belong to the verified build run.',
-      )
-    }
-    const files = await artifactFiles(repository, artifact)
-    const platformId = artifact.name.slice('addons-'.length)
-    const platformPlan = filePlan.filter(item => item.platformId === platformId)
-    if (
-      files.length !== platformPlan.length ||
-      !platformPlan.every(item =>
-        files.some(file => file.name === item.source && file.data.length > 0),
-      )
-    ) {
-      throw new Error(
-        'Native artifact payload is incomplete. Where: build artifact. Saw a missing, empty, or unexpected file; wanted exactly the configured nonempty files. Fix: rebuild the native artifact.',
-      )
-    }
-    for (const item of platformPlan) {
-      const file = files.find(candidate => candidate.name === item.source)!
-      const destination = path.join(owner.dir, ...item.destination.split('/'))
-      mkdirSync(path.dirname(destination), { recursive: true })
-      writeFileSync(destination, file.data)
-    }
+    await stageNativeArtifact(
+      repository,
+      artifact,
+      runArtifacts,
+      filePlan,
+      owner.dir,
+    )
   }
   mkdirSync(path.dirname(NATIVE_RECEIPT_PATH), { recursive: true })
   writeFileSync(NATIVE_RECEIPT_PATH, `${JSON.stringify(receipt)}\n`)

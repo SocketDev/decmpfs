@@ -103,52 +103,53 @@
     "uv": {
       "notes": [
         "uv (Astral) — the fleet's Python project tool. Installed in the bootstrap (release-asset, SRI-verified per platform, like janus/codedb) so a hash-locked uv install is available BEFORE the security-tools step that needs it (SkillSpector installs via a uv project + uv.lock, no pipx — the fleet 'uv for projects' rule). external-tools/update.mts re-hashes the GitHub release assets on a bump.",
-        "The GitHub release is a known-publisher binary distribution. The installer uses the version as the release tag."
+        "The GitHub release is a known-publisher binary distribution. The installer uses the version as the release tag.",
+        "Security update: 0.13.4 adopts webpki-root-certs 1.0.10 after the eMudhra incident. https://github.com/astral-sh/uv/releases/tag/0.13.4"
       ],
       "description": "uv — Astral Python package/project manager (pinned, SRI-verified)",
       "repository": "github:astral-sh/uv",
-      "version": "0.12.23",
-      "tag": "0.12.23",
-      "versionDate": "2026-10-03",
+      "version": "0.13.4",
+      "tag": "0.13.4",
+      "versionDate": "2026-10-20",
       "binaryName": "uv",
       "platforms": {
         "darwin-arm64": {
           "asset": "uv-aarch64-apple-darwin.tar.gz",
-          "integrity": "sha512-gfcAJYNFwKXKBwMYW/JKTLGO4O8YJ7bQAUhktvAG7nBRWwWhCBdLvFsFOL5qonUgZguve0oENxa2/o/ElT3E2A=="
+          "integrity": "sha512-rTH+JXnMR3YPVOibNvLUXtKozz3nR8YSamfvylhNompKp5i2eEsZrUCdhGd3A5S6e+oSo7ERYwfusCMan3Meeg=="
         },
         "darwin-x64": {
           "asset": "uv-x86_64-apple-darwin.tar.gz",
-          "integrity": "sha512-T1F7q5xWEOkUPLGeekoWOwz8Cdkkc9akMfwLU2QO8i824WdfOipJ4/zddpkG/Xr9NWA+/LuyHFGwPdwtVv/grg=="
+          "integrity": "sha512-WmjYloU39f0ZAw0jCV73GH/iYs1jRGbZd+Q/aA2JPr+DtMbJsyVUH2CS/vw/e2pVqOEWbgWHZyRXm8QhRkB1Tw=="
         },
         "linux-arm64": {
           "asset": "uv-aarch64-unknown-linux-gnu.tar.gz",
-          "integrity": "sha512-ebIJu9Gjeq5JoMPzMgW3F8ZF87IiQRjGV48JaEriium+Qy1dYsEP720173ekwSwrKRvE0FdhPyRb8QUEsbxuBg=="
+          "integrity": "sha512-vjsQLcnHlrLgpzwgoNOrqRJisgN0VG8PRlsnNvNPq9WFfLZgz0SSb22MsNvcKTxbo29UNfC3UbIaGXL8DZD9Sw=="
         },
         "linux-x64": {
           "asset": "uv-x86_64-unknown-linux-gnu.tar.gz",
-          "integrity": "sha512-SYTJBAowVTXLInaa6v0NuBgzOOIC+CoupwDRwwcKHEHgYZOLUGOMUDgBEt2bX2n+Jc6Jz9PQfcvA7D+3Id+Gpg=="
+          "integrity": "sha512-qe2cdV4BVSr/pPdk/6kB7kMmM0LO+ctn16O9iCfGLxTeDGo570Fjr4I/g/mvITFUCGb9H/zBM0cbIewuWFZsjQ=="
         },
         "win32-arm64": {
           "asset": "uv-aarch64-pc-windows-msvc.zip",
-          "integrity": "sha512-RTNfWHH9F1k5oG1i4y8TACMbjh3PSyoR7bkoAKiaX0mNwZedokm4JXq3UpOZ/SwQZL6DpI1BRfuRsEwq2KtazQ=="
+          "integrity": "sha512-zv2J+yqvUitcoX9brJz00BQpuYFCjeWU5+LiwJ5d/ZWZgnOK/TVnTvrF5fC3tFj0EIoErbOCdTwwHBRvmLVs+w=="
         },
         "win32-x64": {
           "asset": "uv-x86_64-pc-windows-msvc.zip",
-          "integrity": "sha512-8vtkGZbm5WXtEcuwkrgp50tNdxZpHah9tcwR/F9uMeNgw1yYTyVf6RYHhvliPnPUpMY3JEdzgUbID4LOhLflsw=="
+          "integrity": "sha512-8q0tX6gT4mIox8MwV1Lekt8YCTVkYY4Ym4tlg+h1q1AVaug7xbKkT4hU9v/uMxNUq/+xnpwMCa/jywXpvVXzrg=="
         }
       },
       "origin": "gh-asset",
       "soakBypass": {
-        "version": "0.12.23",
-        "published": "2026-10-03",
-        "removable": "2026-10-10"
+        "version": "0.13.4",
+        "published": "2026-10-20",
+        "removable": "2026-10-27"
       }
     },
     "zizmor": {
       "description": "GitHub Actions security linter — audits .github/ for workflow-injection / credential-leak patterns.",
-      "version": "1.30.1",
+      "version": "1.31.0",
       "repository": "github:zizmorcore/zizmor",
-      "tag": "v1.30.1",
+      "tag": "v1.31.0",
       "notes": [
         "Required: CI (blocks merges on medium+ findings)",
         "Installed by the setup-and-install composite; SRI-verified (sha512) per platform"
@@ -156,23 +157,23 @@
       "platforms": {
         "darwin-arm64": {
           "asset": "zizmor-aarch64-apple-darwin.tar.gz",
-          "integrity": "sha512-0SJEhWNir4QzfGwrT2oX4w/4UJZp8CqDo2RK2bkcfHCilayAZkpvu/fq6rHo+X+gbJICazQBNRE2bo91mmNAKA=="
+          "integrity": "sha512-aHFSG5VFwSJ3LrlgH/vIuVHsRzBYAE8CbacVCHOoo0nOEbusERvdtm1rIgJm+YiKiy1lt95ni+v8CeSdjgfR8Q=="
         },
         "darwin-x64": {
           "asset": "zizmor-x86_64-apple-darwin.tar.gz",
-          "integrity": "sha512-QqPld71wwABqcLyxkJ02nItUczTQrtpAAT6xiDvyyBySuywAFGW4mUU7iO2Kcwg+CDY5ZLvkd/vNm76GqqbwXw=="
+          "integrity": "sha512-DDUbExoyRusqj+mc2vzj2xo9jmP6QtwgK0nXKot7hEXHIbl5Hlu5FIVKwQ6YMc7oCvu4ozEpbY9gS4G1/igFQg=="
         },
         "linux-arm64": {
           "asset": "zizmor-aarch64-unknown-linux-gnu.tar.gz",
-          "integrity": "sha512-7AfMKqT+4SoyYRE4Ke7Ar5H+1SoU7QUuifuSKGjJIb7Qep29+oP0IrMsEMwjqAxpiGbEPyxSMgO7ghDlHhNsNQ=="
+          "integrity": "sha512-Hvr6TZ+X+tzi84Z37Cy0dAdDR4ePFZzM4U3g1KP3p0etOn7wPzrazOXJqP2bZgnY+LAJVoRu4ojkhM/GP0nelw=="
         },
         "linux-x64": {
           "asset": "zizmor-x86_64-unknown-linux-gnu.tar.gz",
-          "integrity": "sha512-sMHocgA1Rg12S12/szGaRumgmlAEjaeU5EIdGTczLNldhGFptlctCFqogoebWvE/PFioGlZ2vcSxoCZW3BegYg=="
+          "integrity": "sha512-0aN5cAmR6N0Yb3IhjvOt//OLgtRR7RS62d+6/0+zGCYWmWmYDaMATvGfT9n+2FTGcF9mnBML9XWefcHKMIwNFQ=="
         },
         "win32-x64": {
           "asset": "zizmor-x86_64-pc-windows-msvc.zip",
-          "integrity": "sha512-cYagZJ5fG+8UQ/Fr0LshEt7A6CXQgWeeBHlsztvzCepX661rrW9h3h//hedNUu7yM215f+fqDXE0++6MjuLgJg=="
+          "integrity": "sha512-ipIpgBsUyl1ZJOzm9iXwaSo1t+Cmv9Njw3rPlB6xJ5CPClJgFr9483rvhh/9kjWmwXW4PLXmzP2exg/O5/PxnA=="
         }
       },
       "origin": "gh-asset"
@@ -217,12 +218,7 @@
           "integrity": "sha512-kh7yWn5TzLGI+rpujGwzX+HIaVa1/BHTVpJ58cBAYnwPSuYRhgUciX0vqKKoK3P3nYYMGrN7IvhZ4L91krsYLw=="
         }
       },
-      "origin": "gh-asset",
-      "soakBypass": {
-        "published": "2026-10-01",
-        "removable": "2026-10-08",
-        "version": "1.15.4"
-      }
+      "origin": "gh-asset"
     },
     "sfw-enterprise": {
       "notes": [
@@ -264,12 +260,7 @@
           "integrity": "sha512-zi2isECucghnSVLVDjTaABKr/2nsmiUHVGEELcj1/7DRLbFIYLq+m3zpcfRJTLstElWbht2PjIJQuHWtnrzLrw=="
         }
       },
-      "origin": "gh-asset",
-      "soakBypass": {
-        "published": "2026-10-01",
-        "removable": "2026-10-08",
-        "version": "1.15.4"
-      }
+      "origin": "gh-asset"
     }
   }
 }

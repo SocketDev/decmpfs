@@ -39,6 +39,7 @@ jobs:
       id-token: write # crates.io Trusted Publishing (OIDC) + provenance
       attestations: write # build provenance for the .crate
     env:
+      MBX_REMOTE_URL: ''
       SOCKET_API_TOKEN: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
     steps:
       - name: Bootstrap checkout
@@ -68,19 +69,14 @@ jobs:
 
       - name: Set up and install
         uses: ./.github/actions/fleet/setup-and-install
-      # Fleet composites, not the third-party actions they replace: a raw
-      # `uses:` here would force dtolnay/rust-toolchain and Swatinem/rust-cache
-      # onto the Actions allowlist of every repo seeded from this preset, and a
-      # strict-allowlist repo plan-fails with 0 jobs when one is missing.
+        with:
+          socket-api-token: ${{ secrets.SOCKET_API_TOKEN_FOR_CLI_AND_SFW }}
+          payload-token-client-id: ${{ secrets.SOCKET_RELEASE_CLIENT_ID || vars.SOCKET_RELEASE_CLIENT_ID }}
+          payload-token-private-key: ${{ secrets.SOCKET_RELEASE_APP_PRIVATE_KEY }}
       - name: Rust toolchain
         uses: ./.github/actions/fleet/setup-rust-toolchain
         with:
           channel: nightly
-      - name: Rust cache
-        uses: ./.github/actions/fleet/setup-rust-cache
-        with:
-          prefix-key: cargo-publish
-          workspaces: .
       - name: Mint PR branch token for nightly bump
         if: ${{ inputs.nightly-version != '' }}
         id: pr-branch-app
@@ -104,20 +100,13 @@ jobs:
       - name: 'Authenticate to crates.io'
         id: auth
         uses: ./.github/actions/fleet/cargo/auth
-      - name: Stage and digest crate
+      - name: Publish crate
         env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
           GH_TOKEN: ${{ inputs.nightly-version != '' && steps.release-app.outputs.token || github.token }}
           PR_APP_TOKEN: ${{ steps.pr-branch-app.outputs.token }}
           RELEASE_APP_TOKEN: ${{ steps.release-app.outputs.token }}
           NIGHTLY_VERSION: ${{ inputs.nightly-version }}
-        run: |
-          args=(--staged)
-          if [ -n "$NIGHTLY_VERSION" ]; then args+=(--bump --nightly-version "$NIGHTLY_VERSION"); fi
-          node scripts/fleet/registry/cargo/publish/run.mts "${args[@]}"
-      - name: Approve verified crate
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-          GH_TOKEN: ${{ inputs.nightly-version != '' && steps.release-app.outputs.token || github.token }}
         # The rustup cargo goes AHEAD of the SFW shim for the publish leg:
         # the shim's proxy interposes the crates.io publish PUT (uploads are
         # outside its registry-read bypass), and cargo then fails TLS
@@ -126,7 +115,9 @@ jobs:
         # publish traffic with an OIDC token — no supply-chain read surface.
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
-          node scripts/fleet/registry/cargo/publish/run.mts --approve --yes
+          args=(--direct)
+          if [ -n "$NIGHTLY_VERSION" ]; then args+=(--bump --nightly-version "$NIGHTLY_VERSION"); fi
+          node scripts/fleet/registry/cargo/publish/run.mts "${args[@]}"
       # The publish must leave the crate owned by the fleet team, not one
       # person's account. The owners read is public, so this needs no
       # credential; failing loud sends the fix to the humans who can do it.
@@ -164,8 +155,3 @@ jobs:
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2 (2025-06-11)
         with:
           subject-path: target/package/*.crate
-      - name: Save Rust cache
-        if: ${{ !cancelled() }}
-        uses: ./.github/actions/fleet/setup-rust-cache
-        with:
-          phase: save
